@@ -1,0 +1,6 @@
+{
+  "name": "Рунический Став",
+  "description": "Генератор и конструктор рунических ставов, тату-эскизов, гадания и справочник Старшего и Младшего Футарка",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

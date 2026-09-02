@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Center nexus circle -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFC857"
+        android:strokeWidth="2.0"
+        android:pathData="M 54, 54 m -8, 0 a 8,8 0 1,0 16,0 a 8,8 0 1,0 -16,0" />
+    <path
+        android:fillColor="#FFC857"
+        android:pathData="M 54, 54 m -3, 0 a 3,3 0 1,0 6,0 a 3,3 0 1,0 -6,0" />
+
+    <!-- 4 Main Stave Axes (Top, Bottom, Left, Right) -->
+    <!-- Top stem + trident Algiz prongs -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFC857"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M 54,46 L 54,24 M 54,32 L 44,22 M 54,32 L 64,22 M 49,27 L 59,27" />
+
+    <!-- Bottom stem + trident Algiz prongs -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFC857"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M 54,62 L 54,84 M 54,76 L 44,86 M 54,76 L 64,86 M 49,81 L 59,81" />
+
+    <!-- Left stem + trident Algiz prongs -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFC857"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M 46,54 L 24,54 M 32,54 L 22,44 M 32,54 L 22,64 M 27,49 L 27,59" />
+
+    <!-- Right stem + trident Algiz prongs -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFC857"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M 62,54 L 84,54 M 76,54 L 86,44 M 76,54 L 86,64 M 81,49 L 81,59" />
+
+    <!-- Diagonal cross accents -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#E0B040"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M 42,42 L 34,34 M 66,42 L 74,34 M 42,66 L 34,74 M 66,66 L 74,74" />
+</vector>
