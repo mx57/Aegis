@@ -42,6 +42,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -96,9 +97,16 @@ fun NameStaveScreen(
         }
     }
 
-    val sketchConfig = remember {
+    val userSettings by viewModel.userSettings.collectAsState()
+
+    val sketchConfig = remember(userSettings.defaultStyle) {
+        val style = try {
+            SketchStyle.valueOf(userSettings.defaultStyle)
+        } catch (_: Exception) {
+            SketchStyle.ORNAMENTAL
+        }
         SketchConfig(
-            style = SketchStyle.ORNAMENTAL,
+            style = style,
             lineWidth = 3.6f,
             hasFrameCircle = true,
             seed = 1001L
@@ -290,7 +298,8 @@ fun NameStaveScreen(
                     } else {
                         RunicCanvas(
                             stave = composedStave,
-                            config = sketchConfig
+                            config = sketchConfig,
+                            animationDurationMs = userSettings.animationSpeedMs
                         )
                     }
                 }

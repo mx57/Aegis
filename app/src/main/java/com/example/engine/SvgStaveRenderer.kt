@@ -21,6 +21,10 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 enum class SketchStyle(val titleRu: String, val descriptionRu: String) {
+    ODIN_TOTEM("Тотем Одина (Волк и Ворон)", "Оберег со стражами Асгарда: Волк Фенрир, Ворон Хугин, кованая цепь и рунический обелиск"),
+    VIKING_CHAIN("Кованая цепь викингов", "Шипованная цепь Глейпнир, кельтский медальон и гранёные лучи"),
+    WOODCUT_ENGRAVING("Гравюра и штриховка", "Художественный карандашный эскиз, штриховка тушью и резьба по камню"),
+    RUNIC_OBELISK("Руническая стела", "Обелиск с вертикальными рунами, окруженный гранёной звездой"),
     SACRED_GOLD("Сакральное Золото", "Небесная геометрия, золотые орбиты, астролябия и сияющие узлы"),
     NORDIC_TATTOO("Тату-Блэкворк", "Четкая тату-графика, акцентные ромбы, плотные линии и чистый контраст"),
     VALKYRIE_SILVER("Серебро Валькирий", "Лунная платина, тончайшая вязь и морозное сияние севера"),
@@ -35,6 +39,8 @@ enum class SketchStyle(val titleRu: String, val descriptionRu: String) {
 
 enum class FrameStyle(val titleRu: String) {
     NONE("Без рамки"),
+    SPIKED_CHAIN("Шипованная цепь"),
+    CELTIC_MEDALLION("Кельтский медальон"),
     SOLAR_CIRCLE("Солнечный круг"),
     CELESTIAL_ASTROLABE("Небесная астролябия"),
     NORDIC_BRAID("Скандинавская плетёнка"),
@@ -54,6 +60,9 @@ enum class FinialType(val titleRu: String) {
 
 enum class CenterEmblem(val titleRu: String) {
     NONE("Без символа"),
+    BEASTS_OF_ODIN("Волк и Ворон"),
+    FACETED_STAR("Гранёная звезда"),
+    RUNIC_STELE("Стела-обелиск"),
     VALKNUT("Валькнут"),
     TRIQUETRA("Трикветр"),
     SOLAR_CROSS("Солнечный крест"),
@@ -78,11 +87,13 @@ enum class CanvasTheme(
     val accentHex: String,
     val glowHex: String
 ) {
+    GRAPHITE_SKETCH("Графитовый эскиз", "Художественный рисунок карандашом и тушью как на фото", "#F4EFE6", "#E4DAC8", "#1E1A16", "#423830", "#332B25"),
     GOLDEN_EMBER("Небесное Золото", "Космический обсидиан с благородным червонным золотом", "#090B10", "#030407", "#E5C158", "#F3D882", "#E5C158"),
     AURORA_NIGHT("Северное Сияние", "Глубокая полярная ночь с изумрудно-лунным сиянием", "#0A1017", "#04070B", "#7EE0D2", "#89DDFF", "#64FFDA"),
     VALKYRIE_MITHRIL("Серебро Валькирий", "Темный антрацит с лунным платиновым серебром", "#121418", "#08090B", "#E2E8F0", "#94A3B8", "#CBD5E1"),
     DARK_SLATE("Тёмный сланец", "Мистический графит с теплым античным золотом", "#14181F", "#0A0D12", "#E5C07B", "#D19A66", "#E5C07B"),
     ANCIENT_PARCHMENT("Древний пергамент", "Состаренная бумага с тёмными ореховыми чернилами", "#F5EEDC", "#D9C6A5", "#2B190E", "#7A4924", "#8C5835"),
+    CHARCOAL_DARK("Тёмный уголь", "Глубокая гравюра углём на темном сланце", "#161311", "#0C0A09", "#E8DFD0", "#C8B69B", "#E8DFD0"),
     RUNESTONE_GRAY("Скандинавский гранит", "Высеченный в северном камне рельеф с лазурью", "#1C2128", "#12151A", "#88C0D0", "#5E81AC", "#81A1C1"),
     STENCIL("Трафарет для тату", "Чистый черно-белый вектор для перевода на кожу", "#FFFFFF", "#FFFFFF", "#000000", "#222222", "#000000")
 }
@@ -138,7 +149,10 @@ object SvgStaveRenderer {
                 SketchStyle.AEGISHJALMUR -> "#61AFEF"
                 SketchStyle.DOTWORK -> "#D8DEE9"
                 SketchStyle.BLACKWORK -> "#ECEFF4"
+                else -> theme.strokeHex
             }
+            CanvasTheme.GRAPHITE_SKETCH -> theme.strokeHex
+            CanvasTheme.CHARCOAL_DARK -> theme.strokeHex
             CanvasTheme.GOLDEN_EMBER -> "#E5C158"
             CanvasTheme.AURORA_NIGHT -> "#7EE0D2"
             CanvasTheme.VALKYRIE_MITHRIL -> "#E2E8F0"
@@ -150,6 +164,10 @@ object SvgStaveRenderer {
         val effectiveStrokeWidth = when (config.style) {
             SketchStyle.BLACKWORK -> (config.lineWidth * 2.2f).coerceAtLeast(5.5f)
             SketchStyle.NORDIC_TATTOO -> (config.lineWidth * 1.35f).coerceAtLeast(3.8f)
+            SketchStyle.ODIN_TOTEM -> (config.lineWidth * 1.25f).coerceAtLeast(3.2f)
+            SketchStyle.VIKING_CHAIN -> (config.lineWidth * 1.30f).coerceAtLeast(3.4f)
+            SketchStyle.WOODCUT_ENGRAVING -> config.lineWidth * 1.15f
+            SketchStyle.RUNIC_OBELISK -> config.lineWidth * 1.20f
             SketchStyle.WOODCARVE -> config.lineWidth * 1.25f
             SketchStyle.SACRED_GOLD -> config.lineWidth * 0.95f
             SketchStyle.VALKYRIE_SILVER -> config.lineWidth * 0.90f
@@ -486,7 +504,10 @@ object SvgStaveRenderer {
                 SketchStyle.AEGISHJALMUR -> Color.parseColor("#61AFEF")
                 SketchStyle.DOTWORK -> Color.parseColor("#D8DEE9")
                 SketchStyle.BLACKWORK -> Color.parseColor("#ECEFF4")
+                else -> Color.parseColor(theme.strokeHex)
             }
+            CanvasTheme.GRAPHITE_SKETCH -> Color.parseColor(theme.strokeHex)
+            CanvasTheme.CHARCOAL_DARK -> Color.parseColor(theme.strokeHex)
             CanvasTheme.GOLDEN_EMBER -> Color.parseColor("#E5C158")
             CanvasTheme.AURORA_NIGHT -> Color.parseColor("#7EE0D2")
             CanvasTheme.VALKYRIE_MITHRIL -> Color.parseColor("#E2E8F0")
@@ -498,6 +519,10 @@ object SvgStaveRenderer {
         val effectiveStrokeWidth = when (config.style) {
             SketchStyle.BLACKWORK -> (config.lineWidth * 2.2f).coerceAtLeast(5.5f)
             SketchStyle.NORDIC_TATTOO -> (config.lineWidth * 1.35f).coerceAtLeast(3.8f)
+            SketchStyle.ODIN_TOTEM -> (config.lineWidth * 1.25f).coerceAtLeast(3.2f)
+            SketchStyle.VIKING_CHAIN -> (config.lineWidth * 1.30f).coerceAtLeast(3.4f)
+            SketchStyle.WOODCUT_ENGRAVING -> config.lineWidth * 1.15f
+            SketchStyle.RUNIC_OBELISK -> config.lineWidth * 1.20f
             SketchStyle.WOODCARVE -> config.lineWidth * 1.25f
             SketchStyle.SACRED_GOLD -> config.lineWidth * 0.95f
             SketchStyle.VALKYRIE_SILVER -> config.lineWidth * 0.90f

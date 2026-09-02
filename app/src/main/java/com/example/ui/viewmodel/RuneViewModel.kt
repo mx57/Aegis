@@ -37,7 +37,8 @@ class RuneViewModel(application: Application) : AndroidViewModel(application) {
             defaultFuthark = "elder",
             defaultStyle = "ORNAMENTAL",
             darkTheme = true,
-            language = "ru"
+            language = "ru",
+            animationSpeedMs = 4200
         )
     )
 

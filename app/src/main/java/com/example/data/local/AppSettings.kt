@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -17,7 +18,8 @@ data class UserSettings(
     val defaultFuthark: String,
     val defaultStyle: String,
     val darkTheme: Boolean?,
-    val language: String
+    val language: String,
+    val animationSpeedMs: Int = 4000
 )
 
 class AppSettings(private val context: Context) {
@@ -28,6 +30,7 @@ class AppSettings(private val context: Context) {
         val KEY_STYLE = stringPreferencesKey("default_style")
         val KEY_THEME_MODE = stringPreferencesKey("theme_mode") // "SYSTEM", "DARK", "LIGHT"
         val KEY_LANG = stringPreferencesKey("language")
+        val KEY_ANIM_SPEED_MS = intPreferencesKey("anim_speed_ms")
     }
 
     val settingsFlow: Flow<UserSettings> = context.dataStore.data.map { pref ->
@@ -42,8 +45,13 @@ class AppSettings(private val context: Context) {
             defaultFuthark = pref[KEY_FUTHARK] ?: "elder",
             defaultStyle = pref[KEY_STYLE] ?: "ORNAMENTAL",
             darkTheme = darkTheme,
-            language = pref[KEY_LANG] ?: "ru"
+            language = pref[KEY_LANG] ?: "ru",
+            animationSpeedMs = pref[KEY_ANIM_SPEED_MS] ?: 4200
         )
+    }
+
+    suspend fun setAnimationSpeedMs(speedMs: Int) {
+        context.dataStore.edit { it[KEY_ANIM_SPEED_MS] = speedMs }
     }
 
     suspend fun setOnboardingDone(done: Boolean) {

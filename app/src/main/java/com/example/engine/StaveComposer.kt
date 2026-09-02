@@ -14,7 +14,8 @@ enum class StaveLayoutType(val titleRu: String) {
     MIRROR("Зеркальный"),
     VEGVISIR("Вегвизир (Компас)"),
     AEGISHJALMUR("Шлем Ужаса"),
-    CROSS_STAVE("Крестовой став")
+    CROSS_STAVE("Крестовой став"),
+    STELE_OBELISK("Стела-обелиск")
 }
 
 data class RenderStroke(
@@ -51,6 +52,7 @@ object StaveComposer {
             StaveLayoutType.VEGVISIR -> composeVegvisir(runes, seed)
             StaveLayoutType.AEGISHJALMUR -> composeAegishjalmur(runes, seed)
             StaveLayoutType.CROSS_STAVE -> composeCrossStave(runes, seed)
+            StaveLayoutType.STELE_OBELISK -> composeSteleObelisk(runes, seed)
         }
 
         return ComposedStave(
@@ -777,6 +779,54 @@ object StaveComposer {
             }
         }
 
+        return result
+    }
+
+    private fun composeSteleObelisk(runes: List<Rune>, seed: Long): List<RenderStroke> {
+        val result = mutableListOf<RenderStroke>()
+        val count = runes.size.coerceAtLeast(1)
+
+        // 1. Structural Obelisk stele outlines
+        // Left pillar line
+        result.add(RenderStroke(listOf(StrokePoint(226f, 155f), StrokePoint(216f, 425f)), isStem = true))
+        // Right pillar line
+        result.add(RenderStroke(listOf(StrokePoint(274f, 155f), StrokePoint(284f, 425f)), isStem = true))
+        // Obelisk pyramid top cap
+        result.add(RenderStroke(listOf(StrokePoint(226f, 155f), StrokePoint(250f, 115f), StrokePoint(274f, 155f)), isStem = true))
+        // Ridge line from cap down center
+        result.add(RenderStroke(listOf(StrokePoint(250f, 115f), StrokePoint(250f, 155f)), isStem = true))
+        // Spire needle extending upward above the obelisk
+        result.add(RenderStroke(listOf(StrokePoint(250f, 115f), StrokePoint(250f, 52f)), isOuterPole = true))
+        // Base pedestal steps
+        result.add(RenderStroke(listOf(StrokePoint(208f, 425f), StrokePoint(292f, 425f)), isStem = true))
+        result.add(RenderStroke(listOf(StrokePoint(202f, 436f), StrokePoint(298f, 436f)), isStem = true))
+        result.add(RenderStroke(listOf(StrokePoint(216f, 425f), StrokePoint(202f, 436f)), isStem = false))
+        result.add(RenderStroke(listOf(StrokePoint(284f, 425f), StrokePoint(298f, 436f)), isStem = false))
+
+        // Center spine hairline guide
+        result.add(RenderStroke(listOf(StrokePoint(250f, 155f), StrokePoint(250f, 420f)), isHairlineGuide = true))
+
+        // 2. Arrange runes stacked vertically inside the obelisk body
+        val topY = 165f
+        val bottomY = 415f
+        val totalH = bottomY - topY
+        val slotH = totalH / count
+
+        for (i in runes.indices) {
+            val rune = runes[i]
+            val slotCenterY = topY + slotH * (i + 0.5f)
+            val runeScale = (slotH * 0.70f) / 140f
+            val runeW = 100f * runeScale
+            val startX = 250f - runeW / 2f
+            val startY = slotCenterY - (140f * runeScale) / 2f
+
+            for (stroke in rune.strokes) {
+                val pts = stroke.points.map { pt ->
+                    StrokePoint(startX + pt.x * runeScale, startY + pt.y * runeScale)
+                }
+                result.add(RenderStroke(pts, isStem = stroke.points.size == 2 && stroke.points[0].x == stroke.points[1].x))
+            }
+        }
         return result
     }
 }

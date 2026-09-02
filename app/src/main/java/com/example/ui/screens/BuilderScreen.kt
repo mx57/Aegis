@@ -30,6 +30,16 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
+import androidx.compose.material.icons.filled.ZoomOutMap
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -100,13 +110,38 @@ fun BuilderScreen(
         }
     }
 
-    val sketchConfig = remember {
+    val userSettings by viewModel.userSettings.collectAsState()
+    val defaultSketchStyle = remember(userSettings.defaultStyle) {
+        try {
+            SketchStyle.valueOf(userSettings.defaultStyle)
+        } catch (_: Exception) {
+            SketchStyle.ORNAMENTAL
+        }
+    }
+
+    val sketchConfig = remember(defaultSketchStyle) {
         SketchConfig(
-            style = SketchStyle.ORNAMENTAL,
+            style = defaultSketchStyle,
             lineWidth = 3.6f,
             hasFrameCircle = true,
             seed = 2024L
         )
+    }
+
+    var zoomScale by remember { mutableFloatStateOf(1f) }
+    var zoomOffset by remember { mutableStateOf(Offset.Zero) }
+
+    val transformState = rememberTransformableState { zoomChange, offsetChange, _ ->
+        zoomScale = (zoomScale * zoomChange).coerceIn(1f, 5f)
+        if (zoomScale > 1f) {
+            val maxOffset = 250f * (zoomScale - 1f)
+            zoomOffset = Offset(
+                x = (zoomOffset.x + offsetChange.x).coerceIn(-maxOffset, maxOffset),
+                y = (zoomOffset.y + offsetChange.y).coerceIn(-maxOffset, maxOffset)
+            )
+        } else {
+            zoomOffset = Offset.Zero
+        }
     }
 
     val scrollState = rememberScrollState()
@@ -298,23 +333,23 @@ fun BuilderScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Layout Type Selector (Geometric Balance 4-button grid)
+        // Layout Type Selector (Scrollable Row with all geometric styles including Obelisk)
         val layouts = listOf(
             StaveLayoutType.BINDRUNE,
             StaveLayoutType.ROW,
             StaveLayoutType.CIRCLE,
-            StaveLayoutType.MIRROR
+            StaveLayoutType.MIRROR,
+            StaveLayoutType.STELE_OBELISK
         )
 
-        Row(
+        LazyRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            layouts.forEach { layout ->
+            items(layouts) { layout ->
                 val isSelected = selectedLayout == layout
                 Card(
                     onClick = { selectedLayout = layout },
-                    modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(16.dp),
                     border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                     colors = CardDefaults.cardColors(
@@ -323,8 +358,7 @@ fun BuilderScreen(
                 ) {
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 12.dp, horizontal = 4.dp),
+                            .padding(vertical = 10.dp, horizontal = 14.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -340,31 +374,127 @@ fun BuilderScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Canvas Preview
+        // Canvas Preview Card with Pinch-to-Zoom and Title & Description below
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 4.dp),
+                .padding(horizontal = 2.dp),
             shape = RoundedCornerShape(24.dp),
             border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp),
-                contentAlignment = Alignment.Center
+                    .padding(14.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                if (currentRunes.isEmpty()) {
+                // Interactive Zoomable Canvas Box
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onDoubleTap = {
+                                    if (zoomScale > 1.1f) {
+                                        zoomScale = 1f
+                                        zoomOffset = Offset.Zero
+                                    } else {
+                                        zoomScale = 2.2f
+                                    }
+                                }
+                            )
+                        }
+                        .transformable(state = transformState),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .graphicsLayer {
+                                scaleX = zoomScale
+                                scaleY = zoomScale
+                                translationX = zoomOffset.x
+                                translationY = zoomOffset.y
+                            }
+                            .padding(12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (currentRunes.isEmpty()) {
+                            Text(
+                                text = "Выберите руны для отображения става",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else {
+                            RunicCanvas(
+                                stave = composedStave,
+                                config = sketchConfig,
+                                animationDurationMs = userSettings.animationSpeedMs
+                            )
+                        }
+                    }
+
+                    // Zoom indicator / reset badge
+                    if (zoomScale > 1.05f) {
+                        Row(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(8.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.90f))
+                                .clickable {
+                                    zoomScale = 1f
+                                    zoomOffset = Offset.Zero
+                                }
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.ZoomOutMap,
+                                contentDescription = "Сбросить масштаб",
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "%.1fx".format(zoomScale),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Stave Name and Short Description (User requirement: под ним же должно быть название и краткое описание)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
                     Text(
-                        text = "Выберите руны для отображения става",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = staveTitle.ifEmpty { selectedLayout.titleRu },
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Center
                     )
-                } else {
-                    RunicCanvas(
-                        stave = composedStave,
-                        config = sketchConfig
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = if (currentRunes.isEmpty()) {
+                            "Выберите руны из каталога или списка выше для сакрального начертания"
+                        } else {
+                            interpretation.summary
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
                     )
                 }
             }

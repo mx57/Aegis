@@ -59,7 +59,8 @@ fun RunicCanvas(
     overrideColor: Color? = null,
     animateOnAppear: Boolean = true,
     animationProgress: Float? = null,
-    animationKey: Any? = null
+    animationKey: Any? = null,
+    animationDurationMs: Int = 4200
 ) {
     val themePrimary = MaterialTheme.colorScheme.primary
     val themeOnPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
@@ -71,12 +72,12 @@ fun RunicCanvas(
         Animatable(if (animateOnAppear) 0f else 1f)
     }
 
-    LaunchedEffect(stave, animationKey) {
+    LaunchedEffect(stave, animationKey, animationDurationMs) {
         if (animateOnAppear) {
             anim.snapTo(0f)
             anim.animateTo(
                 targetValue = 1f,
-                animationSpec = tween(durationMillis = 1600, easing = FastOutSlowInEasing)
+                animationSpec = tween(durationMillis = animationDurationMs, easing = FastOutSlowInEasing)
             )
         }
     }
@@ -111,6 +112,12 @@ fun RunicCanvas(
             Pair(Color.Black, Color.Transparent)
         } else {
             when (config.effectiveTheme) {
+                CanvasTheme.GRAPHITE_SKETCH -> {
+                    Pair(Color(0xFF1E1A16), Color(0xFF423830).copy(alpha = 0.25f))
+                }
+                CanvasTheme.CHARCOAL_DARK -> {
+                    Pair(Color(0xFFE8DFD0), Color(0xFFC8B69B).copy(alpha = 0.35f))
+                }
                 CanvasTheme.DARK_SLATE -> {
                     val color = when (config.style) {
                         SketchStyle.SACRED_GOLD -> Color(0xFFE5C158)
@@ -123,6 +130,7 @@ fun RunicCanvas(
                         SketchStyle.AEGISHJALMUR -> Color(0xFF61AFEF)
                         SketchStyle.DOTWORK -> themeSecondary
                         SketchStyle.BLACKWORK -> themeOnSurface
+                        else -> Color(android.graphics.Color.parseColor(config.effectiveTheme.strokeHex))
                     }
                     Pair(color, color.copy(alpha = 0.30f))
                 }
@@ -150,6 +158,10 @@ fun RunicCanvas(
         val effectiveStrokeWidth = when (config.style) {
             SketchStyle.BLACKWORK -> (config.lineWidth * 2.2f).coerceAtLeast(5.5f)
             SketchStyle.NORDIC_TATTOO -> (config.lineWidth * 1.35f).coerceAtLeast(3.8f)
+            SketchStyle.ODIN_TOTEM -> (config.lineWidth * 1.25f).coerceAtLeast(3.2f)
+            SketchStyle.VIKING_CHAIN -> (config.lineWidth * 1.30f).coerceAtLeast(3.4f)
+            SketchStyle.WOODCUT_ENGRAVING -> config.lineWidth * 1.15f
+            SketchStyle.RUNIC_OBELISK -> config.lineWidth * 1.20f
             SketchStyle.WOODCARVE -> config.lineWidth * 1.25f
             SketchStyle.SACRED_GOLD -> config.lineWidth * 0.95f
             SketchStyle.VALKYRIE_SILVER -> config.lineWidth * 0.90f
@@ -515,6 +527,13 @@ fun RunicCanvas(
                     composeCanvas.nativeCanvas.restore()
                 }
             }
+        }
+
+        // --- Phase 4.5: Central Sacred Emblem (0.78..0.98) ---
+        val emblemProgress = ((currentProgress - 0.76f) / 0.22f).coerceIn(0f, 1f)
+        if (config.centerEmblem != CenterEmblem.NONE && emblemProgress > 0f) {
+            val centerOrnaments = OrnamentGeometry.generateCenterEmblem(config.centerEmblem, config.lineWidth)
+            drawOrnaments(centerOrnaments, alphaFactor = emblemProgress)
         }
 
         // --- Phase 5: Corner Accents (0.88..1.00) ---

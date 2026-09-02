@@ -22,6 +22,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -34,6 +37,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.ZoomOutMap
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -53,6 +57,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -65,10 +70,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.example.data.model.Rune
@@ -100,7 +109,8 @@ private data class StavePreset(
     val branchNotches: Boolean,
     val rayBurst: Boolean,
     val runering: Boolean = false,
-    val lineWidth: Float
+    val lineWidth: Float,
+    val layout: StaveLayoutType? = null
 )
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -148,8 +158,40 @@ fun SketchScreen(
     var targetResolution by remember { mutableIntStateOf(2048) }
     var isExporting by remember { mutableStateOf(false) }
 
+    val appSettings = remember(context) { com.example.data.local.AppSettings(context) }
+    val userSettings by appSettings.settingsFlow.collectAsState(
+        initial = com.example.data.local.UserSettings(
+            hasCompletedOnboarding = true,
+            defaultFuthark = "elder",
+            defaultStyle = "ORNAMENTAL",
+            darkTheme = true,
+            language = "ru",
+            animationSpeedMs = 4000
+        )
+    )
+
+    var zoomScale by remember { mutableFloatStateOf(1f) }
+    var zoomOffset by remember { mutableStateOf(Offset.Zero) }
+
+    val transformState = rememberTransformableState { zoomChange, offsetChange, _ ->
+        zoomScale = (zoomScale * zoomChange).coerceIn(1f, 5f)
+        if (zoomScale > 1f) {
+            val maxOffset = 250f * (zoomScale - 1f)
+            zoomOffset = Offset(
+                x = (zoomOffset.x + offsetChange.x).coerceIn(-maxOffset, maxOffset),
+                y = (zoomOffset.y + offsetChange.y).coerceIn(-maxOffset, maxOffset)
+            )
+        } else {
+            zoomOffset = Offset.Zero
+        }
+    }
+
     val presets = remember {
         listOf(
+            StavePreset("Тотем Одина (Волк и Ворон)", "🐺", "Эпический монолит с волками Гери и Фреки, воронами и шипованной цепью", SketchStyle.ODIN_TOTEM, CanvasTheme.GRAPHITE_SKETCH, FrameStyle.SPIKED_CHAIN, FinialType.ARROWS, CenterEmblem.BEASTS_OF_ODIN, CornerStyle.NORSE_KNOTS, branchNotches = true, rayBurst = true, runering = true, lineWidth = 3.2f, layout = StaveLayoutType.STELE_OBELISK),
+            StavePreset("Кованая Цепь и Звезда", "⛓️", "Шипованный защитный пояс, гранёная звезда Одина и строгая руническая геометрия", SketchStyle.VIKING_CHAIN, CanvasTheme.CHARCOAL_DARK, FrameStyle.SPIKED_CHAIN, FinialType.TRIDENT, CenterEmblem.FACETED_STAR, CornerStyle.SHIELD_STUDS, branchNotches = true, rayBurst = false, runering = true, lineWidth = 3.4f),
+            StavePreset("Гравюра и Кельтский Медальон", "🦅", "Штриховка резцом, медальон с плетением и геральдические звери", SketchStyle.WOODCUT_ENGRAVING, CanvasTheme.GRAPHITE_SKETCH, FrameStyle.CELTIC_MEDALLION, FinialType.SPIRALS, CenterEmblem.BEASTS_OF_ODIN, CornerStyle.NORSE_KNOTS, branchNotches = true, rayBurst = true, runering = true, lineWidth = 2.8f),
+            StavePreset("Рунический Монолит", "🗿", "Стела древних скальдов с гранёной звездой и защитным кольцом Футарка", SketchStyle.RUNIC_OBELISK, CanvasTheme.RUNESTONE_GRAY, FrameStyle.CELTIC_MEDALLION, FinialType.CROSSBARS, CenterEmblem.RUNIC_STELE, CornerStyle.RUNIC_BINDS, branchNotches = true, rayBurst = false, runering = true, lineWidth = 3.2f, layout = StaveLayoutType.STELE_OBELISK),
             StavePreset("Сакральное Золото", "👑", "Астролябия планет, лучи и золотая сакральная геометрия", SketchStyle.SACRED_GOLD, CanvasTheme.GOLDEN_EMBER, FrameStyle.CELESTIAL_ASTROLABE, FinialType.CIRCLES_DOTS, CenterEmblem.SOLAR_CROSS, CornerStyle.SUN_RAYS, branchNotches = false, rayBurst = true, runering = true, lineWidth = 2.8f),
             StavePreset("Нордическое Тату", "⚡", "Контрастный тату-стиль с руническим поясом и сакральным Валькнутом", SketchStyle.NORDIC_TATTOO, CanvasTheme.DARK_SLATE, FrameStyle.CELESTIAL_ASTROLABE, FinialType.ARROWS, CenterEmblem.VALKNUT, CornerStyle.NORSE_KNOTS, branchNotches = true, rayBurst = false, runering = true, lineWidth = 3.6f),
             StavePreset("Шлем Ужаса", "🛡️", "Исландский защитный гальдрастав с кольцом рун и ядром силы", SketchStyle.AEGISHJALMUR, CanvasTheme.RUNESTONE_GRAY, FrameStyle.SACRED_OCTAGON, FinialType.TRIDENT, CenterEmblem.AEGISHJALMUR_CORE, CornerStyle.NORSE_KNOTS, branchNotches = true, rayBurst = false, runering = true, lineWidth = 3.6f),
@@ -241,19 +283,107 @@ fun SketchScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(14.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    // Zoomable Interactive Canvas
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(8.dp),
+                            .clip(RoundedCornerShape(20.dp))
+                            .pointerInput(Unit) {
+                                detectTapGestures(
+                                    onDoubleTap = {
+                                        if (zoomScale > 1.1f) {
+                                            zoomScale = 1f
+                                            zoomOffset = Offset.Zero
+                                        } else {
+                                            zoomScale = 2.2f
+                                        }
+                                    }
+                                )
+                            }
+                            .transformable(state = transformState),
                         contentAlignment = Alignment.Center
                     ) {
-                        RunicCanvas(
-                            stave = composedStave,
-                            config = config,
-                            animationKey = animTriggerKey
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .graphicsLayer {
+                                    scaleX = zoomScale
+                                    scaleY = zoomScale
+                                    translationX = zoomOffset.x
+                                    translationY = zoomOffset.y
+                                }
+                                .padding(8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            RunicCanvas(
+                                stave = composedStave,
+                                config = config,
+                                animationKey = animTriggerKey,
+                                animationDurationMs = userSettings.animationSpeedMs
+                            )
+                        }
+
+                        // Zoom indicator badge
+                        if (zoomScale > 1.05f) {
+                            Row(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(8.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.90f))
+                                    .clickable {
+                                        zoomScale = 1f
+                                        zoomOffset = Offset.Zero
+                                    }
+                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.ZoomOutMap,
+                                    contentDescription = "Сбросить масштаб",
+                                    modifier = Modifier.size(14.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "%.1fx".format(zoomScale),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Title and short description under preview image (User requirement: под ним же должно быть название и краткое описание)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = if (runes.isNotEmpty()) {
+                                "${selectedLayout.titleRu} (${runes.joinToString(" • ") { it.nameRu }})"
+                            } else {
+                                selectedLayout.titleRu
+                            },
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isStencil) Color.Black else MaterialTheme.colorScheme.primary,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "${selectedStyle.titleRu} • ${selectedLayout.titleRu}: ${selectedStyle.descriptionRu}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (isStencil) Color.DarkGray else MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
                         )
                     }
 
@@ -386,6 +516,7 @@ fun SketchScreen(
                                     hasRayBurst = p.rayBurst
                                     hasRunering = p.runering
                                     lineWidth = p.lineWidth
+                                    p.layout?.let { selectedLayout = it }
                                     animTriggerKey++
                                 },
                                 shape = RoundedCornerShape(16.dp),

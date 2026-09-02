@@ -21,6 +21,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -37,7 +41,7 @@ import com.example.engine.SketchStyle
 import com.example.ui.viewmodel.RuneViewModel
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
     viewModel: RuneViewModel,
@@ -123,6 +127,76 @@ fun SettingsScreen(
                 }
             }
 
+            // Animation Speed Setting
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Скорость анимации высечения",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        val speedSeconds = userSettings.animationSpeedMs / 1000f
+                        Text(
+                            text = "%.1f сек".format(speedSeconds),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                    }
+
+                    val speedDescription = when {
+                        userSettings.animationSpeedMs <= 1800 -> "⚡ Быстрое начертание (динамично)"
+                        userSettings.animationSpeedMs <= 3500 -> "✨ Сбалансированная сакральная резка"
+                        userSettings.animationSpeedMs <= 5500 -> "🧘 Медитативное глубокое высечение"
+                        else -> "👑 Эпический ритуал (максимальная детализация)"
+                    }
+
+                    Text(
+                        text = speedDescription,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Slider(
+                        value = userSettings.animationSpeedMs.toFloat(),
+                        onValueChange = { newMs ->
+                            coroutineScope.launch {
+                                viewModel.appSettings.setAnimationSpeedMs(newMs.toInt())
+                            }
+                        },
+                        valueRange = 1000f..8000f,
+                        steps = 13, // increments of ~500ms
+                        colors = SliderDefaults.colors(
+                            thumbColor = MaterialTheme.colorScheme.primary,
+                            activeTrackColor = MaterialTheme.colorScheme.primary
+                        )
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("1.0 с (Быстро)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                        Text("4.0 с (Медитация)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                        Text("8.0 с (Эпично)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                    }
+                }
+            }
+
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
@@ -136,10 +210,17 @@ fun SettingsScreen(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
                     )
+                    Text(
+                        text = "Художественная стилизация рунических знаков",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
                     Spacer(modifier = Modifier.height(8.dp))
-                    Row(
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         SketchStyle.values().forEach { style ->
                             FilterChip(
@@ -150,8 +231,7 @@ fun SettingsScreen(
                                     }
                                 },
                                 shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-                                label = { Text(style.titleRu, style = MaterialTheme.typography.labelSmall) },
-                                modifier = Modifier.weight(1f)
+                                label = { Text(style.titleRu, style = MaterialTheme.typography.labelSmall) }
                             )
                         }
                     }
