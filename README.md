@@ -166,7 +166,7 @@ cd runic-stave
 ### Автоматическая сборка в GitHub Actions (CI/CD):
 В репозитории настроен готовый рабочий процесс [`.github/workflows/build-apk.yml`](.github/workflows/build-apk.yml):
 - **Триггеры:** Автоматический запуск при каждом Pull Request или Push в ветки `main` и `master`, а также вручную (`workflow_dispatch`).
-- **Действия:** Прогон Unit-тестов, компиляция Debug APK на Ubuntu Runner (JDK 17).
+- **Действия:** Прогон Unit-тестов, компиляция Debug APK на Ubuntu Runner (JDK 21).
 - **Артефакт:** Готовый APK-файл автоматически прикрепляется к отчёту пайплайна в разделе **Artifacts** (`runic-stave-debug-apk`).
 
 ---
