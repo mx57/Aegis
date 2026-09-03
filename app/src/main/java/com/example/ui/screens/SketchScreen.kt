@@ -52,6 +52,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -92,6 +93,7 @@ import com.example.engine.SketchStyle
 import com.example.engine.StaveComposer
 import com.example.engine.StaveLayoutType
 import com.example.engine.SvgStaveRenderer
+import com.example.ui.components.FullScreenSketchDialog
 import com.example.ui.components.RunicCanvas
 import kotlinx.coroutines.launch
 import java.util.Random
@@ -120,7 +122,8 @@ fun SketchScreen(
     layoutTypeName: String,
     allRunes: List<Rune>,
     onBack: () -> Unit,
-    onNavigateToTryOn: (runeIds: List<String>, layoutType: String, seed: Long, style: String) -> Unit
+    onNavigateToTryOn: (runeIds: List<String>, layoutType: String, seed: Long, style: String) -> Unit,
+    onNavigateToAITattoo: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -160,6 +163,8 @@ fun SketchScreen(
     var animTriggerKey by remember { mutableIntStateOf(0) }
     var targetResolution by remember { mutableIntStateOf(2048) }
     var isExporting by remember { mutableStateOf(false) }
+    var isFullScreenOpen by remember { mutableStateOf(false) }
+    var activeTab by remember { mutableIntStateOf(0) }
 
     val appSettings = remember(context) { com.example.data.local.AppSettings(context) }
     val userSettings by appSettings.settingsFlow.collectAsState(
@@ -191,6 +196,8 @@ fun SketchScreen(
 
     val presets = remember {
         listOf(
+            StavePreset("Молот Тора (Мьёльнир)", "🔨", "Громовой молот с рунами молний, шипованным поясом и защитным кольцом", SketchStyle.VIKING_CHAIN, CanvasTheme.GOLDEN_EMBER, FrameStyle.SPIKED_CHAIN, FinialType.ARROWS, CenterEmblem.MJOLNIR, CornerStyle.SHIELD_STUDS, branchNotches = true, rayBurst = true, runering = true, lineWidth = 3.6f),
+            StavePreset("Ворон Одина (Хугин)", "🦅", "Священный вестник Асгарда с распахнутыми крыльями и сакральным оком", SketchStyle.ORNAMENTAL, CanvasTheme.DARK_SLATE, FrameStyle.CELESTIAL_ASTROLABE, FinialType.SPIRALS, CenterEmblem.RAVEN_ODIN, CornerStyle.NORSE_KNOTS, branchNotches = true, rayBurst = true, runering = true, lineWidth = 3.0f),
             StavePreset("Древо Иггдрасиль", "🌳", "Мировое Древо, 9 миров, сакральные источники Норн и переплетённые ветви", SketchStyle.EMERALD_BRONZE, CanvasTheme.EMERALD_PATINA, FrameStyle.YGGDRASIL_BRANCHES, FinialType.CIRCLES_DOTS, CenterEmblem.YGGDRASIL_TREE, CornerStyle.NORSE_KNOTS, branchNotches = true, rayBurst = true, runering = true, lineWidth = 3.2f),
             StavePreset("Тотем Одина (Волк и Ворон)", "🐺", "Эпический монолит с волками Гери и Фреки, воронами и шипованной цепью", SketchStyle.ODIN_TOTEM, CanvasTheme.GRAPHITE_SKETCH, FrameStyle.SPIKED_CHAIN, FinialType.ARROWS, CenterEmblem.BEASTS_OF_ODIN, CornerStyle.NORSE_KNOTS, branchNotches = true, rayBurst = true, runering = true, lineWidth = 3.2f, layout = StaveLayoutType.STELE_OBELISK),
             StavePreset("Кованая Цепь и Звезда", "⛓️", "Шипованный защитный пояс, гранёная звезда Одина и строгая руническая геометрия", SketchStyle.VIKING_CHAIN, CanvasTheme.CHARCOAL_DARK, FrameStyle.SPIKED_CHAIN, FinialType.TRIDENT, CenterEmblem.FACETED_STAR, CornerStyle.SHIELD_STUDS, branchNotches = true, rayBurst = false, runering = true, lineWidth = 3.4f),
@@ -246,13 +253,90 @@ fun SketchScreen(
 
     val scrollState = rememberScrollState()
 
+    fun exportPng(res: Int) {
+        if (isExporting) return
+        isExporting = true
+        coroutineScope.launch {
+            try {
+                val bitmap = SvgStaveRenderer.renderToBitmap(composedStave, config, res)
+                val file = SvgStaveRenderer.savePngForSharing(context, bitmap, "runic_stave_${res}px.png")
+                val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "image/png"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(shareIntent, "Поделиться эскизом PNG"))
+            } catch (e: Exception) {
+                Toast.makeText(context, "Ошибка экспорта: ${e.message}", Toast.LENGTH_SHORT).show()
+            } finally {
+                isExporting = false
+            }
+        }
+    }
+
+    fun exportSvg() {
+        coroutineScope.launch {
+            try {
+                val svgText = SvgStaveRenderer.renderSvg(composedStave, config)
+                val file = SvgStaveRenderer.saveSvgForSharing(context, svgText, "runic_stave.svg")
+                val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "image/svg+xml"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(shareIntent, "Поделиться SVG файлом"))
+            } catch (e: Exception) {
+                Toast.makeText(context, "Ошибка SVG: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    if (isFullScreenOpen) {
+        FullScreenSketchDialog(
+            stave = composedStave,
+            config = config,
+            animationKey = animTriggerKey,
+            animationDurationMs = userSettings.animationSpeedMs,
+            title = if (runes.isNotEmpty()) "${selectedLayout.titleRu} (${runes.joinToString(" • ") { it.nameRu }})" else selectedLayout.titleRu,
+            subtitle = "${selectedStyle.titleRu} • ${selectedTheme.titleRu}",
+            onDismiss = { isFullScreenOpen = false },
+            onReplayAnimation = { animTriggerKey++ },
+            onExportPng = { exportPng(targetResolution) },
+            onExportSvg = { exportSvg() }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Генератор эскизов SVG") },
+                title = { Text("Генератор эскизов SVG", style = MaterialTheme.typography.titleMedium) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = onNavigateToAITattoo,
+                        modifier = Modifier.testTag("topbar_ai_tattoo_button")
+                    ) {
+                        Icon(
+                            Icons.Default.AutoAwesome,
+                            contentDescription = "ИИ Тату-Концепт (Gemini)",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    IconButton(
+                        onClick = { isFullScreenOpen = true },
+                        modifier = Modifier.testTag("topbar_fullscreen_button")
+                    ) {
+                        Icon(
+                            Icons.Default.ZoomOutMap,
+                            contentDescription = "На весь экран",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -267,7 +351,7 @@ fun SketchScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .verticalScroll(scrollState)
-                .padding(16.dp),
+                .padding(horizontal = 10.dp, vertical = 6.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Live Preview Canvas Card
@@ -282,797 +366,739 @@ fun SketchScreen(
             }
 
             Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("sketch_preview_card"),
+                shape = RoundedCornerShape(18.dp),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                 colors = CardDefaults.cardColors(containerColor = canvasBgColor)
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(14.dp),
+                        .padding(8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Zoomable Interactive Canvas
+                    // Tap-to-Zoom Interactive Canvas Area
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(20.dp))
-                            .pointerInput(Unit) {
-                                detectTapGestures(
-                                    onDoubleTap = {
-                                        if (zoomScale > 1.1f) {
-                                            zoomScale = 1f
-                                            zoomOffset = Offset.Zero
-                                        } else {
-                                            zoomScale = 2.2f
-                                        }
-                                    }
-                                )
-                            }
-                            .transformable(state = transformState),
+                            .clip(RoundedCornerShape(14.dp))
+                            .clickable { isFullScreenOpen = true },
                         contentAlignment = Alignment.Center
                     ) {
-                        Box(
+                        RunicCanvas(
+                            stave = composedStave,
+                            config = config,
+                            animationKey = animTriggerKey,
+                            animationDurationMs = userSettings.animationSpeedMs,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .graphicsLayer {
-                                    scaleX = zoomScale
-                                    scaleY = zoomScale
-                                    translationX = zoomOffset.x
-                                    translationY = zoomOffset.y
-                                }
-                                .padding(8.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            RunicCanvas(
-                                stave = composedStave,
-                                config = config,
-                                animationKey = animTriggerKey,
-                                animationDurationMs = userSettings.animationSpeedMs
-                            )
-                        }
+                                .height(290.dp)
+                        )
 
-                        // Zoom indicator badge
-                        if (zoomScale > 1.05f) {
+                        // Subtle tap-to-zoom badge hint
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (isStencil) Color(0xEEFFFFFF) else Color(0xCC11141C),
+                            border = BorderStroke(1.dp, if (isStencil) Color.LightGray else Color(0x33E5C158)),
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = 6.dp)
+                        ) {
                             Row(
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .padding(8.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.90f))
-                                    .clickable {
-                                        zoomScale = 1f
-                                        zoomOffset = Offset.Zero
-                                    }
-                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
                                     Icons.Default.ZoomOutMap,
-                                    contentDescription = "Сбросить масштаб",
-                                    modifier = Modifier.size(14.dp),
-                                    tint = MaterialTheme.colorScheme.primary
+                                    contentDescription = null,
+                                    tint = if (isStencil) Color.Black else MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(12.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = "%.1fx".format(zoomScale),
+                                    text = "Тапните для зума во весь экран",
                                     style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
+                                    color = if (isStencil) Color.Black else MaterialTheme.colorScheme.primary
                                 )
                             }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
 
-                    // Title and short description under preview image (User requirement: под ним же должно быть название и краткое описание)
-                    Column(
+                    // Compact Title and Description
+                    Text(
+                        text = if (runes.isNotEmpty()) {
+                            "${selectedLayout.titleRu} (${runes.joinToString(" • ") { it.nameRu }})"
+                        } else {
+                            selectedLayout.titleRu
+                        },
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isStencil) Color.Black else MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1
+                    )
+                    Text(
+                        text = "${selectedStyle.titleRu} • ${selectedLayout.titleRu}: ${selectedStyle.descriptionRu}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (isStencil) Color.DarkGray else MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    // Integrated Compact Control Toolbar (Stepper, Randomize, Magic Draw, Fullscreen)
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = if (runes.isNotEmpty()) {
-                                "${selectedLayout.titleRu} (${runes.joinToString(" • ") { it.nameRu }})"
-                            } else {
-                                selectedLayout.titleRu
-                            },
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isStencil) Color.Black else MaterialTheme.colorScheme.primary,
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "${selectedStyle.titleRu} • ${selectedLayout.titleRu}: ${selectedStyle.descriptionRu}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (isStencil) Color.DarkGray else MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    OutlinedButton(
-                        onClick = { animTriggerKey++ },
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.testTag("replay_rune_animation_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.AutoAwesome,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Начертать заново (Магия)")
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Variation Stepper & Randomizer Row
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Column(modifier = Modifier.padding(14.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
+                            .padding(horizontal = 4.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "Вариация начертания (#${Math.abs(seed) % 1000}):",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Stepper for variation
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                                .padding(horizontal = 2.dp)
+                        ) {
                             IconButton(
                                 onClick = {
                                     seed -= 1L
                                     animTriggerKey++
                                 },
-                                modifier = Modifier.size(36.dp)
+                                modifier = Modifier.size(30.dp)
                             ) {
-                                Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Предыдущая вариация")
+                                Icon(
+                                    Icons.Default.KeyboardArrowLeft,
+                                    contentDescription = "Предыдущая вариация",
+                                    modifier = Modifier.size(18.dp)
+                                )
                             }
+                            Text(
+                                text = "#${Math.abs(seed) % 1000}",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                            )
                             IconButton(
                                 onClick = {
                                     seed += 1L
                                     animTriggerKey++
                                 },
-                                modifier = Modifier.size(36.dp)
+                                modifier = Modifier.size(30.dp)
                             ) {
-                                Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Следующая вариация")
+                                Icon(
+                                    Icons.Default.KeyboardArrowRight,
+                                    contentDescription = "Следующая вариация",
+                                    modifier = Modifier.size(18.dp)
+                                )
                             }
                         }
-                    }
 
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    Button(
-                        onClick = {
-                            val rng = Random()
-                            seed = rng.nextLong()
-                            animTriggerKey++
-                            // Randomize complementary ornaments for rich variations
-                            if (rng.nextBoolean()) {
-                                finialType = FinialType.values().random()
-                                frameStyle = FrameStyle.values().random()
-                                centerEmblem = CenterEmblem.values().random()
-                                cornerStyle = CornerStyle.values().random()
+                        // Compact action icons
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = {
+                                    val rng = Random()
+                                    seed = rng.nextLong()
+                                    animTriggerKey++
+                                    if (rng.nextBoolean()) {
+                                        finialType = FinialType.values().random()
+                                        frameStyle = FrameStyle.values().random()
+                                        centerEmblem = CenterEmblem.values().random()
+                                        cornerStyle = CornerStyle.values().random()
+                                    }
+                                },
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .testTag("randomize_seed_button")
+                            ) {
+                                Icon(
+                                    Icons.Default.Casino,
+                                    contentDescription = "Случайная вариация",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
                             }
-                        },
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("randomize_seed_button")
-                    ) {
-                        Icon(Icons.Default.Casino, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Сгенерировать случайную вариацию")
+
+                            IconButton(
+                                onClick = { animTriggerKey++ },
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .testTag("replay_rune_animation_button")
+                            ) {
+                                Icon(
+                                    Icons.Default.AutoAwesome,
+                                    contentDescription = "Начертать заново",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+
+                            IconButton(
+                                onClick = { isFullScreenOpen = true },
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .testTag("open_fullscreen_button")
+                            ) {
+                                Icon(
+                                    Icons.Default.ZoomOutMap,
+                                    contentDescription = "На весь экран",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Presets Carousel
+            // Compact Category Navigation Row
+            val tabs = listOf(
+                "🔮 Пресеты",
+                "🎨 Стиль & Фон",
+                "⚔️ Символы",
+                "⚙️ Параметры",
+                "📤 Экспорт"
+            )
+
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                items(tabs.indices.toList()) { idx ->
+                    FilterChip(
+                        selected = activeTab == idx,
+                        onClick = { activeTab = idx },
+                        shape = RoundedCornerShape(12.dp),
+                        label = { Text(tabs[idx], style = MaterialTheme.typography.labelSmall) }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Active Tab Content Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(18.dp),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Готовые сакральные пресеты:",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        items(presets) { p ->
-                            val isMatch = selectedStyle == p.style && frameStyle == p.frame && finialType == p.finial
-                            Card(
-                                onClick = {
-                                    selectedStyle = p.style
-                                    selectedTheme = p.theme
-                                    frameStyle = p.frame
-                                    finialType = p.finial
-                                    centerEmblem = p.center
-                                    cornerStyle = p.corner
-                                    hasBranchNotches = p.branchNotches
-                                    hasRayBurst = p.rayBurst
-                                    hasRunering = p.runering
-                                    lineWidth = p.lineWidth
-                                    p.layout?.let { selectedLayout = it }
-                                    animTriggerKey++
-                                },
-                                shape = RoundedCornerShape(16.dp),
-                                border = if (isMatch) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (isMatch) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
-                                ),
-                                modifier = Modifier.width(170.dp)
+                Column(modifier = Modifier.padding(10.dp)) {
+                    when (activeTab) {
+                        0 -> {
+                            // 🔮 Presets & Layouts
+                            Text(
+                                text = "Готовые сакральные пресеты:",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Column(modifier = Modifier.padding(12.dp)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(text = p.icon, style = MaterialTheme.typography.titleMedium)
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = p.title,
-                                            style = MaterialTheme.typography.labelMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (isMatch) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
-                                        )
+                                items(presets) { p ->
+                                    val isMatch = selectedStyle == p.style && frameStyle == p.frame && finialType == p.finial
+                                    Card(
+                                        onClick = {
+                                            selectedStyle = p.style
+                                            selectedTheme = p.theme
+                                            frameStyle = p.frame
+                                            finialType = p.finial
+                                            centerEmblem = p.center
+                                            cornerStyle = p.corner
+                                            hasBranchNotches = p.branchNotches
+                                            hasRayBurst = p.rayBurst
+                                            hasRunering = p.runering
+                                            lineWidth = p.lineWidth
+                                            p.layout?.let { selectedLayout = it }
+                                            animTriggerKey++
+                                        },
+                                        shape = RoundedCornerShape(12.dp),
+                                        border = if (isMatch) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = if (isMatch) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+                                        ),
+                                        modifier = Modifier.width(150.dp)
+                                    ) {
+                                        Column(modifier = Modifier.padding(8.dp)) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Text(text = p.icon, style = MaterialTheme.typography.titleSmall)
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text(
+                                                    text = p.title,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (isMatch) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+                                                    maxLines = 1
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Text(
+                                                text = p.description,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = if (isMatch) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 2
+                                            )
+                                        }
                                     }
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = p.description,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = if (isMatch) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 2
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            Text(
+                                text = "Макет композиции става:",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                StaveLayoutType.values().forEach { layout ->
+                                    FilterChip(
+                                        selected = selectedLayout == layout,
+                                        onClick = { selectedLayout = layout },
+                                        shape = RoundedCornerShape(12.dp),
+                                        label = { Text(layout.titleRu, style = MaterialTheme.typography.labelSmall) }
                                     )
                                 }
                             }
                         }
-                    }
-                }
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Layout Type Selector
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Макет композиции става:",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        StaveLayoutType.values().forEach { layout ->
-                            FilterChip(
-                                selected = selectedLayout == layout,
-                                onClick = { selectedLayout = layout },
-                                shape = RoundedCornerShape(16.dp),
-                                label = { Text(layout.titleRu, style = MaterialTheme.typography.labelSmall) }
+                        1 -> {
+                            // 🎨 Style & Theme
+                            Text(
+                                text = "Художественный стиль начертания:",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
                             )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Style Selector
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Художественный стиль начертания:",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        SketchStyle.values().forEach { style ->
-                            FilterChip(
-                                selected = selectedStyle == style,
-                                onClick = { selectedStyle = style },
-                                shape = RoundedCornerShape(16.dp),
-                                label = { Text(style.titleRu, style = MaterialTheme.typography.labelSmall) }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                SketchStyle.values().forEach { style ->
+                                    FilterChip(
+                                        selected = selectedStyle == style,
+                                        onClick = { selectedStyle = style },
+                                        shape = RoundedCornerShape(12.dp),
+                                        label = { Text(style.titleRu, style = MaterialTheme.typography.labelSmall) }
+                                    )
+                                }
+                            }
+                            Text(
+                                text = selectedStyle.descriptionRu,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 4.dp)
                             )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            Text(
+                                text = "Атмосфера и материал холста:",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                CanvasTheme.values().forEach { theme ->
+                                    FilterChip(
+                                        selected = selectedTheme == theme,
+                                        onClick = {
+                                            selectedTheme = theme
+                                            if (theme == CanvasTheme.STENCIL) {
+                                                isStencil = true
+                                            } else if (isStencil && theme != CanvasTheme.STENCIL) {
+                                                isStencil = false
+                                            }
+                                            animTriggerKey++
+                                        },
+                                        shape = RoundedCornerShape(12.dp),
+                                        label = { Text(theme.titleRu, style = MaterialTheme.typography.labelSmall) }
+                                    )
+                                }
+                            }
                         }
-                    }
-                    Text(
-                        text = selectedStyle.descriptionRu,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                }
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                        2 -> {
+                            // ⚔️ Ornaments & Center Emblems
+                            Text(
+                                text = "Центральный сакральный символ:",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                CenterEmblem.values().forEach { ce ->
+                                    FilterChip(
+                                        selected = centerEmblem == ce,
+                                        onClick = { centerEmblem = ce },
+                                        shape = RoundedCornerShape(12.dp),
+                                        label = { Text(ce.titleRu, style = MaterialTheme.typography.labelSmall) }
+                                    )
+                                }
+                            }
 
-            // Canvas Theme Selector
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Атмосфера и материал холста:",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        CanvasTheme.values().forEach { theme ->
-                            FilterChip(
-                                selected = selectedTheme == theme,
-                                onClick = {
-                                    selectedTheme = theme
-                                    if (theme == CanvasTheme.STENCIL) {
-                                        isStencil = true
-                                    } else if (isStencil && theme != CanvasTheme.STENCIL) {
-                                        isStencil = false
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Обрамление става:",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                FrameStyle.values().forEach { fs ->
+                                    FilterChip(
+                                        selected = frameStyle == fs && hasFrameCircle,
+                                        onClick = {
+                                            frameStyle = fs
+                                            hasFrameCircle = fs != FrameStyle.NONE
+                                        },
+                                        shape = RoundedCornerShape(12.dp),
+                                        label = { Text(fs.titleRu, style = MaterialTheme.typography.labelSmall) }
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Наконечники ветвей:",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                FinialType.values().forEach { ft ->
+                                    FilterChip(
+                                        selected = finialType == ft,
+                                        onClick = { finialType = ft },
+                                        shape = RoundedCornerShape(12.dp),
+                                        label = { Text(ft.titleRu, style = MaterialTheme.typography.labelSmall) }
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Угловые обережные акценты:",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                CornerStyle.values().forEach { cs ->
+                                    FilterChip(
+                                        selected = cornerStyle == cs,
+                                        onClick = { cornerStyle = cs },
+                                        shape = RoundedCornerShape(12.dp),
+                                        label = { Text(cs.titleRu, style = MaterialTheme.typography.labelSmall) }
+                                    )
+                                }
+                            }
+                        }
+
+                        3 -> {
+                            // ⚙️ Fine Parameters
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Толщина линий:", style = MaterialTheme.typography.labelMedium)
+                                Text("${String.format("%.1f", lineWidth)}px", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            }
+                            Slider(
+                                value = lineWidth,
+                                onValueChange = { lineWidth = it },
+                                valueRange = 1.5f..8.0f
+                            )
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Рукотворная неровность:", style = MaterialTheme.typography.labelMedium)
+                                Text("${(wobbleAmount * 100).toInt()}%", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            }
+                            Slider(
+                                value = wobbleAmount,
+                                onValueChange = { wobbleAmount = it },
+                                valueRange = 0.0f..0.8f
+                            )
+
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("3D Гравировка и тени", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                                Switch(checked = hasVolumetricShading, onCheckedChange = { hasVolumetricShading = it })
+                            }
+
+                            if (hasVolumetricShading) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("Глубина резьбы:", style = MaterialTheme.typography.labelSmall)
+                                    Text("${String.format("%.1f", runeChiselDepth)}x", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                                }
+                                Slider(
+                                    value = runeChiselDepth,
+                                    onValueChange = { runeChiselDepth = it },
+                                    valueRange = 0.4f..2.2f
+                                )
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Текстура камня/пергамента", style = MaterialTheme.typography.bodySmall)
+                                Switch(checked = hasTextureGrain, onCheckedChange = { hasTextureGrain = it })
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Сакральное свечение", style = MaterialTheme.typography.bodySmall)
+                                Switch(checked = hasGlowEffect, onCheckedChange = { hasGlowEffect = it })
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Кольцо Старшего Футарка (24 руны)", style = MaterialTheme.typography.bodySmall)
+                                Switch(
+                                    checked = hasRunering,
+                                    onCheckedChange = {
+                                        hasRunering = it
+                                        animTriggerKey++
                                     }
-                                    animTriggerKey++
-                                },
-                                shape = RoundedCornerShape(16.dp),
-                                label = { Text(theme.titleRu, style = MaterialTheme.typography.labelSmall) }
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Ornaments & Decorations Section
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Орнаменты и декоративные элементы:",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // 1. Frame Style
-                    Text(
-                        text = "Обрамление става:",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        FrameStyle.values().forEach { fs ->
-                            FilterChip(
-                                selected = frameStyle == fs && hasFrameCircle,
-                                onClick = {
-                                    frameStyle = fs
-                                    hasFrameCircle = fs != FrameStyle.NONE
-                                },
-                                shape = RoundedCornerShape(14.dp),
-                                label = { Text(fs.titleRu, style = MaterialTheme.typography.labelSmall) }
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // 2. Finials
-                    Text(
-                        text = "Окончания линий (Наконечники):",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        FinialType.values().forEach { ft ->
-                            FilterChip(
-                                selected = finialType == ft,
-                                onClick = { finialType = ft },
-                                shape = RoundedCornerShape(14.dp),
-                                label = { Text(ft.titleRu, style = MaterialTheme.typography.labelSmall) }
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // 3. Central Sacred Emblem
-                    Text(
-                        text = "Центральный сакральный символ:",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        CenterEmblem.values().forEach { ce ->
-                            FilterChip(
-                                selected = centerEmblem == ce,
-                                onClick = { centerEmblem = ce },
-                                shape = RoundedCornerShape(14.dp),
-                                label = { Text(ce.titleRu, style = MaterialTheme.typography.labelSmall) }
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // 4. Corner Accents
-                    Text(
-                        text = "Угловые обережные акценты:",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        CornerStyle.values().forEach { cs ->
-                            FilterChip(
-                                selected = cornerStyle == cs,
-                                onClick = { cornerStyle = cs },
-                                shape = RoundedCornerShape(14.dp),
-                                label = { Text(cs.titleRu, style = MaterialTheme.typography.labelSmall) }
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Sliders and Toggles
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Толщина линий: ${String.format("%.1f", lineWidth)}",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Slider(
-                        value = lineWidth,
-                        onValueChange = { lineWidth = it },
-                        valueRange = 1.5f..8.0f
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Рукотворная неровность: ${(wobbleAmount * 100).toInt()}%",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Slider(
-                        value = wobbleAmount,
-                        onValueChange = { wobbleAmount = it },
-                        valueRange = 0.0f..0.8f
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Засечки на ветвях става", style = MaterialTheme.typography.bodyMedium)
-                        Switch(checked = hasBranchNotches, onCheckedChange = { hasBranchNotches = it })
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Лучистая аура става", style = MaterialTheme.typography.bodyMedium)
-                        Switch(checked = hasRayBurst, onCheckedChange = { hasRayBurst = it })
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Симметричные узлы", style = MaterialTheme.typography.bodyMedium)
-                        Switch(checked = hasSymmetryAccents, onCheckedChange = { hasSymmetryAccents = it })
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Круг-обрамление", style = MaterialTheme.typography.bodyMedium)
-                        Switch(checked = hasFrameCircle, onCheckedChange = { hasFrameCircle = it })
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text("Кольцо Старшего Футарка", style = MaterialTheme.typography.bodyMedium)
-                            Text("24 сакральные руны по периметру", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Switch(
-                            checked = hasRunering,
-                            onCheckedChange = {
-                                hasRunering = it
-                                animTriggerKey++
+                                )
                             }
-                        )
-                    }
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text("Сакральное свечение (Aura Glow)", style = MaterialTheme.typography.bodyMedium)
-                            Text("Мягкий ореол вокруг рун и линий", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Switch(checked = hasGlowEffect, onCheckedChange = { hasGlowEffect = it })
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text("Объёмная гравировка и тени (3D Volume)", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                            Text("Штриховка, фаски и падающие тени", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Switch(checked = hasVolumetricShading, onCheckedChange = { hasVolumetricShading = it })
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text("Текстура бумаги и камня (Grain & Vignette)", style = MaterialTheme.typography.bodyMedium)
-                            Text("Микро-зернистость пергамента и глубина", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Switch(checked = hasTextureGrain, onCheckedChange = { hasTextureGrain = it })
-                    }
-
-                    if (hasVolumetricShading) {
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = "Глубина резьбы рун: ${String.format("%.1f", runeChiselDepth)}x",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Slider(
-                            value = runeChiselDepth,
-                            onValueChange = { runeChiselDepth = it },
-                            valueRange = 0.4f..2.2f
-                        )
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text("Режим трафарета (Stencil)", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                            Text("Инверсия на белый фон для трансфера", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Switch(
-                            checked = isStencil,
-                            onCheckedChange = {
-                                isStencil = it
-                                if (it) selectedTheme = CanvasTheme.STENCIL
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Засечки на ветвях", style = MaterialTheme.typography.bodySmall)
+                                Switch(checked = hasBranchNotches, onCheckedChange = { hasBranchNotches = it })
                             }
-                        )
-                    }
-                }
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Лучистая аура става", style = MaterialTheme.typography.bodySmall)
+                                Switch(checked = hasRayBurst, onCheckedChange = { hasRayBurst = it })
+                            }
 
-            // Export Settings & Resolution
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Разрешение PNG для экспорта:",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        listOf(1024, 2048, 4096).forEach { res ->
-                            FilterChip(
-                                selected = targetResolution == res,
-                                onClick = { targetResolution = res },
-                                shape = RoundedCornerShape(16.dp),
-                                label = { Text("${res}px") },
-                                modifier = Modifier.weight(1f)
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Трафарет для трансфера (Stencil)", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                                Switch(
+                                    checked = isStencil,
+                                    onCheckedChange = {
+                                        isStencil = it
+                                        if (it) selectedTheme = CanvasTheme.STENCIL
+                                    }
+                                )
+                            }
                         }
-                    }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                        4 -> {
+                            // 📤 Export & Try-on
+                            Text(
+                                text = "Разрешение PNG:",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                listOf(1024, 2048, 4096).forEach { res ->
+                                    FilterChip(
+                                        selected = targetResolution == res,
+                                        onClick = { targetResolution = res },
+                                        shape = RoundedCornerShape(12.dp),
+                                        label = { Text("${res}px", style = MaterialTheme.typography.labelSmall) },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Button(
-                            onClick = {
-                                if (isExporting) return@Button
-                                isExporting = true
-                                coroutineScope.launch {
-                                    try {
-                                        val bitmap = SvgStaveRenderer.renderToBitmap(composedStave, config, targetResolution)
-                                        val file = SvgStaveRenderer.savePngForSharing(context, bitmap, "runic_stave_${targetResolution}px.png")
-                                        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-                                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                            type = "image/png"
-                                            putExtra(Intent.EXTRA_STREAM, uri)
-                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                        }
-                                        context.startActivity(Intent.createChooser(shareIntent, "Поделиться эскизом PNG"))
-                                    } catch (e: Exception) {
-                                        Toast.makeText(context, "Ошибка экспорта: ${e.message}", Toast.LENGTH_SHORT).show()
-                                    } finally {
-                                        isExporting = false
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Button(
+                                    onClick = { exportPng(targetResolution) },
+                                    shape = RoundedCornerShape(12.dp),
+                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                                    modifier = Modifier.weight(1f),
+                                    enabled = !isExporting
+                                ) {
+                                    if (isExporting) {
+                                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.onPrimary)
+                                    } else {
+                                        Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(15.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("PNG (${targetResolution})", style = MaterialTheme.typography.labelMedium)
                                     }
                                 }
-                            },
-                            shape = RoundedCornerShape(16.dp),
-                            modifier = Modifier.weight(1f),
-                            enabled = !isExporting
-                        ) {
-                            if (isExporting) {
-                                CircularProgressIndicator(modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.onPrimary)
-                            } else {
-                                Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+
+                                OutlinedButton(
+                                    onClick = { exportSvg() },
+                                    shape = RoundedCornerShape(12.dp),
+                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(15.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("SVG вектор", style = MaterialTheme.typography.labelMedium)
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Button(
+                                onClick = {
+                                    onNavigateToTryOn(runeIds, selectedLayout.name, seed, selectedStyle.name)
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("go_to_tryon_button")
+                            ) {
+                                Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("PNG ($targetResolution)")
+                                Text("Перейти к примерке на теле", style = MaterialTheme.typography.labelMedium)
                             }
-                        }
-
-                        OutlinedButton(
-                            onClick = {
-                                coroutineScope.launch {
-                                    try {
-                                        val svgText = SvgStaveRenderer.renderSvg(composedStave, config)
-                                        val file = SvgStaveRenderer.saveSvgForSharing(context, svgText, "runic_stave.svg")
-                                        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-                                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                            type = "image/svg+xml"
-                                            putExtra(Intent.EXTRA_STREAM, uri)
-                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                        }
-                                        context.startActivity(Intent.createChooser(shareIntent, "Поделиться SVG файлом"))
-                                    } catch (e: Exception) {
-                                        Toast.makeText(context, "Ошибка SVG: ${e.message}", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            },
-                            shape = RoundedCornerShape(16.dp),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("SVG вектор")
                         }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Action to Try-On Screen
-            Button(
-                onClick = {
-                    onNavigateToTryOn(runeIds, selectedLayout.name, seed, selectedStyle.name)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("go_to_tryon_button")
-            ) {
-                Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Перейти к примерке на теле")
+            // Quick bottom actions bar if not on export tab
+            if (activeTab != 4) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            onNavigateToTryOn(runeIds, selectedLayout.name, seed, selectedStyle.name)
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        modifier = Modifier
+                            .weight(1.3f)
+                            .testTag("quick_tryon_button")
+                    ) {
+                        Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(15.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Примерка на теле", style = MaterialTheme.typography.labelSmall)
+                    }
+
+                    OutlinedButton(
+                        onClick = { exportPng(targetResolution) },
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        modifier = Modifier.weight(0.9f)
+                    ) {
+                        Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("PNG", style = MaterialTheme.typography.labelSmall)
+                    }
+
+                    OutlinedButton(
+                        onClick = { exportSvg() },
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        modifier = Modifier.weight(0.9f)
+                    ) {
+                        Icon(Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("SVG", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
             }
 
-            Spacer(modifier = Modifier.height(30.dp))
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }

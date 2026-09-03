@@ -632,6 +632,119 @@ object OrnamentGeometry {
                     circles.add(CircleGeom(cx + 25f * cosA, cy + 25f * sinA, 2.0f, isFilled = true))
                 }
             }
+
+            CenterEmblem.MJOLNIR -> {
+                // Sacred Hammer of Thor (Mjolnir) with suspension ring, bound handle and flared head
+                // 1. Suspension Ring at top
+                circles.add(CircleGeom(cx, cy - 25f, 5.5f, isFilled = false, widthFactor = 1.2f))
+                circles.add(CircleGeom(cx, cy - 25f, 2.0f, isFilled = true))
+
+                // 2. Bound Handle with cross-wrapping
+                lines.add(LineSegmentGeom(cx - 3.5f, cy - 20f, cx - 3.5f, cy + 6f, widthFactor = 1.3f))
+                lines.add(LineSegmentGeom(cx + 3.5f, cy - 20f, cx + 3.5f, cy + 6f, widthFactor = 1.3f))
+                lines.add(LineSegmentGeom(cx, cy - 20f, cx, cy + 6f, widthFactor = 0.8f)) // central ridge
+                for (step in 0..4) {
+                    val hy = cy - 17f + step * 4.5f
+                    lines.add(LineSegmentGeom(cx - 3.5f, hy - 1.5f, cx + 3.5f, hy + 1.5f, widthFactor = 0.9f))
+                }
+
+                // 3. Flared Hammer Head Base & Crown
+                val headTopY = cy + 6f
+                val headBottomY = cy + 26f
+                val headHalfWTop = 20f
+                val headHalfWBottom = 26f
+
+                val headContour = listOf(
+                    StrokePoint(cx - headHalfWTop, headTopY),
+                    StrokePoint(cx + headHalfWTop, headTopY),
+                    StrokePoint(cx + headHalfWBottom, headBottomY),
+                    StrokePoint(cx - headHalfWBottom, headBottomY),
+                    StrokePoint(cx - headHalfWTop, headTopY)
+                )
+                paths.add(PathGeom(headContour, isClosed = true, widthFactor = 1.5f))
+
+                // Inner facet bevels
+                lines.add(LineSegmentGeom(cx - headHalfWTop + 4f, headTopY + 3f, cx - headHalfWBottom + 4f, headBottomY - 3f, widthFactor = 0.9f))
+                lines.add(LineSegmentGeom(cx + headHalfWTop - 4f, headTopY + 3f, cx + headHalfWBottom - 4f, headBottomY - 3f, widthFactor = 0.9f))
+                lines.add(LineSegmentGeom(cx - headHalfWTop + 4f, headTopY + 3f, cx + headHalfWTop - 4f, headTopY + 3f, widthFactor = 0.9f))
+                lines.add(LineSegmentGeom(cx - headHalfWBottom + 4f, headBottomY - 3f, cx + headHalfWBottom - 4f, headBottomY - 3f, widthFactor = 0.9f))
+
+                // 4. Central Thor's Lightning / Thurisaz Rune on Hammer
+                val bolt = listOf(
+                    StrokePoint(cx - 3f, cy + 10f),
+                    StrokePoint(cx + 3f, cy + 14f),
+                    StrokePoint(cx - 2f, cy + 17f),
+                    StrokePoint(cx + 3f, cy + 22f)
+                )
+                paths.add(PathGeom(bolt, widthFactor = 1.3f))
+
+                // 5. Radiating Sparks of Mjolnir
+                val sparks = listOf(
+                    Pair(cx - 31f, cy + 16f),
+                    Pair(cx + 31f, cy + 16f),
+                    Pair(cx - 28f, cy + 28f),
+                    Pair(cx + 28f, cy + 28f),
+                    Pair(cx, cy + 32f)
+                )
+                for ((sx, sy) in sparks) {
+                    circles.add(CircleGeom(sx, sy, 2.0f, isFilled = true))
+                    lines.add(LineSegmentGeom(sx - 2f, sy, sx + 2f, sy, widthFactor = 0.8f))
+                    lines.add(LineSegmentGeom(sx, sy - 2f, sx, sy + 2f, widthFactor = 0.8f))
+                }
+            }
+
+            CenterEmblem.RAVEN_ODIN -> {
+                // Raven of Odin (Hugin) with spread wings, feathered arcs and sacred gaze
+                // 1. Head & Beak
+                val headY = cy - 18f
+                circles.add(CircleGeom(cx, headY, 5f, isFilled = false, widthFactor = 1.3f))
+                circles.add(CircleGeom(cx + 1.5f, headY - 1f, 1.5f, isFilled = true)) // eye
+                // Sharp Beak
+                val beak = listOf(
+                    StrokePoint(cx - 4f, headY - 2f),
+                    StrokePoint(cx - 12f, headY + 1f),
+                    StrokePoint(cx - 3f, headY + 3f)
+                )
+                paths.add(PathGeom(beak, isClosed = true, widthFactor = 1.2f))
+
+                // 2. Body & Sacred Heart Diamond
+                lines.add(LineSegmentGeom(cx, headY + 5f, cx, cy + 14f, widthFactor = 1.6f))
+                val heartDiamond = listOf(
+                    StrokePoint(cx, cy - 3f),
+                    StrokePoint(cx + 6f, cy + 4f),
+                    StrokePoint(cx, cy + 11f),
+                    StrokePoint(cx - 6f, cy + 4f),
+                    StrokePoint(cx, cy - 3f)
+                )
+                paths.add(PathGeom(heartDiamond, isClosed = true, widthFactor = 1.2f))
+                circles.add(CircleGeom(cx, cy + 4f, 2.0f, isFilled = true))
+
+                // 3. Spreading Wings
+                // Left wing primary feathers
+                val leftWing1 = listOf(StrokePoint(cx, cy), StrokePoint(cx - 18f, cy - 12f), StrokePoint(cx - 34f, cy - 8f))
+                val leftWing2 = listOf(StrokePoint(cx, cy + 4f), StrokePoint(cx - 16f, cy - 4f), StrokePoint(cx - 32f, cy + 2f))
+                val leftWing3 = listOf(StrokePoint(cx, cy + 8f), StrokePoint(cx - 14f, cy + 4f), StrokePoint(cx - 26f, cy + 12f))
+                paths.add(PathGeom(leftWing1, widthFactor = 1.4f))
+                paths.add(PathGeom(leftWing2, widthFactor = 1.2f))
+                paths.add(PathGeom(leftWing3, widthFactor = 1.1f))
+
+                // Right wing primary feathers
+                val rightWing1 = listOf(StrokePoint(cx, cy), StrokePoint(cx + 18f, cy - 12f), StrokePoint(cx + 34f, cy - 8f))
+                val rightWing2 = listOf(StrokePoint(cx, cy + 4f), StrokePoint(cx + 16f, cy - 4f), StrokePoint(cx + 32f, cy + 2f))
+                val rightWing3 = listOf(StrokePoint(cx, cy + 8f), StrokePoint(cx + 14f, cy + 4f), StrokePoint(cx + 26f, cy + 12f))
+                paths.add(PathGeom(rightWing1, widthFactor = 1.4f))
+                paths.add(PathGeom(rightWing2, widthFactor = 1.2f))
+                paths.add(PathGeom(rightWing3, widthFactor = 1.1f))
+
+                // 4. Tail Feathers
+                val tail1 = listOf(StrokePoint(cx, cy + 14f), StrokePoint(cx - 8f, cy + 28f))
+                val tail2 = listOf(StrokePoint(cx, cy + 14f), StrokePoint(cx, cy + 30f))
+                val tail3 = listOf(StrokePoint(cx, cy + 14f), StrokePoint(cx + 8f, cy + 28f))
+                paths.add(PathGeom(tail1, widthFactor = 1.2f))
+                paths.add(PathGeom(tail2, widthFactor = 1.4f))
+                paths.add(PathGeom(tail3, widthFactor = 1.2f))
+                circles.add(CircleGeom(cx, cy + 30f, 2.5f, isFilled = true))
+            }
         }
 
         return GeneratedOrnaments(lines, circles, polygons, paths)

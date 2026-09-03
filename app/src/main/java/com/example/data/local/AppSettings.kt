@@ -19,7 +19,8 @@ data class UserSettings(
     val defaultStyle: String,
     val darkTheme: Boolean?,
     val language: String,
-    val animationSpeedMs: Int = 4000
+    val animationSpeedMs: Int = 4000,
+    val geminiApiKey: String = ""
 )
 
 class AppSettings(private val context: Context) {
@@ -31,6 +32,7 @@ class AppSettings(private val context: Context) {
         val KEY_THEME_MODE = stringPreferencesKey("theme_mode") // "SYSTEM", "DARK", "LIGHT"
         val KEY_LANG = stringPreferencesKey("language")
         val KEY_ANIM_SPEED_MS = intPreferencesKey("anim_speed_ms")
+        val KEY_GEMINI_API_KEY = stringPreferencesKey("gemini_api_key")
     }
 
     val settingsFlow: Flow<UserSettings> = context.dataStore.data.map { pref ->
@@ -46,8 +48,13 @@ class AppSettings(private val context: Context) {
             defaultStyle = pref[KEY_STYLE] ?: "ORNAMENTAL",
             darkTheme = darkTheme,
             language = pref[KEY_LANG] ?: "ru",
-            animationSpeedMs = pref[KEY_ANIM_SPEED_MS] ?: 4200
+            animationSpeedMs = pref[KEY_ANIM_SPEED_MS] ?: 4200,
+            geminiApiKey = pref[KEY_GEMINI_API_KEY] ?: ""
         )
+    }
+
+    suspend fun setGeminiApiKey(apiKey: String) {
+        context.dataStore.edit { it[KEY_GEMINI_API_KEY] = apiKey.trim() }
     }
 
     suspend fun setAnimationSpeedMs(speedMs: Int) {

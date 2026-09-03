@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
@@ -32,6 +33,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.ui.screens.AITattooGalleryScreen
 import com.example.ui.screens.BuilderScreen
 import com.example.ui.screens.DivinationScreen
 import com.example.ui.screens.EncyclopediaScreen
@@ -89,6 +91,9 @@ fun MainAppHost(
                         )
                     },
                     actions = {
+                        IconButton(onClick = { navController.navigate(AppDestinations.AI_TATTOO_GALLERY) }) {
+                            Icon(Icons.Default.AutoAwesome, contentDescription = "ИИ Тату-Концепты", tint = MaterialTheme.colorScheme.primary)
+                        }
                         IconButton(onClick = { navController.navigate(AppDestinations.FAVORITES) }) {
                             Icon(Icons.Default.Bookmark, contentDescription = "Сохранённые ставы", tint = MaterialTheme.colorScheme.primary)
                         }
@@ -191,6 +196,9 @@ fun MainAppHost(
                     },
                     onNavigateToTryOn = { ids, layout, seed, style ->
                         navController.navigate(AppDestinations.buildTryOnRoute(ids, layout, seed, style))
+                    },
+                    onNavigateToAITattoo = {
+                        navController.navigate(AppDestinations.AI_TATTOO_GALLERY)
                     }
                 )
             }
@@ -231,6 +239,9 @@ fun MainAppHost(
                     onBack = { navController.popBackStack() },
                     onNavigateToTryOn = { ids, layout, seed, style ->
                         navController.navigate(AppDestinations.buildTryOnRoute(ids, layout, seed, style))
+                    },
+                    onNavigateToAITattoo = {
+                        navController.navigate(AppDestinations.AI_TATTOO_GALLERY)
                     }
                 )
             }
@@ -262,6 +273,20 @@ fun MainAppHost(
 
             composable(AppDestinations.FAVORITES) {
                 FavoritesScreen(
+                    viewModel = viewModel,
+                    allRunes = runes,
+                    onBack = { navController.popBackStack() },
+                    onNavigateToSketch = { ids, layout ->
+                        navController.navigate(AppDestinations.buildSketchRoute(ids, layout))
+                    },
+                    onNavigateToTryOn = { ids, layout, seed, style ->
+                        navController.navigate(AppDestinations.buildTryOnRoute(ids, layout, seed, style))
+                    }
+                )
+            }
+
+            composable(AppDestinations.AI_TATTOO_GALLERY) {
+                AITattooGalleryScreen(
                     viewModel = viewModel,
                     allRunes = runes,
                     onBack = { navController.popBackStack() },

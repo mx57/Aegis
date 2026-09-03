@@ -26,6 +26,7 @@ object AppDestinations {
     const val TRY_ON = "try_on/{runeIds}/{layoutType}/{seed}/{style}"
     const val FAVORITES = "favorites"
     const val SETTINGS = "settings"
+    const val AI_TATTOO_GALLERY = "ai_tattoo_gallery"
 
     fun buildSketchRoute(runeIds: List<String>, layoutType: String): String =
         "sketch/${runeIds.joinToString(",")}/$layoutType"

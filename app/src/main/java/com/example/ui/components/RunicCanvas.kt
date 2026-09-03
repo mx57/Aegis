@@ -201,12 +201,26 @@ fun RunicCanvas(
             }
         }
 
-        // Helper to draw GeneratedOrnaments with alpha factor
+        val highlightColor = try { Color(android.graphics.Color.parseColor(config.effectiveTheme.highlightHex)) } catch (_: Exception) { Color.White }
+        val shadowColor = try { Color(android.graphics.Color.parseColor(config.effectiveTheme.shadowHex)) } catch (_: Exception) { Color.Black }
+        val isVolumetric = config.hasVolumetricShading && !config.isStencil
+        val chiselOff = (effectiveStrokeWidth * 0.35f * config.runeChiselDepth).coerceAtLeast(1.2f)
+
+        // Helper to draw GeneratedOrnaments with alpha factor and volumetric 3D relief
         fun drawOrnaments(ornaments: GeneratedOrnaments, alphaFactor: Float = 1f) {
             if (alphaFactor <= 0.001f) return
             for (line in ornaments.lines) {
                 val sw = (effectiveStrokeWidth * line.widthFactor).coerceAtLeast(1f)
                 val lineAlpha = (line.alpha * alphaFactor).coerceIn(0f, 1f)
+                if (isVolumetric) {
+                    drawLine(
+                        color = shadowColor.copy(alpha = lineAlpha * 0.45f),
+                        start = Offset(line.x1 * scale + chiselOff, line.y1 * scale + chiselOff),
+                        end = Offset(line.x2 * scale + chiselOff, line.y2 * scale + chiselOff),
+                        strokeWidth = sw * 1.35f,
+                        cap = StrokeCap.Round
+                    )
+                }
                 drawLine(
                     color = strokeColor.copy(alpha = lineAlpha),
                     start = Offset(line.x1 * scale, line.y1 * scale),
@@ -214,27 +228,82 @@ fun RunicCanvas(
                     strokeWidth = sw,
                     cap = StrokeCap.Round
                 )
+                if (isVolumetric && sw > 1.2f) {
+                    drawLine(
+                        color = highlightColor.copy(alpha = lineAlpha * 0.70f),
+                        start = Offset(line.x1 * scale - chiselOff * 0.45f, line.y1 * scale - chiselOff * 0.45f),
+                        end = Offset(line.x2 * scale - chiselOff * 0.45f, line.y2 * scale - chiselOff * 0.45f),
+                        strokeWidth = (sw * 0.35f).coerceAtLeast(0.8f),
+                        cap = StrokeCap.Round
+                    )
+                }
             }
             for (circle in ornaments.circles) {
                 val circleAlpha = (circle.alpha * alphaFactor).coerceIn(0f, 1f)
                 if (circle.isFilled) {
+                    if (isVolumetric) {
+                        drawCircle(
+                            color = shadowColor.copy(alpha = circleAlpha * 0.45f),
+                            radius = circle.radius * scale,
+                            center = Offset(circle.cx * scale + chiselOff, circle.cy * scale + chiselOff)
+                        )
+                    }
                     drawCircle(
                         color = strokeColor.copy(alpha = circleAlpha),
                         radius = circle.radius * scale,
                         center = Offset(circle.cx * scale, circle.cy * scale)
                     )
+                    if (isVolumetric && circle.radius * scale > 2.0f) {
+                        drawCircle(
+                            color = highlightColor.copy(alpha = circleAlpha * 0.85f),
+                            radius = (circle.radius * 0.45f * scale).coerceAtLeast(0.8f),
+                            center = Offset(circle.cx * scale - chiselOff * 0.45f, circle.cy * scale - chiselOff * 0.45f)
+                        )
+                    }
                 } else {
                     val sw = (effectiveStrokeWidth * circle.widthFactor).coerceAtLeast(1f)
+                    if (isVolumetric) {
+                        drawCircle(
+                            color = shadowColor.copy(alpha = circleAlpha * 0.45f),
+                            radius = circle.radius * scale,
+                            center = Offset(circle.cx * scale + chiselOff, circle.cy * scale + chiselOff),
+                            style = Stroke(width = sw * 1.35f)
+                        )
+                    }
                     drawCircle(
                         color = strokeColor.copy(alpha = circleAlpha),
                         radius = circle.radius * scale,
                         center = Offset(circle.cx * scale, circle.cy * scale),
                         style = Stroke(width = sw)
                     )
+                    if (isVolumetric && sw > 1.2f) {
+                        drawCircle(
+                            color = highlightColor.copy(alpha = circleAlpha * 0.70f),
+                            radius = circle.radius * scale,
+                            center = Offset(circle.cx * scale - chiselOff * 0.45f, circle.cy * scale - chiselOff * 0.45f),
+                            style = Stroke(width = (sw * 0.35f).coerceAtLeast(0.8f))
+                        )
+                    }
                 }
             }
             for (poly in ornaments.polygons) {
                 if (poly.points.size < 3) continue
+                val polyAlpha = (poly.alpha * alphaFactor).coerceIn(0f, 1f)
+                val sw = (effectiveStrokeWidth * poly.widthFactor).coerceAtLeast(1f)
+                if (isVolumetric) {
+                    val shadowPath = Path().apply {
+                        moveTo(poly.points[0].x * scale + chiselOff, poly.points[0].y * scale + chiselOff)
+                        for (i in 1 until poly.points.size) {
+                            lineTo(poly.points[i].x * scale + chiselOff, poly.points[i].y * scale + chiselOff)
+                        }
+                        close()
+                    }
+                    if (poly.isFilled) {
+                        drawPath(path = shadowPath, color = shadowColor.copy(alpha = polyAlpha * 0.45f))
+                    } else {
+                        drawPath(path = shadowPath, color = shadowColor.copy(alpha = polyAlpha * 0.45f), style = Stroke(width = sw * 1.35f, join = StrokeJoin.Round))
+                    }
+                }
                 val path = Path().apply {
                     moveTo(poly.points[0].x * scale, poly.points[0].y * scale)
                     for (i in 1 until poly.points.size) {
@@ -242,20 +311,48 @@ fun RunicCanvas(
                     }
                     close()
                 }
-                val polyAlpha = (poly.alpha * alphaFactor).coerceIn(0f, 1f)
                 if (poly.isFilled) {
                     drawPath(path = path, color = strokeColor.copy(alpha = polyAlpha))
                 } else {
-                    val sw = (effectiveStrokeWidth * poly.widthFactor).coerceAtLeast(1f)
                     drawPath(
                         path = path,
                         color = strokeColor.copy(alpha = polyAlpha),
                         style = Stroke(width = sw, join = StrokeJoin.Round)
                     )
                 }
+                if (isVolumetric) {
+                    val highlightPath = Path().apply {
+                        moveTo(poly.points[0].x * scale - chiselOff * 0.45f, poly.points[0].y * scale - chiselOff * 0.45f)
+                        for (i in 1 until poly.points.size) {
+                            lineTo(poly.points[i].x * scale - chiselOff * 0.45f, poly.points[i].y * scale - chiselOff * 0.45f)
+                        }
+                        close()
+                    }
+                    if (poly.isFilled) {
+                        drawPath(path = highlightPath, color = highlightColor.copy(alpha = polyAlpha * 0.75f), style = Stroke(width = (sw * 0.3f).coerceAtLeast(0.8f), join = StrokeJoin.Round))
+                    } else if (sw > 1.2f) {
+                        drawPath(path = highlightPath, color = highlightColor.copy(alpha = polyAlpha * 0.70f), style = Stroke(width = (sw * 0.35f).coerceAtLeast(0.8f), join = StrokeJoin.Round))
+                    }
+                }
             }
             for (pathGeom in ornaments.paths) {
                 if (pathGeom.points.size < 2) continue
+                val pathAlpha = (pathGeom.alpha * alphaFactor).coerceIn(0f, 1f)
+                val sw = (effectiveStrokeWidth * pathGeom.widthFactor).coerceAtLeast(1f)
+                if (isVolumetric) {
+                    val shadowPath = Path().apply {
+                        moveTo(pathGeom.points[0].x * scale + chiselOff, pathGeom.points[0].y * scale + chiselOff)
+                        for (i in 1 until pathGeom.points.size) {
+                            lineTo(pathGeom.points[i].x * scale + chiselOff, pathGeom.points[i].y * scale + chiselOff)
+                        }
+                        if (pathGeom.isClosed) close()
+                    }
+                    if (pathGeom.isFilled) {
+                        drawPath(path = shadowPath, color = shadowColor.copy(alpha = pathAlpha * 0.45f))
+                    } else {
+                        drawPath(path = shadowPath, color = shadowColor.copy(alpha = pathAlpha * 0.45f), style = Stroke(width = sw * 1.35f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+                    }
+                }
                 val path = Path().apply {
                     moveTo(pathGeom.points[0].x * scale, pathGeom.points[0].y * scale)
                     for (i in 1 until pathGeom.points.size) {
@@ -263,16 +360,28 @@ fun RunicCanvas(
                     }
                     if (pathGeom.isClosed) close()
                 }
-                val pathAlpha = (pathGeom.alpha * alphaFactor).coerceIn(0f, 1f)
                 if (pathGeom.isFilled) {
                     drawPath(path = path, color = strokeColor.copy(alpha = pathAlpha))
                 } else {
-                    val sw = (effectiveStrokeWidth * pathGeom.widthFactor).coerceAtLeast(1f)
                     drawPath(
                         path = path,
                         color = strokeColor.copy(alpha = pathAlpha),
                         style = Stroke(width = sw, cap = StrokeCap.Round, join = StrokeJoin.Round)
                     )
+                }
+                if (isVolumetric) {
+                    val highlightPath = Path().apply {
+                        moveTo(pathGeom.points[0].x * scale - chiselOff * 0.45f, pathGeom.points[0].y * scale - chiselOff * 0.45f)
+                        for (i in 1 until pathGeom.points.size) {
+                            lineTo(pathGeom.points[i].x * scale - chiselOff * 0.45f, pathGeom.points[i].y * scale - chiselOff * 0.45f)
+                        }
+                        if (pathGeom.isClosed) close()
+                    }
+                    if (pathGeom.isFilled) {
+                        drawPath(path = highlightPath, color = highlightColor.copy(alpha = pathAlpha * 0.75f))
+                    } else if (sw > 1.2f) {
+                        drawPath(path = highlightPath, color = highlightColor.copy(alpha = pathAlpha * 0.70f), style = Stroke(width = (sw * 0.35f).coerceAtLeast(0.8f), cap = StrokeCap.Round, join = StrokeJoin.Round))
+                    }
                 }
             }
         }
@@ -319,13 +428,6 @@ fun RunicCanvas(
                     strokeWidth = 0.6f * scale
                 )
             }
-        }
-
-        // Central Sacred Emblem (born early: 0.05..0.30)
-        val centerProgress = ((currentProgress - 0.05f) / 0.25f).coerceIn(0f, 1f)
-        if (config.centerEmblem != CenterEmblem.NONE && centerProgress > 0f) {
-            val centerOrnaments = OrnamentGeometry.generateCenterEmblem(config.centerEmblem, config.lineWidth)
-            drawOrnaments(centerOrnaments, alphaFactor = centerProgress)
         }
 
         // --- Phase 2: Runic Stave Strokes Carving (0.10..0.75) ---
@@ -393,7 +495,7 @@ fun RunicCanvas(
                     }
                     drawPath(
                         path = shadowPath,
-                        color = Color.Black.copy(alpha = 0.40f * strokeAlpha),
+                        color = shadowColor.copy(alpha = 0.40f * strokeAlpha),
                         style = Stroke(
                             width = strokeW * 1.35f,
                             cap = StrokeCap.Round,
@@ -409,7 +511,7 @@ fun RunicCanvas(
                     }
                     drawPath(
                         path = highlightPath,
-                        color = Color.White.copy(alpha = 0.55f * strokeAlpha),
+                        color = highlightColor.copy(alpha = 0.55f * strokeAlpha),
                         style = Stroke(
                             width = (strokeW * 0.35f).coerceAtLeast(0.8f),
                             cap = StrokeCap.Round,
@@ -540,7 +642,7 @@ fun RunicCanvas(
         val frameProgress = ((currentProgress - 0.72f) / 0.22f).coerceIn(0f, 1f)
         val effectiveFrame = if (!config.hasFrameCircle) FrameStyle.NONE else config.frameStyle
         if (effectiveFrame != FrameStyle.NONE && frameProgress > 0f) {
-            val frameOrnaments = OrnamentGeometry.generateFrame(effectiveFrame, config.lineWidth)
+            val frameOrnaments = OrnamentGeometry.generateFrame(effectiveFrame, effectiveStrokeWidth)
             drawOrnaments(frameOrnaments, alphaFactor = frameProgress)
         }
 
@@ -553,6 +655,21 @@ fun RunicCanvas(
             val rOuter = 244f * scale
             val rText = 231f * scale
             val ringAlpha = 0.65f * runeringProgress
+
+            if (isVolumetric) {
+                drawCircle(
+                    color = shadowColor.copy(alpha = 0.40f * runeringProgress),
+                    radius = rInner,
+                    center = Offset(cx + chiselOff, cy + chiselOff),
+                    style = Stroke(width = (effectiveStrokeWidth * 0.55f).coerceAtLeast(1.2f))
+                )
+                drawCircle(
+                    color = shadowColor.copy(alpha = 0.40f * runeringProgress),
+                    radius = rOuter,
+                    center = Offset(cx + chiselOff, cy + chiselOff),
+                    style = Stroke(width = (effectiveStrokeWidth * 0.55f).coerceAtLeast(1.2f))
+                )
+            }
 
             drawCircle(
                 color = strokeColor.copy(alpha = ringAlpha),
@@ -567,10 +684,51 @@ fun RunicCanvas(
                 style = Stroke(width = (effectiveStrokeWidth * 0.45f).coerceAtLeast(1f))
             )
 
+            if (isVolumetric) {
+                drawCircle(
+                    color = highlightColor.copy(alpha = 0.65f * runeringProgress),
+                    radius = rInner,
+                    center = Offset(cx - chiselOff * 0.45f, cy - chiselOff * 0.45f),
+                    style = Stroke(width = (effectiveStrokeWidth * 0.22f).coerceAtLeast(0.6f))
+                )
+                drawCircle(
+                    color = highlightColor.copy(alpha = 0.65f * runeringProgress),
+                    radius = rOuter,
+                    center = Offset(cx - chiselOff * 0.45f, cy - chiselOff * 0.45f),
+                    style = Stroke(width = (effectiveStrokeWidth * 0.22f).coerceAtLeast(0.6f))
+                )
+            }
+
             val totalRunes = ELDER_FUTHARK_RUNES.size
             val visibleRunes = if (currentProgress >= 1f) totalRunes else (runeringProgress * totalRunes).toInt().coerceIn(0, totalRunes)
 
             drawIntoCanvas { composeCanvas ->
+                val shadowTextPaint = if (isVolumetric) {
+                    try {
+                        AndroidPaint(AndroidPaint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.parseColor(config.effectiveTheme.shadowHex)
+                            textSize = 14f * scale
+                            textAlign = AndroidPaint.Align.CENTER
+                            typeface = AndroidTypeface.SERIF
+                            isFakeBoldText = true
+                            alpha = (140 * runeringProgress).toInt().coerceIn(0, 255)
+                        }
+                    } catch (_: Exception) { null }
+                } else null
+
+                val highlightTextPaint = if (isVolumetric) {
+                    try {
+                        AndroidPaint(AndroidPaint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.parseColor(config.effectiveTheme.highlightHex)
+                            textSize = 14f * scale
+                            textAlign = AndroidPaint.Align.CENTER
+                            typeface = AndroidTypeface.SERIF
+                            isFakeBoldText = true
+                            alpha = (180 * runeringProgress).toInt().coerceIn(0, 255)
+                        }
+                    } catch (_: Exception) { null }
+                } else null
+
                 val textPaint = AndroidPaint(AndroidPaint.ANTI_ALIAS_FLAG).apply {
                     color = if (overrideColor != null) {
                         android.graphics.Color.rgb(
@@ -591,10 +749,22 @@ fun RunicCanvas(
                 for (rIdx in 0 until visibleRunes) {
                     val deg = rIdx * (360f / totalRunes)
                     val rune = ELDER_FUTHARK_RUNES[rIdx]
+                    if (shadowTextPaint != null) {
+                        composeCanvas.nativeCanvas.save()
+                        composeCanvas.nativeCanvas.rotate(deg, cx, cy)
+                        composeCanvas.nativeCanvas.drawText(rune, cx + chiselOff * 0.7f, cy - rText + 5.5f * scale + chiselOff * 0.7f, shadowTextPaint)
+                        composeCanvas.nativeCanvas.restore()
+                    }
                     composeCanvas.nativeCanvas.save()
                     composeCanvas.nativeCanvas.rotate(deg, cx, cy)
                     composeCanvas.nativeCanvas.drawText(rune, cx, cy - rText + 5.5f * scale, textPaint)
                     composeCanvas.nativeCanvas.restore()
+                    if (highlightTextPaint != null) {
+                        composeCanvas.nativeCanvas.save()
+                        composeCanvas.nativeCanvas.rotate(deg, cx, cy)
+                        composeCanvas.nativeCanvas.drawText(rune, cx - chiselOff * 0.35f, cy - rText + 5.5f * scale - chiselOff * 0.35f, highlightTextPaint)
+                        composeCanvas.nativeCanvas.restore()
+                    }
                 }
             }
         }
@@ -602,14 +772,14 @@ fun RunicCanvas(
         // --- Phase 4.5: Central Sacred Emblem (0.78..0.98) ---
         val emblemProgress = ((currentProgress - 0.76f) / 0.22f).coerceIn(0f, 1f)
         if (config.centerEmblem != CenterEmblem.NONE && emblemProgress > 0f) {
-            val centerOrnaments = OrnamentGeometry.generateCenterEmblem(config.centerEmblem, config.lineWidth)
+            val centerOrnaments = OrnamentGeometry.generateCenterEmblem(config.centerEmblem, effectiveStrokeWidth)
             drawOrnaments(centerOrnaments, alphaFactor = emblemProgress)
         }
 
         // --- Phase 5: Corner Accents (0.88..1.00) ---
         val cornerProgress = ((currentProgress - 0.88f) / 0.12f).coerceIn(0f, 1f)
         if (config.hasSymmetryAccents && !config.isStencil && config.cornerStyle != CornerStyle.NONE && cornerProgress > 0f) {
-            val cornerOrnaments = OrnamentGeometry.generateCorners(config.cornerStyle, config.lineWidth)
+            val cornerOrnaments = OrnamentGeometry.generateCorners(config.cornerStyle, effectiveStrokeWidth)
             drawOrnaments(cornerOrnaments, alphaFactor = cornerProgress)
         }
 

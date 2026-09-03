@@ -1,6 +1,11 @@
 package com.example.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,40 +17,59 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Brush
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.data.model.Rune
 import com.example.engine.StaveLayoutType
+import com.example.ui.components.PouchRitualState
+import com.example.ui.components.RuneInterpretationCard
+import com.example.ui.components.SacredRunePouch
+import com.example.ui.components.SacredRuneTablet
 import com.example.ui.components.SingleRuneIcon
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -56,7 +80,8 @@ fun DivinationScreen(
     allRunes: List<Rune>,
     onNavigateToSketch: (runeIds: List<String>, layoutType: String) -> Unit
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) } // 0: Rune of day, 1: 1 Rune spread, 2: 3 Runes spread
+    val coroutineScope = rememberCoroutineScope()
+    var selectedTab by remember { mutableIntStateOf(0) } // 0: Pouch (1 Rune), 1: Rune of Day, 2: 3 Norns Spread
     val elderRunes = remember(allRunes) { allRunes.filter { it.futhark == "elder" } }
 
     val todayDateStr = remember {
@@ -75,12 +100,85 @@ fun DivinationScreen(
         }
     }
 
-    // Single rune state
+    // --- State for Single Rune Pouch Ritual ---
+    var singleRitualState by remember { mutableStateOf(PouchRitualState.IDLE) }
     var drawnSingleRune by remember { mutableStateOf<Rune?>(null) }
     var singleReversed by remember { mutableStateOf(false) }
 
-    // Three runes state
-    var drawnThreeRunes by remember { mutableStateOf<List<Rune>>(emptyList()) }
+    // Animations for emerging and 3D flip
+    val emergeAnim = remember { Animatable(0f) } // 0f = inside pouch, 1f = in front of user
+    val flipAnim = remember { Animatable(0f) }   // 0f = back face, 1f = front face (rune)
+
+    // Function to trigger drawing from pouch
+    fun drawRuneFromPouch() {
+        if (elderRunes.isEmpty()) return
+        coroutineScope.launch {
+            singleRitualState = PouchRitualState.SHAKING
+            emergeAnim.snapTo(0f)
+            flipAnim.snapTo(0f)
+
+            // 1. Shaking vibration
+            delay(480)
+
+            // Select random rune and orientation
+            val r = elderRunes.random()
+            drawnSingleRune = r
+            singleReversed = Random().nextBoolean()
+
+            // 2. Emerging upwards from pouch mouth
+            singleRitualState = PouchRitualState.DRAWING
+            emergeAnim.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 650, easing = FastOutSlowInEasing)
+            )
+
+            // 3. 3D Flip reveal
+            flipAnim.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 750, easing = FastOutSlowInEasing)
+            )
+
+            singleRitualState = PouchRitualState.REVEALED
+        }
+    }
+
+    // Function to put rune back in pouch
+    fun putRuneBack() {
+        coroutineScope.launch {
+            flipAnim.animateTo(0f, tween(durationMillis = 350, easing = FastOutSlowInEasing))
+            emergeAnim.animateTo(0f, tween(durationMillis = 350, easing = FastOutSlowInEasing))
+            drawnSingleRune = null
+            singleRitualState = PouchRitualState.IDLE
+        }
+    }
+
+    // --- State for Rune of the Day Ritual ---
+    var dayRevealed by remember { mutableStateOf(false) }
+    val dayFlipAnim = remember { Animatable(0f) }
+
+    // --- State for 3 Norns Spread ---
+    data class NornDrawn(val rune: Rune, val isReversed: Boolean)
+    var drawnThreeRunes by remember { mutableStateOf<List<NornDrawn>>(emptyList()) }
+    var selectedNornIndex by remember { mutableIntStateOf(0) }
+    var isNornsDrawing by remember { mutableStateOf(false) }
+
+    fun drawThreeNorns() {
+        if (elderRunes.size < 3) return
+        coroutineScope.launch {
+            isNornsDrawing = true
+            drawnThreeRunes = emptyList()
+            val shuffled = elderRunes.shuffled().take(3)
+            val results = mutableListOf<NornDrawn>()
+
+            for (r in shuffled) {
+                delay(300)
+                results.add(NornDrawn(r, Random().nextBoolean()))
+                drawnThreeRunes = results.toList()
+            }
+            isNornsDrawing = false
+            selectedNornIndex = 0
+        }
+    }
 
     val scrollState = rememberScrollState()
 
@@ -91,6 +189,7 @@ fun DivinationScreen(
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Top Header
         Text(
             text = "Скандинавский Оракул",
             style = MaterialTheme.typography.titleLarge,
@@ -98,12 +197,14 @@ fun DivinationScreen(
             color = MaterialTheme.colorScheme.primary
         )
         Text(
-            text = "Древняя традиция вопрошания Норн и получения знака судьбы.",
+            text = "Сакральное вопрошание Норн через вытягивание рун из мешочка судьбы.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
         )
 
+        // Mode Selector TabRow
         TabRow(
             selectedTabIndex = selectedTab,
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -113,17 +214,17 @@ fun DivinationScreen(
             Tab(
                 selected = selectedTab == 0,
                 onClick = { selectedTab = 0 },
-                text = { Text("Руна дня", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall) }
+                text = { Text("🔮 Мешочек (1 руна)", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall) }
             )
             Tab(
                 selected = selectedTab == 1,
                 onClick = { selectedTab = 1 },
-                text = { Text("1 руна (Совет)", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall) }
+                text = { Text("☀️ Руна дня", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall) }
             )
             Tab(
                 selected = selectedTab == 2,
                 onClick = { selectedTab = 2 },
-                text = { Text("3 руны (Норны)", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall) }
+                text = { Text("⚔️ Три Норны", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall) }
             )
         }
 
@@ -131,323 +232,417 @@ fun DivinationScreen(
 
         when (selectedTab) {
             0 -> {
-                // Rune of the day
+                // ==========================================
+                // 1. SACRED POUCH (1 RUNE SPREAD WITH 3D RITUAL)
+                // ==========================================
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    shape = RoundedCornerShape(26.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x44E5C158)),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF10131B))
                 ) {
                     Column(
-                        modifier = Modifier.padding(20.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 20.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "Руна на сегодня: $todayDisplayStr",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.secondary
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        if (runeOfDay != null) {
-                            Box(
-                                modifier = Modifier
-                                    .size(100.dp)
-                                    .clip(RoundedCornerShape(20.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                                    .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), RoundedCornerShape(20.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                SingleRuneIcon(
-                                    rune = runeOfDay,
-                                    size = 70.dp,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    strokeWidthDp = 4.dp
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(14.dp))
-                            Text(
-                                text = "${runeOfDay.nameRu} (${runeOfDay.nameEn})",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Text(
-                                text = runeOfDay.keywordsRu.joinToString(" • "),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-
-                            Spacer(modifier = Modifier.height(14.dp))
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                            Spacer(modifier = Modifier.height(14.dp))
-
-                            Text(
-                                text = "Послание и совет на день:",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = runeOfDay.divinationDirect,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Button(
-                                onClick = {
-                                    onNavigateToSketch(listOf(runeOfDay.id), StaveLayoutType.ROW.name)
-                                },
-                                shape = RoundedCornerShape(16.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(Icons.Default.Brush, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Создать эскиз амулета дня")
-                            }
-                        }
-                    }
-                }
-            }
-            1 -> {
-                // 1 Rune spread
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = "Вопрос или совет оракула",
+                            text = "Вытягивание Руны из Мешочка",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = "Мысленно сосредоточьтесь на своем вопросе и вытяните священный знак.",
+                            text = if (singleRitualState == PouchRitualState.IDLE)
+                                "Сосредоточьтесь на вопросе и коснитесь мешочка, чтобы вытянуть руну судьбы."
+                            else if (singleRitualState == PouchRitualState.SHAKING)
+                                "Шуршат деревянные плашки... Норны выбирают ваш знак."
+                            else
+                                "Священный знак явлен. Постигните его тайный смысл.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(vertical = 4.dp)
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
                         )
 
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        if (drawnSingleRune == null) {
-                            Box(
-                                modifier = Modifier
-                                    .size(120.dp)
-                                    .clip(RoundedCornerShape(20.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                                    .border(1.5.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(20.dp))
-                                    .clickable {
-                                        if (elderRunes.isNotEmpty()) {
-                                            drawnSingleRune = elderRunes.random()
-                                            singleReversed = Random().nextBoolean()
+                        // --- Interactive Ritual Stage ---
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(270.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (singleRitualState == PouchRitualState.IDLE || singleRitualState == PouchRitualState.SHAKING) {
+                                // Pouch ready or shaking
+                                SacredRunePouch(
+                                    isShaking = singleRitualState == PouchRitualState.SHAKING,
+                                    onClick = {
+                                        if (singleRitualState == PouchRitualState.IDLE) {
+                                            drawRuneFromPouch()
                                         }
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(
-                                        imageVector = Icons.Default.AutoAwesome,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(36.dp)
+                                    }
+                                )
+                            } else if (drawnSingleRune != null) {
+                                // Rune emerging or revealed
+                                val r = drawnSingleRune!!
+                                val emergeValue = emergeAnim.value
+                                val flipValue = flipAnim.value
+
+                                Box(
+                                    modifier = Modifier
+                                        .offset(y = ((1f - emergeValue) * 60f).dp)
+                                        .scale(0.5f + emergeValue * 0.5f),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    SacredRuneTablet(
+                                        rune = r,
+                                        isReversed = singleReversed,
+                                        flipProgress = flipValue,
+                                        size = 145.dp,
+                                        onClick = {
+                                            if (singleRitualState == PouchRitualState.REVEALED) {
+                                                singleReversed = !singleReversed
+                                            }
+                                        }
                                     )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text("Тянуть руну", style = MaterialTheme.typography.labelSmall)
                                 }
                             }
-                        } else {
-                            val r = drawnSingleRune!!
-                            Box(
+                        }
+
+                        // Action Buttons Under Ritual Stage
+                        if (singleRitualState == PouchRitualState.IDLE) {
+                            Button(
+                                onClick = { drawRuneFromPouch() },
+                                shape = RoundedCornerShape(18.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary
+                                ),
                                 modifier = Modifier
-                                    .size(110.dp)
-                                    .clip(RoundedCornerShape(20.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                                    .border(1.5.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(20.dp)),
-                                contentAlignment = Alignment.Center
+                                    .fillMaxWidth()
+                                    .padding(top = 6.dp)
+                                    .testTag("shake_pouch_button")
                             ) {
-                                SingleRuneIcon(
-                                    rune = r,
-                                    size = 75.dp,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    strokeWidthDp = 4.dp
-                                )
+                                Icon(Icons.Default.TouchApp, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Опустить руку в мешочек", fontWeight = FontWeight.Bold)
                             }
-
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text(
-                                text = "${r.nameRu} (${if (singleReversed) "Перевёрнутое" else "Прямое"})",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = if (singleReversed) r.divinationReversed else r.divinationDirect,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-
-                            Spacer(modifier = Modifier.height(16.dp))
+                        } else if (singleRitualState == PouchRitualState.REVEALED && drawnSingleRune != null) {
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 4.dp),
                                 horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
                                 OutlinedButton(
-                                    onClick = {
-                                        drawnSingleRune = elderRunes.random()
-                                        singleReversed = Random().nextBoolean()
-                                    },
-                                    shape = RoundedCornerShape(16.dp),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                                    onClick = { drawRuneFromPouch() },
+                                    shape = RoundedCornerShape(14.dp),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x55E5C158)),
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Снова")
+                                    Text("Тянуть снова", style = MaterialTheme.typography.labelSmall)
                                 }
-                                Button(
-                                    onClick = {
-                                        onNavigateToSketch(listOf(r.id), StaveLayoutType.ROW.name)
-                                    },
-                                    shape = RoundedCornerShape(16.dp),
+
+                                OutlinedButton(
+                                    onClick = { putRuneBack() },
+                                    shape = RoundedCornerShape(14.dp),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.Gray.copy(alpha = 0.5f)),
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    Icon(Icons.Default.Brush, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("В эскиз")
+                                    Text("В мешочек", style = MaterialTheme.typography.labelSmall)
                                 }
                             }
                         }
                     }
                 }
+
+                // Detailed Handbook Interpretation Section for Single Rune
+                if (singleRitualState == PouchRitualState.REVEALED && drawnSingleRune != null) {
+                    val r = drawnSingleRune!!
+                    Spacer(modifier = Modifier.height(18.dp))
+                    AnimatedVisibility(
+                        visible = true,
+                        enter = fadeIn() + slideInVertically { it / 4 }
+                    ) {
+                        RuneInterpretationCard(
+                            rune = r,
+                            isReversed = singleReversed,
+                            onToggleReversed = { singleReversed = !singleReversed },
+                            onCreateStave = {
+                                onNavigateToSketch(listOf(r.id), StaveLayoutType.ROW.name)
+                            },
+                            onPutBack = { putRuneBack() }
+                        )
+                    }
+                }
             }
-            2 -> {
-                // 3 Runes Spread (Urd, Verdandi, Skuld)
+
+            1 -> {
+                // ==========================================
+                // 2. RUNE OF THE DAY (DAILY ORACLE SIGN)
+                // ==========================================
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    shape = RoundedCornerShape(26.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x44E5C158)),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF10131B))
                 ) {
                     Column(
-                        modifier = Modifier.padding(20.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = Color(0x22E5C158),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x44E5C158))
+                        ) {
+                            Text(
+                                text = "Знак судьбы на $todayDisplayStr",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        if (runeOfDay != null) {
+                            val r = runeOfDay
+                            if (!dayRevealed) {
+                                // Pouch of the day ready to reveal
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(230.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    SacredRunePouch(
+                                        onClick = {
+                                            coroutineScope.launch {
+                                                dayRevealed = true
+                                                dayFlipAnim.snapTo(0f)
+                                                dayFlipAnim.animateTo(1f, tween(durationMillis = 750, easing = FastOutSlowInEasing))
+                                            }
+                                        }
+                                    )
+                                }
+
+                                Button(
+                                    onClick = {
+                                        coroutineScope.launch {
+                                            dayRevealed = true
+                                            dayFlipAnim.snapTo(0f)
+                                            dayFlipAnim.animateTo(1f, tween(durationMillis = 750, easing = FastOutSlowInEasing))
+                                        }
+                                    },
+                                    shape = RoundedCornerShape(18.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary
+                                    ),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Открыть руну сегодняшнего дня")
+                                }
+                            } else {
+                                // Tablet revealed
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    SacredRuneTablet(
+                                        rune = r,
+                                        isReversed = false,
+                                        flipProgress = dayFlipAnim.value,
+                                        size = 140.dp
+                                    )
+                                }
+
+                                RuneInterpretationCard(
+                                    rune = r,
+                                    isReversed = false,
+                                    onToggleReversed = {},
+                                    onCreateStave = {
+                                        onNavigateToSketch(listOf(r.id), StaveLayoutType.ROW.name)
+                                    },
+                                    onPutBack = {
+                                        dayRevealed = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            2 -> {
+                // ==========================================
+                // 3. THREE NORNS SPREAD (URD, VERDANDI, SKULD)
+                // ==========================================
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(26.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x44E5C158)),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF10131B))
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(18.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "Расклад Трех Норн",
+                            text = "Расклад Трех Сестер Судьбы",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = "Урд (Прошлое) • Верданди (Настоящее) • Скульд (Будущее)",
-                            style = MaterialTheme.typography.labelMedium,
+                            text = "Урд (Прошлое / Причина) • Верданди (Настоящее / Действие) • Скульд (Будущее / Исход)",
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.secondary,
+                            textAlign = TextAlign.Center,
                             modifier = Modifier.padding(vertical = 4.dp)
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))
 
                         if (drawnThreeRunes.isEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(210.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                SacredRunePouch(
+                                    isShaking = isNornsDrawing,
+                                    onClick = { drawThreeNorns() }
+                                )
+                            }
+
                             Button(
-                                onClick = {
-                                    if (elderRunes.size >= 3) {
-                                        drawnThreeRunes = elderRunes.shuffled().take(3)
-                                    }
-                                },
-                                shape = RoundedCornerShape(16.dp)
+                                onClick = { drawThreeNorns() },
+                                shape = RoundedCornerShape(18.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary
+                                ),
+                                modifier = Modifier.fillMaxWidth()
                             ) {
                                 Icon(Icons.Default.AutoAwesome, contentDescription = null)
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Открыть расклад трех рун")
+                                Text("Вытянуть триаду Норн из мешочка")
                             }
                         } else {
                             val positions = listOf(
-                                Pair("1. Урд (Прошлое / Причина)", drawnThreeRunes[0]),
-                                Pair("2. Верданди (Настоящее / Действие)", drawnThreeRunes[1]),
-                                Pair("3. Скульд (Будущее / Исход)", drawnThreeRunes[2])
+                                "1. Урд (Истоки)",
+                                "2. Верданди (Вызов)",
+                                "3. Скульд (Исход)"
                             )
 
-                            positions.forEach { (label, rune) ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(16.dp))
-                                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                                        .padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    SingleRuneIcon(
-                                        rune = rune,
-                                        size = 40.dp,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        strokeWidthDp = 3.dp
-                                    )
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Column {
+                            // 3 Tablets Row
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                drawnThreeRunes.forEachIndexed { idx, norn ->
+                                    val isSelected = selectedNornIndex == idx
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(16.dp))
+                                            .clickable { selectedNornIndex = idx }
+                                            .padding(4.dp)
+                                    ) {
                                         Text(
-                                            text = label,
+                                            text = positions.getOrElse(idx) { "" },
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.secondary,
-                                            fontWeight = FontWeight.SemiBold
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (isSelected) Color(0xFFFFE082) else Color.Gray
                                         )
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Box(
+                                            modifier = if (isSelected) {
+                                                Modifier.border(2.dp, Color(0xFFE5C158), RoundedCornerShape(18.dp))
+                                            } else Modifier
+                                        ) {
+                                            SacredRuneTablet(
+                                                rune = norn.rune,
+                                                isReversed = norn.isReversed,
+                                                flipProgress = 1f,
+                                                size = 86.dp
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
                                         Text(
-                                            text = "${rune.nameRu} — ${rune.keywordsRu.firstOrNull() ?: ""}",
-                                            style = MaterialTheme.typography.titleSmall,
+                                            text = norn.rune.nameRu,
+                                            style = MaterialTheme.typography.labelSmall,
                                             fontWeight = FontWeight.Bold,
                                             color = MaterialTheme.colorScheme.primary
                                         )
-                                        Text(
-                                            text = rune.divinationDirect,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
                                     }
                                 }
-                                Spacer(modifier = Modifier.height(10.dp))
                             }
 
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(14.dp))
 
+                            // Action buttons
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 OutlinedButton(
-                                    onClick = {
-                                        drawnThreeRunes = elderRunes.shuffled().take(3)
-                                    },
-                                    shape = RoundedCornerShape(16.dp),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                                    onClick = { drawThreeNorns() },
+                                    shape = RoundedCornerShape(14.dp),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x44E5C158)),
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    Icon(Icons.Default.Refresh, contentDescription = null)
+                                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Новый расклад")
+                                    Text("Новый расклад", style = MaterialTheme.typography.labelSmall)
                                 }
 
                                 Button(
                                     onClick = {
-                                        onNavigateToSketch(drawnThreeRunes.map { it.id }, StaveLayoutType.BINDRUNE.name)
+                                        onNavigateToSketch(drawnThreeRunes.map { it.rune.id }, StaveLayoutType.BINDRUNE.name)
                                     },
-                                    shape = RoundedCornerShape(16.dp),
+                                    shape = RoundedCornerShape(14.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary
+                                    ),
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    Icon(Icons.Default.Brush, contentDescription = null)
+                                    Icon(Icons.Default.Brush, contentDescription = null, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Став из триады")
+                                    Text("Став из триады", style = MaterialTheme.typography.labelSmall)
                                 }
+                            }
+
+                            // Active Norn Details Card
+                            val activeNorn = drawnThreeRunes.getOrNull(selectedNornIndex)
+                            if (activeNorn != null) {
+                                Spacer(modifier = Modifier.height(18.dp))
+                                RuneInterpretationCard(
+                                    rune = activeNorn.rune,
+                                    isReversed = activeNorn.isReversed,
+                                    onToggleReversed = {
+                                        val updated = drawnThreeRunes.toMutableList()
+                                        updated[selectedNornIndex] = activeNorn.copy(isReversed = !activeNorn.isReversed)
+                                        drawnThreeRunes = updated
+                                    },
+                                    onCreateStave = {
+                                        onNavigateToSketch(listOf(activeNorn.rune.id), StaveLayoutType.ROW.name)
+                                    },
+                                    onPutBack = {
+                                        drawnThreeRunes = emptyList()
+                                    }
+                                )
                             }
                         }
                     }

@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RadialGradient
@@ -71,7 +72,9 @@ enum class CenterEmblem(val titleRu: String) {
     TRIQUETRA("Трикветр"),
     SOLAR_CROSS("Солнечный крест"),
     INGUZ_DIAMOND("Око Ингуз"),
-    AEGISHJALMUR_CORE("Ядро Агисхьяльма")
+    AEGISHJALMUR_CORE("Ядро Агисхьяльма"),
+    MJOLNIR("Молот Тора"),
+    RAVEN_ODIN("Ворон Хугин")
 }
 
 enum class CornerStyle(val titleRu: String) {
@@ -113,25 +116,25 @@ val ELDER_FUTHARK_RUNES = listOf(
 )
 
 data class SketchConfig(
-    val style: SketchStyle = SketchStyle.ORNAMENTAL,
-    val theme: CanvasTheme = CanvasTheme.DARK_SLATE,
-    val lineWidth: Float = 3.5f,
+    val style: SketchStyle = SketchStyle.SACRED_GOLD,
+    val theme: CanvasTheme = CanvasTheme.GOLDEN_EMBER,
+    val lineWidth: Float = 3.2f,
     val hasFrameCircle: Boolean = true,
-    val frameStyle: FrameStyle = FrameStyle.SOLAR_CIRCLE,
+    val frameStyle: FrameStyle = FrameStyle.YGGDRASIL_BRANCHES,
     val finialType: FinialType = FinialType.TRIDENT,
-    val centerEmblem: CenterEmblem = CenterEmblem.SOLAR_CROSS,
+    val centerEmblem: CenterEmblem = CenterEmblem.YGGDRASIL_TREE,
     val cornerStyle: CornerStyle = CornerStyle.NORSE_KNOTS,
     val hasSymmetryAccents: Boolean = true,
     val hasBranchNotches: Boolean = true,
-    val hasRayBurst: Boolean = false,
-    val hasRunering: Boolean = false,
-    val hasGlowEffect: Boolean = false,
-    val wobbleAmount: Float = 0.20f, // 0.0f..1.0f
+    val hasRayBurst: Boolean = true,
+    val hasRunering: Boolean = true,
+    val hasGlowEffect: Boolean = true,
+    val wobbleAmount: Float = 0.18f, // 0.0f..1.0f
     val seed: Long = 1337L,
     val isStencil: Boolean = false,
     val hasVolumetricShading: Boolean = true,
     val hasTextureGrain: Boolean = true,
-    val runeChiselDepth: Float = 1.0f
+    val runeChiselDepth: Float = 1.2f
 ) {
     val effectiveTheme: CanvasTheme
         get() = if (isStencil) CanvasTheme.STENCIL else theme
@@ -268,14 +271,14 @@ object SvgStaveRenderer {
 
         // 1.1 Outer Elder Futhark Rune Ring
         if (config.hasRunering && !config.isStencil) {
-            renderFutharkRuneringSvg(sb, strokeColor, effectiveStrokeWidth)
+            renderFutharkRuneringSvg(sb, strokeColor, effectiveStrokeWidth, theme, config)
         }
 
         // 2. Decorative Frame
         val effectiveFrame = if (!config.hasFrameCircle) FrameStyle.NONE else config.frameStyle
         if (effectiveFrame != FrameStyle.NONE) {
             val frameOrnaments = OrnamentGeometry.generateFrame(effectiveFrame, effectiveStrokeWidth)
-            renderGeneratedOrnamentsSvg(sb, frameOrnaments, strokeColor, effectiveStrokeWidth)
+            renderGeneratedOrnamentsSvg(sb, frameOrnaments, strokeColor, effectiveStrokeWidth, theme, config)
         }
 
         // 3. Stave Strokes (optionally wrapped in glow filter)
@@ -307,18 +310,19 @@ object SvgStaveRenderer {
                     // Double-carved stone incision with chiseled facets
                     renderCarvedStrokeSvg(sb, pts, strokeColor, strokeW)
                 }
-                SketchStyle.SACRED_GOLD, SketchStyle.EMERALD_BRONZE, SketchStyle.FROST_CRYSTAL -> {
-                    // 3D Volumetric Metallic Embossed Stroke with Specular Highlight line
-                    renderVolumetricMetallicStrokeSvg(sb, pts, theme, strokeW, strokeOpacity, config)
-                }
                 else -> {
-                    // Standard Path rendering with optional 3D drop shadow
-                    val shadowAttr = if (config.hasVolumetricShading && !config.isStencil) """ filter="url(#chiselDropShadow)"""" else ""
-                    sb.append("""  <path d="M ${pts[0].x.format()} ${pts[0].y.format()} """)
-                    for (i in 1 until pts.size) {
-                        sb.append("""L ${pts[i].x.format()} ${pts[i].y.format()} """)
+                    if (config.hasVolumetricShading && !config.isStencil) {
+                        // 3D Volumetric Metallic Embossed Stroke with Specular Highlight line
+                        renderVolumetricMetallicStrokeSvg(sb, pts, theme, strokeW, strokeOpacity, config)
+                    } else {
+                        // Standard Path rendering with optional 3D drop shadow
+                        val shadowAttr = if (config.hasVolumetricShading && !config.isStencil) """ filter="url(#chiselDropShadow)"""" else ""
+                        sb.append("""  <path d="M ${pts[0].x.format()} ${pts[0].y.format()} """)
+                        for (i in 1 until pts.size) {
+                            sb.append("""L ${pts[i].x.format()} ${pts[i].y.format()} """)
+                        }
+                        sb.append("""" fill="none" stroke="$strokeColor" stroke-width="${strokeW.format()}" opacity="$strokeOpacity"$shadowAttr stroke-linecap="round" stroke-linejoin="round"/>""").append("\n")
                     }
-                    sb.append("""" fill="none" stroke="$strokeColor" stroke-width="${strokeW.format()}" opacity="$strokeOpacity"$shadowAttr stroke-linecap="round" stroke-linejoin="round"/>""").append("\n")
 
                     if ((config.style == SketchStyle.BLACKWORK || config.style == SketchStyle.NORDIC_TATTOO) && stroke.isOuterPole) {
                         // Diamond joint caps at outer endpoints
@@ -331,8 +335,12 @@ object SvgStaveRenderer {
             // Protective branch charm notches along stroke line - ONLY on central stems to prevent clutter
             if (config.hasBranchNotches && stroke.isStem && pts.size >= 2) {
                 val notches = OrnamentGeometry.generateStrokeNotches(pts.first(), pts.last())
+                val notchColor = if (config.hasVolumetricShading && !config.isStencil) "url(#gold3dGrad)" else strokeColor
                 for (notch in notches) {
-                    sb.append("""  <line x1="${notch.x1.format()}" y1="${notch.y1.format()}" x2="${notch.x2.format()}" y2="${notch.y2.format()}" stroke="$strokeColor" stroke-width="${(effectiveStrokeWidth * 0.75f).format()}"/>""").append("\n")
+                    if (config.hasVolumetricShading && !config.isStencil) {
+                        sb.append("""  <line x1="${(notch.x1 + 1.0f).format()}" y1="${(notch.y1 + 1.4f).format()}" x2="${(notch.x2 + 1.0f).format()}" y2="${(notch.y2 + 1.4f).format()}" stroke="${theme.shadowHex}" stroke-width="${(effectiveStrokeWidth * 0.95f).format()}" opacity="0.55" stroke-linecap="round"/>""").append("\n")
+                    }
+                    sb.append("""  <line x1="${notch.x1.format()}" y1="${notch.y1.format()}" x2="${notch.x2.format()}" y2="${notch.y2.format()}" stroke="$notchColor" stroke-width="${(effectiveStrokeWidth * 0.75f).format()}" stroke-linecap="round"/>""").append("\n")
                 }
             }
 
@@ -343,7 +351,7 @@ object SvgStaveRenderer {
                 val dirX = pLast.x - pPrev.x
                 val dirY = pLast.y - pPrev.y
                 val finials = OrnamentGeometry.generateFinial(pLast, dirX, dirY, config.finialType)
-                renderGeneratedOrnamentsSvg(sb, finials, strokeColor, effectiveStrokeWidth)
+                renderGeneratedOrnamentsSvg(sb, finials, strokeColor, effectiveStrokeWidth, theme, config)
             } else if (config.style == SketchStyle.ORNAMENTAL && stroke.isOuterPole && pts.size >= 2) {
                 // Subtle ornamental dot terminals
                 renderOrnamentalAccentsSvg(sb, pts.first(), pts.last(), strokeColor)
@@ -353,13 +361,13 @@ object SvgStaveRenderer {
         // 4. Central Sacred Emblem
         if (config.centerEmblem != CenterEmblem.NONE) {
             val centerOrnaments = OrnamentGeometry.generateCenterEmblem(config.centerEmblem, effectiveStrokeWidth)
-            renderGeneratedOrnamentsSvg(sb, centerOrnaments, strokeColor, effectiveStrokeWidth)
+            renderGeneratedOrnamentsSvg(sb, centerOrnaments, strokeColor, effectiveStrokeWidth, theme, config)
         }
 
         // 5. Corner Accents
         if (config.hasSymmetryAccents && !config.isStencil && config.cornerStyle != CornerStyle.NONE) {
             val cornerOrnaments = OrnamentGeometry.generateCorners(config.cornerStyle, effectiveStrokeWidth)
-            renderGeneratedOrnamentsSvg(sb, cornerOrnaments, strokeColor, effectiveStrokeWidth)
+            renderGeneratedOrnamentsSvg(sb, cornerOrnaments, strokeColor, effectiveStrokeWidth, theme, config)
         }
 
         if (filterAttr.isNotEmpty()) {
@@ -370,18 +378,65 @@ object SvgStaveRenderer {
         return sb.toString()
     }
 
-    private fun renderFutharkRuneringSvg(sb: StringBuilder, color: String, baseWidth: Float) {
+    private fun renderFutharkRuneringSvg(
+        sb: StringBuilder,
+        color: String,
+        baseWidth: Float,
+        theme: CanvasTheme,
+        config: SketchConfig
+    ) {
+        val cx = 250f
+        val cy = 250f
         val rInner = 218f
         val rOuter = 244f
         val rText = 231f
         val sw = (baseWidth * 0.45f).coerceAtLeast(0.8f).format()
-        sb.append("""  <circle cx="250" cy="250" r="$rInner" fill="none" stroke="$color" stroke-width="$sw" opacity="0.6"/>""").append("\n")
-        sb.append("""  <circle cx="250" cy="250" r="$rOuter" fill="none" stroke="$color" stroke-width="$sw" opacity="0.6"/>""").append("\n")
+
+        // 1. Astrolabe micro-ticks (72 fine precision radial graduations around outer perimeter)
+        for (i in 0 until 72) {
+            val a = (2 * PI * i / 72).toFloat()
+            val cosA = cos(a)
+            val sinA = sin(a)
+            val isMajor = i % 6 == 0
+            val tR1 = if (isMajor) 241f else 244.5f
+            val tR2 = 248.5f
+            val tSw = if (isMajor) (baseWidth * 0.40f).coerceAtLeast(0.7f).format() else (baseWidth * 0.25f).coerceAtLeast(0.5f).format()
+            val tOp = if (isMajor) "0.75" else "0.45"
+            val strokeVal = if (!config.isStencil) "url(#gold3dGrad)" else color
+            sb.append("""  <line x1="${(cx + tR1 * cosA).format()}" y1="${(cy + tR1 * sinA).format()}" x2="${(cx + tR2 * cosA).format()}" y2="${(cy + tR2 * sinA).format()}" stroke="$strokeVal" stroke-width="$tSw" opacity="$tOp" stroke-linecap="round"/>""").append("\n")
+            if (isMajor) {
+                sb.append("""  <circle cx="${(cx + 250.5f * cosA).format()}" cy="${(cy + 250.5f * sinA).format()}" r="1.1" fill="$strokeVal" opacity="0.80"/>""").append("\n")
+            }
+        }
+
+        // 2. Concentric guide rings with volumetric shadow
+        if (config.hasVolumetricShading && !config.isStencil) {
+            sb.append("""  <circle cx="251.2" cy="251.6" r="$rInner" fill="none" stroke="${theme.shadowHex}" stroke-width="${(baseWidth * 0.6f).format()}" opacity="0.50"/>""").append("\n")
+            sb.append("""  <circle cx="251.2" cy="251.6" r="$rOuter" fill="none" stroke="${theme.shadowHex}" stroke-width="${(baseWidth * 0.6f).format()}" opacity="0.50"/>""").append("\n")
+        }
+
+        val ringStroke = if (!config.isStencil) "url(#gold3dGrad)" else color
+        sb.append("""  <circle cx="250" cy="250" r="$rInner" fill="none" stroke="$ringStroke" stroke-width="$sw" opacity="0.85"/>""").append("\n")
+        sb.append("""  <circle cx="250" cy="250" r="$rOuter" fill="none" stroke="$ringStroke" stroke-width="$sw" opacity="0.85"/>""").append("\n")
+
+        if (config.hasVolumetricShading && !config.isStencil) {
+            sb.append("""  <circle cx="249.6" cy="249.5" r="$rInner" fill="none" stroke="${theme.highlightHex}" stroke-width="${(baseWidth * 0.22f).coerceAtLeast(0.5f).format()}" opacity="0.75"/>""").append("\n")
+            sb.append("""  <circle cx="249.6" cy="249.5" r="$rOuter" fill="none" stroke="${theme.highlightHex}" stroke-width="${(baseWidth * 0.22f).coerceAtLeast(0.5f).format()}" opacity="0.75"/>""").append("\n")
+        }
+
+        // 3. The 24 Elder Futhark runes in circular relief
         val totalRunes = ELDER_FUTHARK_RUNES.size
         for (i in 0 until totalRunes) {
             val deg = i * (360f / totalRunes)
             val rune = ELDER_FUTHARK_RUNES[i]
-            sb.append("""  <text x="250" y="${(250 - rText + 5.5f).format()}" transform="rotate(${deg.format()}, 250, 250)" text-anchor="middle" font-size="14" font-family="serif" font-weight="bold" fill="$color" opacity="0.9">$rune</text>""").append("\n")
+            if (config.hasVolumetricShading && !config.isStencil) {
+                sb.append("""  <text x="250" y="${(250 - rText + 5.5f).format()}" transform="rotate(${deg.format()}, 250, 250) translate(1.0, 1.4)" text-anchor="middle" font-size="14" font-family="serif" font-weight="bold" fill="${theme.shadowHex}" opacity="0.70">$rune</text>""").append("\n")
+            }
+            val runeFill = if (!config.isStencil) "url(#gold3dGrad)" else color
+            sb.append("""  <text x="250" y="${(250 - rText + 5.5f).format()}" transform="rotate(${deg.format()}, 250, 250)" text-anchor="middle" font-size="14" font-family="serif" font-weight="bold" fill="$runeFill" opacity="0.95">$rune</text>""").append("\n")
+            if (config.hasVolumetricShading && !config.isStencil) {
+                sb.append("""  <text x="250" y="${(250 - rText + 5.5f).format()}" transform="rotate(${deg.format()}, 250, 250) translate(-0.35, -0.45)" text-anchor="middle" font-size="14" font-family="serif" font-weight="bold" fill="${theme.highlightHex}" opacity="0.80">$rune</text>""").append("\n")
+            }
         }
     }
 
@@ -389,47 +444,96 @@ object SvgStaveRenderer {
         sb: StringBuilder,
         ornaments: GeneratedOrnaments,
         color: String,
-        baseStrokeWidth: Float
+        baseStrokeWidth: Float,
+        theme: CanvasTheme,
+        config: SketchConfig
     ) {
+        val isVolumetric = config.hasVolumetricShading && !config.isStencil
+        val strokePaint = if (isVolumetric) "url(#gold3dGrad)" else color
+
+        // 1. Lines
         for (line in ornaments.lines) {
             val sw = (baseStrokeWidth * line.widthFactor).coerceAtLeast(0.8f).format()
             val op = if (line.alpha < 0.99f) """ opacity="${line.alpha.format()}"""" else ""
-            sb.append("""  <line x1="${line.x1.format()}" y1="${line.y1.format()}" x2="${line.x2.format()}" y2="${line.y2.format()}" stroke="$color" stroke-width="$sw"$op stroke-linecap="round"/>""").append("\n")
-        }
-
-        for (circle in ornaments.circles) {
-            val op = if (circle.alpha < 0.99f) """ opacity="${circle.alpha.format()}"""" else ""
-            if (circle.isFilled) {
-                sb.append("""  <circle cx="${circle.cx.format()}" cy="${circle.cy.format()}" r="${circle.radius.format()}" fill="$color"$op/>""").append("\n")
-            } else {
-                val sw = (baseStrokeWidth * circle.widthFactor).coerceAtLeast(0.8f).format()
-                sb.append("""  <circle cx="${circle.cx.format()}" cy="${circle.cy.format()}" r="${circle.radius.format()}" fill="none" stroke="$color" stroke-width="$sw"$op/>""").append("\n")
+            if (isVolumetric) {
+                sb.append("""  <line x1="${line.x1.format()}" y1="${line.y1.format()}" x2="${line.x2.format()}" y2="${line.y2.format()}" stroke="${theme.shadowHex}" stroke-width="${(baseStrokeWidth * line.widthFactor * 1.5f).coerceAtLeast(1.2f).format()}" opacity="${(line.alpha * 0.55f).format()}" stroke-linecap="round" transform="translate(1.2, 1.6)"/>""").append("\n")
+            }
+            sb.append("""  <line x1="${line.x1.format()}" y1="${line.y1.format()}" x2="${line.x2.format()}" y2="${line.y2.format()}" stroke="$strokePaint" stroke-width="$sw"$op stroke-linecap="round"/>""").append("\n")
+            if (isVolumetric && (baseStrokeWidth * line.widthFactor) > 1.2f) {
+                sb.append("""  <line x1="${line.x1.format()}" y1="${line.y1.format()}" x2="${line.x2.format()}" y2="${line.y2.format()}" stroke="${theme.highlightHex}" stroke-width="${(baseStrokeWidth * line.widthFactor * 0.35f).coerceAtLeast(0.6f).format()}" opacity="${(line.alpha * 0.85f).format()}" stroke-linecap="round" transform="translate(-0.4, -0.5)"/>""").append("\n")
             }
         }
 
+        // 2. Circles
+        for (circle in ornaments.circles) {
+            val op = if (circle.alpha < 0.99f) """ opacity="${circle.alpha.format()}"""" else ""
+            if (circle.isFilled) {
+                if (isVolumetric) {
+                    sb.append("""  <circle cx="${(circle.cx + 1.2f).format()}" cy="${(circle.cy + 1.6f).format()}" r="${circle.radius.format()}" fill="${theme.shadowHex}" opacity="${(circle.alpha * 0.55f).format()}"/>""").append("\n")
+                }
+                sb.append("""  <circle cx="${circle.cx.format()}" cy="${circle.cy.format()}" r="${circle.radius.format()}" fill="$strokePaint"$op/>""").append("\n")
+                if (isVolumetric && circle.radius > 2.0f) {
+                    sb.append("""  <circle cx="${(circle.cx - 0.4f).format()}" cy="${(circle.cy - 0.5f).format()}" r="${(circle.radius * 0.45f).coerceAtLeast(0.7f).format()}" fill="${theme.highlightHex}" opacity="${(circle.alpha * 0.90f).format()}"/>""").append("\n")
+                }
+            } else {
+                val sw = (baseStrokeWidth * circle.widthFactor).coerceAtLeast(0.8f).format()
+                if (isVolumetric) {
+                    sb.append("""  <circle cx="${(circle.cx + 1.2f).format()}" cy="${(circle.cy + 1.6f).format()}" r="${circle.radius.format()}" fill="none" stroke="${theme.shadowHex}" stroke-width="${(baseStrokeWidth * circle.widthFactor * 1.5f).coerceAtLeast(1.2f).format()}" opacity="${(circle.alpha * 0.55f).format()}"/>""").append("\n")
+                }
+                sb.append("""  <circle cx="${circle.cx.format()}" cy="${circle.cy.format()}" r="${circle.radius.format()}" fill="none" stroke="$strokePaint" stroke-width="$sw"$op/>""").append("\n")
+                if (isVolumetric && (baseStrokeWidth * circle.widthFactor) > 1.2f) {
+                    sb.append("""  <circle cx="${(circle.cx - 0.4f).format()}" cy="${(circle.cy - 0.5f).format()}" r="${circle.radius.format()}" fill="none" stroke="${theme.highlightHex}" stroke-width="${(baseStrokeWidth * circle.widthFactor * 0.35f).coerceAtLeast(0.6f).format()}" opacity="${(circle.alpha * 0.85f).format()}"/>""").append("\n")
+                }
+            }
+        }
+
+        // 3. Polygons
         for (poly in ornaments.polygons) {
             if (poly.points.isEmpty()) continue
             val ptsStr = poly.points.joinToString(" ") { "${it.x.format()},${it.y.format()}" }
             val op = if (poly.alpha < 0.99f) """ opacity="${poly.alpha.format()}"""" else ""
             if (poly.isFilled) {
-                sb.append("""  <polygon points="$ptsStr" fill="$color"$op/>""").append("\n")
+                if (isVolumetric) {
+                    sb.append("""  <polygon points="$ptsStr" fill="${theme.shadowHex}" opacity="${(poly.alpha * 0.55f).format()}" transform="translate(1.2, 1.6)"/>""").append("\n")
+                }
+                sb.append("""  <polygon points="$ptsStr" fill="$strokePaint"$op/>""").append("\n")
+                if (isVolumetric) {
+                    sb.append("""  <polygon points="$ptsStr" fill="none" stroke="${theme.highlightHex}" stroke-width="${(baseStrokeWidth * 0.3f).coerceAtLeast(0.6f).format()}" opacity="${(poly.alpha * 0.85f).format()}" transform="translate(-0.4, -0.5)"/>""").append("\n")
+                }
             } else {
                 val sw = (baseStrokeWidth * poly.widthFactor).coerceAtLeast(0.8f).format()
-                sb.append("""  <polygon points="$ptsStr" fill="none" stroke="$color" stroke-width="$sw"$op stroke-linejoin="round"/>""").append("\n")
+                if (isVolumetric) {
+                    sb.append("""  <polygon points="$ptsStr" fill="none" stroke="${theme.shadowHex}" stroke-width="${(baseStrokeWidth * poly.widthFactor * 1.5f).coerceAtLeast(1.2f).format()}" opacity="${(poly.alpha * 0.55f).format()}" stroke-linejoin="round" transform="translate(1.2, 1.6)"/>""").append("\n")
+                }
+                sb.append("""  <polygon points="$ptsStr" fill="none" stroke="$strokePaint" stroke-width="$sw"$op stroke-linejoin="round"/>""").append("\n")
+                if (isVolumetric && (baseStrokeWidth * poly.widthFactor) > 1.2f) {
+                    sb.append("""  <polygon points="$ptsStr" fill="none" stroke="${theme.highlightHex}" stroke-width="${(baseStrokeWidth * poly.widthFactor * 0.35f).coerceAtLeast(0.6f).format()}" opacity="${(poly.alpha * 0.85f).format()}" stroke-linejoin="round" transform="translate(-0.4, -0.5)"/>""").append("\n")
+                }
             }
         }
 
+        // 4. Paths
         for (path in ornaments.paths) {
             if (path.points.size < 2) continue
             val sw = (baseStrokeWidth * path.widthFactor).coerceAtLeast(0.8f).format()
             val op = if (path.alpha < 0.99f) """ opacity="${path.alpha.format()}"""" else ""
-            sb.append("""  <path d="M ${path.points[0].x.format()} ${path.points[0].y.format()} """)
+            val pathD = StringBuilder()
+            pathD.append("M ${path.points[0].x.format()} ${path.points[0].y.format()} ")
             for (i in 1 until path.points.size) {
-                sb.append("""L ${path.points[i].x.format()} ${path.points[i].y.format()} """)
+                pathD.append("L ${path.points[i].x.format()} ${path.points[i].y.format()} ")
             }
-            if (path.isClosed) sb.append("Z ")
-            val fillVal = if (path.isFilled) color else "none"
-            sb.append("""" fill="$fillVal" stroke="$color" stroke-width="$sw"$op stroke-linecap="round" stroke-linejoin="round"/>""").append("\n")
+            if (path.isClosed) pathD.append("Z ")
+
+            val fillVal = if (path.isFilled) strokePaint else "none"
+            val shadowFill = if (path.isFilled) theme.shadowHex else "none"
+
+            if (isVolumetric) {
+                sb.append("""  <path d="$pathD" fill="$shadowFill" stroke="${theme.shadowHex}" stroke-width="${(baseStrokeWidth * path.widthFactor * 1.5f).coerceAtLeast(1.2f).format()}" opacity="${(path.alpha * 0.55f).format()}" stroke-linecap="round" stroke-linejoin="round" transform="translate(1.2, 1.6)"/>""").append("\n")
+            }
+            sb.append("""  <path d="$pathD" fill="$fillVal" stroke="$strokePaint" stroke-width="$sw"$op stroke-linecap="round" stroke-linejoin="round"/>""").append("\n")
+            if (isVolumetric && (baseStrokeWidth * path.widthFactor) > 1.2f) {
+                sb.append("""  <path d="$pathD" fill="none" stroke="${theme.highlightHex}" stroke-width="${(baseStrokeWidth * path.widthFactor * 0.35f).coerceAtLeast(0.6f).format()}" opacity="${(path.alpha * 0.85f).format()}" stroke-linecap="round" stroke-linejoin="round" transform="translate(-0.4, -0.5)"/>""").append("\n")
+            }
         }
     }
 
@@ -599,12 +703,26 @@ object SvgStaveRenderer {
             else -> config.lineWidth
         } * scale
 
+        val highlightColorInt = if (config.isStencil) Color.WHITE else Color.parseColor(theme.highlightHex)
+        val shadowColorInt = if (config.isStencil) Color.TRANSPARENT else Color.parseColor(theme.shadowHex)
+        val accentColorInt = if (config.isStencil) Color.BLACK else Color.parseColor(theme.accentHex)
+
+        val metallicShader = if (!config.isStencil) {
+            LinearGradient(
+                0f, 0f, targetSize.toFloat(), targetSize.toFloat(),
+                intArrayOf(highlightColorInt, strokeColorInt, accentColorInt, strokeColorInt, highlightColorInt),
+                floatArrayOf(0.0f, 0.25f, 0.55f, 0.80f, 1.0f),
+                Shader.TileMode.CLAMP
+            )
+        } else null
+
         val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = strokeColorInt
             style = Paint.Style.STROKE
             strokeWidth = effectiveStrokeWidth
             strokeCap = Paint.Cap.ROUND
             strokeJoin = Paint.Join.ROUND
+            if (metallicShader != null) shader = metallicShader
         }
 
         val glowPaint = Paint(linePaint).apply {
@@ -615,30 +733,106 @@ object SvgStaveRenderer {
         val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = strokeColorInt
             style = Paint.Style.FILL
+            if (metallicShader != null) shader = metallicShader
         }
 
-        // Helper to draw generated ornaments on Bitmap canvas
+        val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = shadowColorInt
+            style = Paint.Style.STROKE
+            strokeWidth = effectiveStrokeWidth * 1.45f
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+            alpha = 140
+        }
+
+        val shadowFillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = shadowColorInt
+            style = Paint.Style.FILL
+            alpha = 140
+        }
+
+        val specularPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = highlightColorInt
+            style = Paint.Style.STROKE
+            strokeWidth = (effectiveStrokeWidth * 0.35f).coerceAtLeast(1f * scale)
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+            alpha = 210
+        }
+
+        val isVolumetric = config.hasVolumetricShading && !config.isStencil
+        val chiselOff = (effectiveStrokeWidth * 0.35f).coerceAtLeast(1.4f * scale)
+
+        // Helper to draw generated ornaments on Bitmap canvas with 3D volumetric depth
         fun drawOrnamentsOnBitmap(ornaments: GeneratedOrnaments) {
+            // 1. Lines
             for (line in ornaments.lines) {
+                val sw = (effectiveStrokeWidth * line.widthFactor).coerceAtLeast(1f * scale)
+                val alphaVal = (line.alpha * 255).toInt().coerceIn(0, 255)
+                if (isVolumetric) {
+                    val sp = Paint(shadowPaint).apply {
+                        strokeWidth = (sw * 1.5f).coerceAtLeast(1.4f * scale)
+                        alpha = (alphaVal * 0.55f).toInt().coerceIn(0, 255)
+                    }
+                    canvas.drawLine(line.x1 * scale + chiselOff, line.y1 * scale + chiselOff, line.x2 * scale + chiselOff, line.y2 * scale + chiselOff, sp)
+                }
                 val lp = Paint(linePaint).apply {
-                    strokeWidth = (effectiveStrokeWidth * line.widthFactor).coerceAtLeast(1f * scale)
-                    alpha = (line.alpha * 255).toInt().coerceIn(0, 255)
+                    strokeWidth = sw
+                    alpha = alphaVal
                 }
                 canvas.drawLine(line.x1 * scale, line.y1 * scale, line.x2 * scale, line.y2 * scale, lp)
+                if (isVolumetric && sw > 1.2f * scale) {
+                    val hlPaint = Paint(specularPaint).apply {
+                        strokeWidth = (sw * 0.35f).coerceAtLeast(0.8f * scale)
+                        alpha = (alphaVal * 0.85f).toInt().coerceIn(0, 255)
+                    }
+                    canvas.drawLine(line.x1 * scale - chiselOff * 0.45f, line.y1 * scale - chiselOff * 0.45f, line.x2 * scale - chiselOff * 0.45f, line.y2 * scale - chiselOff * 0.45f, hlPaint)
+                }
             }
+
+            // 2. Circles
             for (c in ornaments.circles) {
                 val alphaVal = (c.alpha * 255).toInt().coerceIn(0, 255)
                 if (c.isFilled) {
+                    if (isVolumetric) {
+                        val sfp = Paint(shadowFillPaint).apply { alpha = (alphaVal * 0.55f).toInt().coerceIn(0, 255) }
+                        canvas.drawCircle(c.cx * scale + chiselOff, c.cy * scale + chiselOff, c.radius * scale, sfp)
+                    }
                     val fp = Paint(fillPaint).apply { alpha = alphaVal }
                     canvas.drawCircle(c.cx * scale, c.cy * scale, c.radius * scale, fp)
+                    if (isVolumetric && c.radius * scale > 2.5f) {
+                        val hlPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                            color = highlightColorInt
+                            style = Paint.Style.FILL
+                            alpha = (alphaVal * 0.90f).toInt().coerceIn(0, 255)
+                        }
+                        canvas.drawCircle(c.cx * scale - chiselOff * 0.45f, c.cy * scale - chiselOff * 0.45f, (c.radius * 0.45f * scale).coerceAtLeast(0.8f * scale), hlPaint)
+                    }
                 } else {
+                    val sw = (effectiveStrokeWidth * c.widthFactor).coerceAtLeast(1f * scale)
+                    if (isVolumetric) {
+                        val sp = Paint(shadowPaint).apply {
+                            strokeWidth = (sw * 1.5f).coerceAtLeast(1.4f * scale)
+                            alpha = (alphaVal * 0.55f).toInt().coerceIn(0, 255)
+                        }
+                        canvas.drawCircle(c.cx * scale + chiselOff, c.cy * scale + chiselOff, c.radius * scale, sp)
+                    }
                     val lp = Paint(linePaint).apply {
-                        strokeWidth = (effectiveStrokeWidth * c.widthFactor).coerceAtLeast(1f * scale)
+                        strokeWidth = sw
                         alpha = alphaVal
                     }
                     canvas.drawCircle(c.cx * scale, c.cy * scale, c.radius * scale, lp)
+                    if (isVolumetric && sw > 1.2f * scale) {
+                        val hlPaint = Paint(specularPaint).apply {
+                            strokeWidth = (sw * 0.35f).coerceAtLeast(0.8f * scale)
+                            alpha = (alphaVal * 0.85f).toInt().coerceIn(0, 255)
+                        }
+                        canvas.drawCircle(c.cx * scale - chiselOff * 0.45f, c.cy * scale - chiselOff * 0.45f, c.radius * scale, hlPaint)
+                    }
                 }
             }
+
+            // 3. Polygons
             for (poly in ornaments.polygons) {
                 if (poly.points.size < 3) continue
                 val path = Path().apply {
@@ -650,16 +844,44 @@ object SvgStaveRenderer {
                 }
                 val alphaVal = (poly.alpha * 255).toInt().coerceIn(0, 255)
                 if (poly.isFilled) {
+                    if (isVolumetric) {
+                        val shadowPolyPath = Path().apply {
+                            moveTo(poly.points[0].x * scale + chiselOff, poly.points[0].y * scale + chiselOff)
+                            for (i in 1 until poly.points.size) {
+                                lineTo(poly.points[i].x * scale + chiselOff, poly.points[i].y * scale + chiselOff)
+                            }
+                            close()
+                        }
+                        val sfp = Paint(shadowFillPaint).apply { alpha = (alphaVal * 0.55f).toInt().coerceIn(0, 255) }
+                        canvas.drawPath(shadowPolyPath, sfp)
+                    }
                     val fp = Paint(fillPaint).apply { alpha = alphaVal }
                     canvas.drawPath(path, fp)
                 } else {
+                    val sw = (effectiveStrokeWidth * poly.widthFactor).coerceAtLeast(1f * scale)
+                    if (isVolumetric) {
+                        val shadowPolyPath = Path().apply {
+                            moveTo(poly.points[0].x * scale + chiselOff, poly.points[0].y * scale + chiselOff)
+                            for (i in 1 until poly.points.size) {
+                                lineTo(poly.points[i].x * scale + chiselOff, poly.points[i].y * scale + chiselOff)
+                            }
+                            close()
+                        }
+                        val sp = Paint(shadowPaint).apply {
+                            strokeWidth = (sw * 1.5f).coerceAtLeast(1.4f * scale)
+                            alpha = (alphaVal * 0.55f).toInt().coerceIn(0, 255)
+                        }
+                        canvas.drawPath(shadowPolyPath, sp)
+                    }
                     val lp = Paint(linePaint).apply {
-                        strokeWidth = (effectiveStrokeWidth * poly.widthFactor).coerceAtLeast(1f * scale)
+                        strokeWidth = sw
                         alpha = alphaVal
                     }
                     canvas.drawPath(path, lp)
                 }
             }
+
+            // 4. Paths
             for (pathGeom in ornaments.paths) {
                 if (pathGeom.points.size < 2) continue
                 val path = Path().apply {
@@ -670,12 +892,33 @@ object SvgStaveRenderer {
                     if (pathGeom.isClosed) close()
                 }
                 val alphaVal = (pathGeom.alpha * 255).toInt().coerceIn(0, 255)
+                val sw = (effectiveStrokeWidth * pathGeom.widthFactor).coerceAtLeast(1f * scale)
+
+                if (isVolumetric) {
+                    val shadowGeomPath = Path().apply {
+                        moveTo(pathGeom.points[0].x * scale + chiselOff, pathGeom.points[0].y * scale + chiselOff)
+                        for (i in 1 until pathGeom.points.size) {
+                            lineTo(pathGeom.points[i].x * scale + chiselOff, pathGeom.points[i].y * scale + chiselOff)
+                        }
+                        if (pathGeom.isClosed) close()
+                    }
+                    if (pathGeom.isFilled) {
+                        val sfp = Paint(shadowFillPaint).apply { alpha = (alphaVal * 0.55f).toInt().coerceIn(0, 255) }
+                        canvas.drawPath(shadowGeomPath, sfp)
+                    }
+                    val sp = Paint(shadowPaint).apply {
+                        strokeWidth = (sw * 1.5f).coerceAtLeast(1.4f * scale)
+                        alpha = (alphaVal * 0.55f).toInt().coerceIn(0, 255)
+                    }
+                    canvas.drawPath(shadowGeomPath, sp)
+                }
+
                 if (pathGeom.isFilled) {
                     val fp = Paint(fillPaint).apply { alpha = alphaVal }
                     canvas.drawPath(path, fp)
                 } else {
                     val lp = Paint(linePaint).apply {
-                        strokeWidth = (effectiveStrokeWidth * pathGeom.widthFactor).coerceAtLeast(1f * scale)
+                        strokeWidth = sw
                         alpha = alphaVal
                     }
                     canvas.drawPath(path, lp)
@@ -730,32 +973,97 @@ object SvgStaveRenderer {
             }
         }
 
-        // 1.1 Outer Elder Futhark Rune Ring
+        // 1.1 Outer Elder Futhark Rune Ring & Astrolabe micro-ticks
         if (config.hasRunering && !config.isStencil) {
+            val cx = 250f * scale
+            val cy = 250f * scale
             val rInner = 218f * scale
             val rOuter = 244f * scale
+
+            // Astrolabe micro-ticks (72 precision marks)
+            for (i in 0 until 72) {
+                val a = (2 * PI * i / 72).toFloat()
+                val cosA = cos(a)
+                val sinA = sin(a)
+                val isMajor = i % 6 == 0
+                val tR1 = (if (isMajor) 241f else 244.5f) * scale
+                val tR2 = 248.5f * scale
+                val tickPaint = Paint(linePaint).apply {
+                    strokeWidth = (if (isMajor) effectiveStrokeWidth * 0.40f else effectiveStrokeWidth * 0.25f).coerceAtLeast(0.7f * scale)
+                    alpha = if (isMajor) 200 else 120
+                }
+                canvas.drawLine(cx + tR1 * cosA, cy + tR1 * sinA, cx + tR2 * cosA, cy + tR2 * sinA, tickPaint)
+                if (isMajor) {
+                    val dotPaint = Paint(fillPaint).apply { alpha = 210 }
+                    canvas.drawCircle(cx + 250.5f * scale * cosA, cy + 250.5f * scale * sinA, 1.2f * scale, dotPaint)
+                }
+            }
+
+            if (isVolumetric) {
+                val shadowRingPaint = Paint(shadowPaint).apply {
+                    strokeWidth = (effectiveStrokeWidth * 0.6f).coerceAtLeast(1.2f * scale)
+                    alpha = 130
+                }
+                canvas.drawCircle(cx + chiselOff, cy + chiselOff, rInner, shadowRingPaint)
+                canvas.drawCircle(cx + chiselOff, cy + chiselOff, rOuter, shadowRingPaint)
+            }
+
             val ringPaint = Paint(linePaint).apply {
                 strokeWidth = (effectiveStrokeWidth * 0.45f).coerceAtLeast(1f * scale)
-                alpha = 150
+                alpha = 220
             }
-            canvas.drawCircle(250f * scale, 250f * scale, rInner, ringPaint)
-            canvas.drawCircle(250f * scale, 250f * scale, rOuter, ringPaint)
+            canvas.drawCircle(cx, cy, rInner, ringPaint)
+            canvas.drawCircle(cx, cy, rOuter, ringPaint)
 
+            if (isVolumetric) {
+                val hlRingPaint = Paint(specularPaint).apply {
+                    strokeWidth = (effectiveStrokeWidth * 0.22f).coerceAtLeast(0.6f * scale)
+                    alpha = 190
+                }
+                canvas.drawCircle(cx - chiselOff * 0.45f, cy - chiselOff * 0.45f, rInner, hlRingPaint)
+                canvas.drawCircle(cx - chiselOff * 0.45f, cy - chiselOff * 0.45f, rOuter, hlRingPaint)
+            }
+
+            // Rune text with 3D chiseled depth
+            val shadowTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = shadowColorInt
+                textSize = 14f * scale
+                textAlign = Paint.Align.CENTER
+                typeface = Typeface.SERIF
+                isFakeBoldText = true
+                alpha = 170
+            }
             val runeTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = strokeColorInt
                 textSize = 14f * scale
                 textAlign = Paint.Align.CENTER
                 typeface = Typeface.SERIF
                 isFakeBoldText = true
-                alpha = 230
+                alpha = 245
+                if (metallicShader != null) shader = metallicShader
             }
+            val hlTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = highlightColorInt
+                textSize = 14f * scale
+                textAlign = Paint.Align.CENTER
+                typeface = Typeface.SERIF
+                isFakeBoldText = true
+                alpha = 200
+            }
+
             val totalRunes = ELDER_FUTHARK_RUNES.size
             for (i in 0 until totalRunes) {
                 val deg = i * (360f / totalRunes)
                 val rune = ELDER_FUTHARK_RUNES[i]
                 canvas.save()
-                canvas.rotate(deg, 250f * scale, 250f * scale)
-                canvas.drawText(rune, 250f * scale, (250f - 231f + 5.5f) * scale, runeTextPaint)
+                canvas.rotate(deg, cx, cy)
+                if (isVolumetric) {
+                    canvas.drawText(rune, cx + chiselOff, (250f - 231f + 5.5f) * scale + chiselOff, shadowTextPaint)
+                }
+                canvas.drawText(rune, cx, (250f - 231f + 5.5f) * scale, runeTextPaint)
+                if (isVolumetric) {
+                    canvas.drawText(rune, cx - chiselOff * 0.45f, (250f - 231f + 5.5f) * scale - chiselOff * 0.45f, hlTextPaint)
+                }
                 canvas.restore()
             }
         }
@@ -817,6 +1125,21 @@ object SvgStaveRenderer {
                         lineTo(pts[i].x * scale, pts[i].y * scale)
                     }
                 }
+
+                if (isVolumetric) {
+                    val shadowPath = Path().apply {
+                        moveTo(pts[0].x * scale + chiselOff, pts[0].y * scale + chiselOff)
+                        for (i in 1 until pts.size) {
+                            lineTo(pts[i].x * scale + chiselOff, pts[i].y * scale + chiselOff)
+                        }
+                    }
+                    val sp = Paint(shadowPaint).apply {
+                        strokeWidth = effectiveStrokeWidth * 1.5f
+                        alpha = 145
+                    }
+                    canvas.drawPath(shadowPath, sp)
+                }
+
                 val curPaint = if (stroke.isHairlineGuide) {
                     Paint(linePaint).apply {
                         strokeWidth = (effectiveStrokeWidth * 0.45f).coerceAtLeast(1f * scale)
@@ -827,19 +1150,18 @@ object SvgStaveRenderer {
                 }
                 canvas.drawPath(path, curPaint)
 
-                if (config.style == SketchStyle.WOODCARVE) {
-                    val shadowPath = Path().apply {
-                        val off = effectiveStrokeWidth * 0.45f
-                        moveTo(pts[0].x * scale + off, pts[0].y * scale + off)
+                if (isVolumetric && effectiveStrokeWidth > 1.5f * scale) {
+                    val hlPath = Path().apply {
+                        moveTo(pts[0].x * scale - chiselOff * 0.45f, pts[0].y * scale - chiselOff * 0.45f)
                         for (i in 1 until pts.size) {
-                            lineTo(pts[i].x * scale + off, pts[i].y * scale + off)
+                            lineTo(pts[i].x * scale - chiselOff * 0.45f, pts[i].y * scale - chiselOff * 0.45f)
                         }
                     }
-                    val sp = Paint(linePaint).apply {
-                        strokeWidth = effectiveStrokeWidth * 0.4f
-                        alpha = 150
+                    val hlp = Paint(specularPaint).apply {
+                        strokeWidth = (effectiveStrokeWidth * 0.35f).coerceAtLeast(0.8f * scale)
+                        alpha = 210
                     }
-                    canvas.drawPath(shadowPath, sp)
+                    canvas.drawPath(hlPath, hlp)
                 }
 
                 if ((config.style == SketchStyle.BLACKWORK || config.style == SketchStyle.NORDIC_TATTOO) && stroke.isOuterPole) {
