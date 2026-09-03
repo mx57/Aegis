@@ -142,4 +142,34 @@ class RunicStaveUnitTest {
         assertTrue("SVG should contain degree marks", svg.contains("<line"))
         assertTrue("SVG should end with valid closing tag", svg.trim().endsWith("</svg>"))
     }
+
+    @Test
+    fun svgGeneration_volumetricShadingAnd3dGradients() {
+        val stave = StaveComposer.compose(testRunes, StaveLayoutType.BINDRUNE, seed = 2026L)
+        val configGold = SketchConfig(
+            style = SketchStyle.SACRED_GOLD,
+            theme = com.example.engine.CanvasTheme.GOLDEN_EMBER,
+            hasVolumetricShading = true
+        )
+        val svgGold = SvgStaveRenderer.renderSvg(stave, configGold)
+        assertTrue("Gold SVG should contain 3D linearGradient def", svgGold.contains("""id="gold3dGrad""""))
+        assertTrue("Gold SVG should contain drop shadow filter", svgGold.contains("""id="chiselDropShadow""""))
+        assertTrue("Gold SVG should render specular highlight core lines", svgGold.contains("""transform="translate(-0.4, -0.5)"""") || svgGold.contains("""stroke="#FFF3BC""""))
+
+        val configBronze = SketchConfig(
+            style = SketchStyle.EMERALD_BRONZE,
+            theme = com.example.engine.CanvasTheme.EMERALD_PATINA,
+            hasVolumetricShading = true
+        )
+        val svgBronze = SvgStaveRenderer.renderSvg(stave, configBronze)
+        assertTrue("Bronze SVG should be valid and non-empty", svgBronze.length > 200)
+
+        val configFrost = SketchConfig(
+            style = SketchStyle.FROST_CRYSTAL,
+            theme = com.example.engine.CanvasTheme.FROST_ICE,
+            hasVolumetricShading = true
+        )
+        val svgFrost = SvgStaveRenderer.renderSvg(stave, configFrost)
+        assertTrue("Frost SVG should be valid and non-empty", svgFrost.length > 200)
+    }
 }
