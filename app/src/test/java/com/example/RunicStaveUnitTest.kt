@@ -188,4 +188,20 @@ class RunicStaveUnitTest {
         assertTrue("SVG should contain circles for 9 worlds orbs", svg.contains("<circle"))
         assertTrue("SVG should end with valid closing tag", svg.trim().endsWith("</svg>"))
     }
+
+    @Test
+    fun svgGeneration_runicSerpent_rendersDetailedJellingSerpent() {
+        val stave = StaveComposer.compose(testRunes, StaveLayoutType.BINDRUNE, seed = 5555L)
+        val configSerpent = SketchConfig(
+            style = SketchStyle.WOODCARVE,
+            theme = com.example.engine.CanvasTheme.RUNESTONE_GRAY,
+            frameStyle = com.example.engine.FrameStyle.RUNIC_SERPENT,
+            centerEmblem = com.example.engine.CenterEmblem.VALKNUT
+        )
+        val svg = SvgStaveRenderer.renderSvg(stave, configSerpent)
+        assertTrue("SVG should contain drop shadow circles for serpent body", svg.contains("""opacity="0.2""""))
+        assertTrue("SVG should contain polygon elements for fangs and tail barb", svg.contains("<polygon"))
+        assertTrue("SVG should contain path elements for snout, jaw, tongue and tail knot", svg.contains("<path"))
+        assertTrue("SVG should end with valid closing tag", svg.trim().endsWith("</svg>"))
+    }
 }

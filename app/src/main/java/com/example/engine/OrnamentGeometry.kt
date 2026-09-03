@@ -156,53 +156,159 @@ object OrnamentGeometry {
             }
 
             FrameStyle.RUNIC_SERPENT -> {
-                // Jelling Serpent circular frame with scale notches, head & knot tail
-                val r = 224f
-                val rWidth = 14f
-                circles.add(CircleGeom(cx, cy, r - rWidth / 2f, widthFactor = 0.8f))
-                circles.add(CircleGeom(cx, cy, r + rWidth / 2f, widthFactor = 0.8f))
+                // Jelling / Urnes Serpent (Jormungandr, Midgard Serpent) circular frame
+                // Features 3D dual-rail ribbon body, drop shadow, herringbone scale armor,
+                // authentic Urnes dragon head with fangs & tongue, Futhark rune ticks, and triquetra tail knot.
+                val rMid = 224f
+                val rWidth = 18f
+                val rIn = rMid - rWidth / 2f  // 215f
+                val rOut = rMid + rWidth / 2f // 233f
 
-                // 48 scale notches along serpent body
-                val scales = 44
+                // 1. Ambient Drop Shadow Ring under serpent body ribbon
+                circles.add(CircleGeom(cx + 2.5f, cy + 3.0f, rOut, widthFactor = 1.6f, alpha = 0.22f))
+                circles.add(CircleGeom(cx + 2.5f, cy + 3.0f, rIn, widthFactor = 1.2f, alpha = 0.22f))
+
+                // 2. Main Outer and Inner Forged Body Rails
+                circles.add(CircleGeom(cx, cy, rOut, widthFactor = 1.1f))
+                circles.add(CircleGeom(cx, cy, rIn, widthFactor = 1.1f))
+                // Central Spine Guide Line
+                circles.add(CircleGeom(cx, cy, rMid, widthFactor = 0.45f, alpha = 0.50f))
+
+                // Head position at angle ~ 0.75 rad (~43 deg)
+                // Tail knot position at angle ~ 5.4 rad (~310 deg)
+                val headAngle = 0.75f
+                val tailAngle = 5.40f
+
+                // 3. Scale Notches, Highlight Bevels & Dark Shading Along Body
+                val scales = 48
                 for (i in 0 until scales) {
                     val angle = (2 * PI * i / scales).toFloat()
-                    if (angle in 0.5f..1.1f) continue // space for serpent head
+                    // Leave opening between tail and head (from 5.25 to 0.88 rad)
+                    if (angle > 5.25f || angle < 0.88f) continue
 
                     val cosA = cos(angle)
                     val sinA = sin(angle)
-                    // Angled herringbone scale cuts
-                    val p1 = StrokePoint(cx + (r - rWidth / 2f) * cosA - sinA * 3f, cy + (r - rWidth / 2f) * sinA + cosA * 3f)
-                    val p2 = StrokePoint(cx + (r + rWidth / 2f) * cosA + sinA * 3f, cy + (r + rWidth / 2f) * sinA - cosA * 3f)
-                    lines.add(LineSegmentGeom(p1.x, p1.y, p2.x, p2.y, widthFactor = 0.7f))
+                    val tanX = -sinA
+                    val tanY = cosA
+
+                    // V-notch scale armor cuts
+                    val pIn = StrokePoint(cx + rIn * cosA - tanX * 3f, cy + rIn * sinA - tanY * 3f)
+                    val pMid = StrokePoint(cx + rMid * cosA + tanX * 4f, cy + rMid * sinA + tanY * 4f)
+                    val pOut = StrokePoint(cx + rOut * cosA - tanX * 3f, cy + rOut * sinA - tanY * 3f)
+
+                    lines.add(LineSegmentGeom(pIn.x, pIn.y, pMid.x, pMid.y, widthFactor = 0.70f))
+                    lines.add(LineSegmentGeom(pMid.x, pMid.y, pOut.x, pOut.y, widthFactor = 0.70f))
+
+                    // Directional shadow cross-hatching between scales for 3D depth
+                    if (i % 2 == 0) {
+                        val hIn = StrokePoint(cx + (rIn + 3f) * cosA, cy + (rIn + 3f) * sinA)
+                        val hMid = StrokePoint(cx + (rMid - 2f) * cosA, cy + (rMid - 2f) * sinA)
+                        lines.add(LineSegmentGeom(hIn.x, hIn.y, hMid.x, hMid.y, widthFactor = 0.45f, alpha = 0.65f))
+                    }
+
+                    // Inscribed Sacred Futhark Rune Ticks along Serpent Spine
+                    if (i % 6 == 0) {
+                        circles.add(CircleGeom(cx + rMid * cosA, cy + rMid * sinA, 2.0f, isFilled = true))
+                    }
                 }
 
-                // Serpent Head at angle ~ 0.8 radians (~45 deg)
-                val headAngle = 0.8f
-                val hx = cx + r * cos(headAngle)
-                val hy = cy + r * sin(headAngle)
-                val tangX = -sin(headAngle)
-                val tangY = cos(headAngle)
-                val normX = cos(headAngle)
-                val normY = sin(headAngle)
+                // 4. Detailed Urnes/Jelling Dragon Head
+                val hx = cx + rMid * cos(headAngle)
+                val hy = cy + rMid * sin(headAngle)
+                val hTanX = -sin(headAngle)
+                val hTanY = cos(headAngle)
+                val hNormX = cos(headAngle)
+                val hNormY = sin(headAngle)
 
-                // Snout & jaws
-                val jawUpper = StrokePoint(hx + tangX * 22f + normX * 8f, hy + tangY * 22f + normY * 8f)
-                val jawLower = StrokePoint(hx + tangX * 18f - normX * 6f, hy + tangY * 18f - normY * 6f)
-                val mouthThroat = StrokePoint(hx + tangX * 6f, hy + tangY * 6f)
-                val hornTip = StrokePoint(hx - tangX * 10f + normX * 14f, hy - tangY * 10f + normY * 14f)
+                // Snout & Upper Jaw with nostril notch
+                val upperSnout = listOf(
+                    StrokePoint(hx + hNormX * 8f, hy + hNormY * 8f),
+                    StrokePoint(hx + hTanX * 14f + hNormX * 10f, hy + hTanY * 14f + hNormY * 10f),
+                    StrokePoint(hx + hTanX * 28f + hNormX * 6f, hy + hTanY * 28f + hNormY * 6f), // Snout tip
+                    StrokePoint(hx + hTanX * 24f + hNormX * 1f, hy + hTanY * 24f + hNormY * 1f)   // Mouth corner
+                )
+                paths.add(PathGeom(upperSnout, isClosed = false, widthFactor = 1.35f))
 
-                lines.add(LineSegmentGeom(mouthThroat.x, mouthThroat.y, jawUpper.x, jawUpper.y, widthFactor = 1.4f))
-                lines.add(LineSegmentGeom(mouthThroat.x, mouthThroat.y, jawLower.x, jawLower.y, widthFactor = 1.4f))
-                lines.add(LineSegmentGeom(hx, hy, hornTip.x, hornTip.y, widthFactor = 1.2f))
-                // Serpent Eye
-                circles.add(CircleGeom(hx + tangX * 10f + normX * 4f, hy + tangY * 10f + normY * 4f, 3.2f, isFilled = true))
+                // Upper Fang
+                val fangUpper = listOf(
+                    StrokePoint(hx + hTanX * 26f + hNormX * 5f, hy + hTanY * 26f + hNormY * 5f),
+                    StrokePoint(hx + hTanX * 28f - hNormX * 3f, hy + hTanY * 28f - hNormY * 3f),
+                    StrokePoint(hx + hTanX * 22f + hNormX * 2f, hy + hTanY * 22f + hNormY * 2f)
+                )
+                polygons.add(PolygonGeom(fangUpper, isFilled = true))
 
-                // Serpent Tail Knot at angle ~ 5.3 radians (~300 deg)
-                val tailAngle = 5.3f
-                val tx = cx + r * cos(tailAngle)
-                val ty = cy + r * sin(tailAngle)
-                circles.add(CircleGeom(tx, ty, 8f, isFilled = false, widthFactor = 1.2f))
-                circles.add(CircleGeom(tx - 6f, ty + 6f, 6f, isFilled = false, widthFactor = 1.0f))
+                // Lower Jaw & Commissure
+                val lowerJaw = listOf(
+                    StrokePoint(hx + hTanX * 24f + hNormX * 1f, hy + hTanY * 24f + hNormY * 1f),
+                    StrokePoint(hx + hTanX * 22f - hNormX * 8f, hy + hTanY * 22f - hNormY * 8f),
+                    StrokePoint(hx + hTanX * 8f - hNormX * 9f, hy + hTanY * 8f - hNormY * 9f),
+                    StrokePoint(hx - hNormX * 7f, hy - hNormY * 7f)
+                )
+                paths.add(PathGeom(lowerJaw, isClosed = false, widthFactor = 1.30f))
+
+                // Lower Fang
+                val fangLower = listOf(
+                    StrokePoint(hx + hTanX * 18f - hNormX * 6f, hy + hTanY * 18f - hNormY * 6f),
+                    StrokePoint(hx + hTanX * 20f + hNormX * 1f, hy + hTanY * 20f + hNormY * 1f),
+                    StrokePoint(hx + hTanX * 15f - hNormX * 4f, hy + hTanY * 15f - hNormY * 4f)
+                )
+                polygons.add(PolygonGeom(fangLower, isFilled = true))
+
+                // Bifurcated Serpentine Tongue
+                val tongueMain = listOf(
+                    StrokePoint(hx + hTanX * 22f, hy + hTanY * 22f),
+                    StrokePoint(hx + hTanX * 34f, hy + hTanY * 34f),
+                    StrokePoint(hx + hTanX * 42f + hNormX * 8f, hy + hTanY * 42f + hNormY * 8f)
+                )
+                val tongueFork = listOf(
+                    StrokePoint(hx + hTanX * 34f, hy + hTanY * 34f),
+                    StrokePoint(hx + hTanX * 40f - hNormX * 6f, hy + hTanY * 40f - hNormY * 6f)
+                )
+                paths.add(PathGeom(tongueMain, isClosed = false, widthFactor = 1.10f))
+                paths.add(PathGeom(tongueFork, isClosed = false, widthFactor = 0.95f))
+
+                // Crested Horn / Ear Tuft
+                val hornTuft = listOf(
+                    StrokePoint(hx - hTanX * 4f + hNormX * 8f, hy - hTanY * 4f + hNormY * 8f),
+                    StrokePoint(hx - hTanX * 16f + hNormX * 18f, hy - hTanY * 16f + hNormY * 18f),
+                    StrokePoint(hx - hTanX * 8f + hNormX * 12f, hy - hTanY * 8f + hNormY * 12f)
+                )
+                paths.add(PathGeom(hornTuft, isClosed = false, widthFactor = 1.25f))
+
+                // Almond Serpent Eye with Pupil & Specular Glint
+                val eyeX = hx + hTanX * 12f + hNormX * 4f
+                val eyeY = hy + hTanY * 12f + hNormY * 4f
+                circles.add(CircleGeom(eyeX, eyeY, 3.6f, isFilled = false, widthFactor = 1.10f))
+                circles.add(CircleGeom(eyeX, eyeY, 2.2f, isFilled = true))
+                circles.add(CircleGeom(eyeX - 0.8f, eyeY - 0.8f, 0.9f, isFilled = true)) // Specular catchlight
+
+                // 5. Interlaced Urnes Knot Tail Loop
+                val tx = cx + rMid * cos(tailAngle)
+                val ty = cy + rMid * sin(tailAngle)
+                val tTanX = -sin(tailAngle)
+                val tTanY = cos(tailAngle)
+                val tNormX = cos(tailAngle)
+                val tNormY = sin(tailAngle)
+
+                // Triquetra knot loop
+                circles.add(CircleGeom(tx, ty, 10f, isFilled = false, widthFactor = 1.30f))
+                circles.add(CircleGeom(tx, ty, 4f, isFilled = true))
+
+                // Interlaced Tail Loop Extension & Spear Tip Barb
+                val tailLoop = listOf(
+                    StrokePoint(tx, ty),
+                    StrokePoint(tx - tTanX * 16f + tNormX * 12f, ty - tTanY * 16f + tNormY * 12f),
+                    StrokePoint(tx - tTanX * 28f, ty - tTanY * 28f),
+                    StrokePoint(tx - tTanX * 20f - tNormX * 10f, ty - tTanY * 20f - tNormY * 10f),
+                    StrokePoint(tx, ty)
+                )
+                paths.add(PathGeom(tailLoop, isClosed = true, widthFactor = 1.10f))
+
+                // Spear Tip Barb at tail end
+                val barbTip = StrokePoint(tx - tTanX * 38f, ty - tTanY * 38f)
+                val barbL = StrokePoint(tx - tTanX * 28f + tNormX * 6f, ty - tTanY * 28f + tNormY * 6f)
+                val barbR = StrokePoint(tx - tTanX * 28f - tNormX * 6f, ty - tTanY * 28f - tNormY * 6f)
+                polygons.add(PolygonGeom(listOf(barbTip, barbL, barbR), isFilled = true))
             }
 
             FrameStyle.COMPASS_RAYS -> {
