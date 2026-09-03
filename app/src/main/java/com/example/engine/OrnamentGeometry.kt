@@ -253,17 +253,21 @@ object OrnamentGeometry {
             }
 
             FrameStyle.CELESTIAL_ASTROLABE -> {
-                // Sacred Astrolabe: Concentric harmonic orbits + 72 degree tick marks + star nodes
+                // Sacred Astrolabe: Filigree golden orbits, 72 degree marks & micro-planetary nodes
                 val r1 = 238f
+                val r1Sub = 234f
                 val r2 = 224f
                 val r3 = 210f
                 val r4 = 196f
-                circles.add(CircleGeom(cx, cy, r1, widthFactor = 1.0f))
-                circles.add(CircleGeom(cx, cy, r2, widthFactor = 0.6f, alpha = 0.7f))
-                circles.add(CircleGeom(cx, cy, r3, widthFactor = 0.5f, alpha = 0.5f))
-                circles.add(CircleGeom(cx, cy, r4, widthFactor = 0.8f))
+                val r4Sub = 192f
+                circles.add(CircleGeom(cx, cy, r1, widthFactor = 0.95f))
+                circles.add(CircleGeom(cx, cy, r1Sub, widthFactor = 0.45f, alpha = 0.65f))
+                circles.add(CircleGeom(cx, cy, r2, widthFactor = 0.55f, alpha = 0.75f))
+                circles.add(CircleGeom(cx, cy, r3, widthFactor = 0.45f, alpha = 0.55f))
+                circles.add(CircleGeom(cx, cy, r4, widthFactor = 0.85f))
+                circles.add(CircleGeom(cx, cy, r4Sub, widthFactor = 0.45f, alpha = 0.65f))
 
-                // 72 astrolabe degree marks
+                // 72 astrolabe degree marks with fine golden terminals
                 val ticks = 72
                 for (i in 0 until ticks) {
                     val angle = (2 * PI * i / ticks).toFloat()
@@ -272,21 +276,24 @@ object OrnamentGeometry {
                     val isCardinal = i % 18 == 0
                     val isMajor = i % 6 == 0
                     val tLen = if (isCardinal) 14f else if (isMajor) 9f else 5f
-                    val wf = if (isCardinal) 1.5f else if (isMajor) 0.9f else 0.5f
+                    val wf = if (isCardinal) 1.35f else if (isMajor) 0.85f else 0.45f
                     lines.add(LineSegmentGeom(cx + (r2 - tLen) * cosA, cy + (r2 - tLen) * sinA, cx + r2 * cosA, cy + r2 * sinA, widthFactor = wf))
 
-                    // Cardinal 8-pointed star markers
+                    // Cardinal & intercardinal filigree star markers
                     if (isCardinal) {
                         val starR = r1 + 8f
                         circles.add(CircleGeom(cx + starR * cosA, cy + starR * sinA, 2.5f, isFilled = true))
-                        circles.add(CircleGeom(cx + starR * cosA, cy + starR * sinA, 5.0f, isFilled = false, widthFactor = 0.7f))
+                        circles.add(CircleGeom(cx + starR * cosA, cy + starR * sinA, 5.0f, isFilled = false, widthFactor = 0.65f))
+                        circles.add(CircleGeom(cx + starR * cosA, cy + starR * sinA, 8.0f, isFilled = false, widthFactor = 0.35f, alpha = 0.6f))
                     }
                 }
 
-                // 8 sacred planetary orbit dots
+                // 8 sacred planetary orbit nodes with micro rings
                 for (i in 0 until 8) {
                     val a = (2 * PI * (i + 0.5f) / 8).toFloat()
-                    circles.add(CircleGeom(cx + ((r3 + r4) / 2f) * cos(a), cy + ((r3 + r4) / 2f) * sin(a), 2.2f, isFilled = true))
+                    val orbitR = (r3 + r4) / 2f
+                    circles.add(CircleGeom(cx + orbitR * cos(a), cy + orbitR * sin(a), 2.2f, isFilled = true))
+                    circles.add(CircleGeom(cx + orbitR * cos(a), cy + orbitR * sin(a), 4.5f, isFilled = false, widthFactor = 0.45f, alpha = 0.7f))
                 }
             }
 
