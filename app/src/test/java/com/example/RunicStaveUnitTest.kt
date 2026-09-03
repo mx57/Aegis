@@ -172,4 +172,20 @@ class RunicStaveUnitTest {
         val svgFrost = SvgStaveRenderer.renderSvg(stave, configFrost)
         assertTrue("Frost SVG should be valid and non-empty", svgFrost.length > 200)
     }
+
+    @Test
+    fun svgGeneration_yggdrasilTreeAndBranches_rendersCorrectly() {
+        val stave = StaveComposer.compose(testRunes, StaveLayoutType.BINDRUNE, seed = 7777L)
+        val configYggdrasil = SketchConfig(
+            style = SketchStyle.EMERALD_BRONZE,
+            theme = com.example.engine.CanvasTheme.EMERALD_PATINA,
+            frameStyle = com.example.engine.FrameStyle.YGGDRASIL_BRANCHES,
+            centerEmblem = com.example.engine.CenterEmblem.YGGDRASIL_TREE,
+            hasVolumetricShading = true
+        )
+        val svg = SvgStaveRenderer.renderSvg(stave, configYggdrasil)
+        assertTrue("SVG should contain paths for Yggdrasil tree trunk and roots", svg.contains("<path"))
+        assertTrue("SVG should contain circles for 9 worlds orbs", svg.contains("<circle"))
+        assertTrue("SVG should end with valid closing tag", svg.trim().endsWith("</svg>"))
+    }
 }
