@@ -120,7 +120,10 @@ data class SketchConfig(
     val hasGlowEffect: Boolean = false,
     val wobbleAmount: Float = 0.20f, // 0.0f..1.0f
     val seed: Long = 1337L,
-    val isStencil: Boolean = false
+    val isStencil: Boolean = false,
+    val hasVolumetricShading: Boolean = true,
+    val hasTextureGrain: Boolean = true,
+    val runeChiselDepth: Float = 1.0f
 ) {
     val effectiveTheme: CanvasTheme
         get() = if (isStencil) CanvasTheme.STENCIL else theme
@@ -377,24 +380,26 @@ object SvgStaveRenderer {
         for (poly in ornaments.polygons) {
             if (poly.points.isEmpty()) continue
             val ptsStr = poly.points.joinToString(" ") { "${it.x.format()},${it.y.format()}" }
+            val op = if (poly.alpha < 0.99f) """ opacity="${poly.alpha.format()}"""" else ""
             if (poly.isFilled) {
-                sb.append("""  <polygon points="$ptsStr" fill="$color"/>""").append("\n")
+                sb.append("""  <polygon points="$ptsStr" fill="$color"$op/>""").append("\n")
             } else {
                 val sw = (baseStrokeWidth * poly.widthFactor).coerceAtLeast(0.8f).format()
-                sb.append("""  <polygon points="$ptsStr" fill="none" stroke="$color" stroke-width="$sw" stroke-linejoin="round"/>""").append("\n")
+                sb.append("""  <polygon points="$ptsStr" fill="none" stroke="$color" stroke-width="$sw"$op stroke-linejoin="round"/>""").append("\n")
             }
         }
 
         for (path in ornaments.paths) {
             if (path.points.size < 2) continue
             val sw = (baseStrokeWidth * path.widthFactor).coerceAtLeast(0.8f).format()
+            val op = if (path.alpha < 0.99f) """ opacity="${path.alpha.format()}"""" else ""
             sb.append("""  <path d="M ${path.points[0].x.format()} ${path.points[0].y.format()} """)
             for (i in 1 until path.points.size) {
                 sb.append("""L ${path.points[i].x.format()} ${path.points[i].y.format()} """)
             }
             if (path.isClosed) sb.append("Z ")
             val fillVal = if (path.isFilled) color else "none"
-            sb.append("""" fill="$fillVal" stroke="$color" stroke-width="$sw" stroke-linecap="round" stroke-linejoin="round"/>""").append("\n")
+            sb.append("""" fill="$fillVal" stroke="$color" stroke-width="$sw"$op stroke-linecap="round" stroke-linejoin="round"/>""").append("\n")
         }
     }
 
@@ -579,11 +584,14 @@ object SvgStaveRenderer {
                     }
                     close()
                 }
+                val alphaVal = (poly.alpha * 255).toInt().coerceIn(0, 255)
                 if (poly.isFilled) {
-                    canvas.drawPath(path, fillPaint)
+                    val fp = Paint(fillPaint).apply { alpha = alphaVal }
+                    canvas.drawPath(path, fp)
                 } else {
                     val lp = Paint(linePaint).apply {
                         strokeWidth = (effectiveStrokeWidth * poly.widthFactor).coerceAtLeast(1f * scale)
+                        alpha = alphaVal
                     }
                     canvas.drawPath(path, lp)
                 }
@@ -597,11 +605,14 @@ object SvgStaveRenderer {
                     }
                     if (pathGeom.isClosed) close()
                 }
+                val alphaVal = (pathGeom.alpha * 255).toInt().coerceIn(0, 255)
                 if (pathGeom.isFilled) {
-                    canvas.drawPath(path, fillPaint)
+                    val fp = Paint(fillPaint).apply { alpha = alphaVal }
+                    canvas.drawPath(path, fp)
                 } else {
                     val lp = Paint(linePaint).apply {
                         strokeWidth = (effectiveStrokeWidth * pathGeom.widthFactor).coerceAtLeast(1f * scale)
+                        alpha = alphaVal
                     }
                     canvas.drawPath(path, lp)
                 }

@@ -677,10 +677,13 @@ object OrnamentGeometry {
         val paths = mutableListOf<PathGeom>()
 
         val r = 230f
-        circles.add(CircleGeom(cx, cy, 215f, widthFactor = 0.75f, alpha = 0.70f))
-        circles.add(CircleGeom(cx, cy, 245f, widthFactor = 0.75f, alpha = 0.70f))
+        // Outer and inner forged rim rails with subtle ambient occlusion
+        circles.add(CircleGeom(cx, cy, 210f, widthFactor = 0.80f, alpha = 0.65f))
+        circles.add(CircleGeom(cx, cy, 213f, widthFactor = 0.50f, alpha = 0.50f))
+        circles.add(CircleGeom(cx, cy, 247f, widthFactor = 0.50f, alpha = 0.50f))
+        circles.add(CircleGeom(cx, cy, 250f, widthFactor = 0.85f, alpha = 0.70f))
 
-        val linkCount = 28
+        val linkCount = 24
         val angleStep = (2 * PI / linkCount).toFloat()
 
         for (i in 0 until linkCount) {
@@ -694,47 +697,126 @@ object OrnamentGeometry {
             val lx = cx + r * cosN
             val ly = cy + r * sinN
 
-            val hl = 14f
-            val hw = 7.5f
-            val ihl = 8f
-            val ihw = 3.5f
+            val hl = 16f
+            val hw = 8.5f
+            val ihl = 9.5f
+            val ihw = 3.8f
 
-            val linkOutline = listOf(
-                StrokePoint(lx - cosT * hl + cosN * hw * 0.5f, ly - sinT * hl + sinN * hw * 0.5f),
-                StrokePoint(lx - cosT * hl * 0.5f + cosN * hw, ly - sinT * hl * 0.5f + sinN * hw),
-                StrokePoint(lx + cosT * hl * 0.5f + cosN * hw, ly + sinT * hl * 0.5f + sinN * hw),
-                StrokePoint(lx + cosT * hl + cosN * hw * 0.5f, ly + sinT * hl + sinN * hw * 0.5f),
-                StrokePoint(lx + cosT * hl - cosN * hw * 0.5f, ly + sinT * hl - sinN * hw * 0.5f),
-                StrokePoint(lx + cosT * hl * 0.5f - cosN * hw, ly + sinT * hl * 0.5f - sinN * hw),
-                StrokePoint(lx - cosT * hl * 0.5f - cosN * hw, ly - sinT * hl * 0.5f - sinN * hw),
-                StrokePoint(lx - cosT * hl - cosN * hw * 0.5f, ly - sinT * hl - sinN * hw * 0.5f)
+            // 1. Cast shadow base under each chain link
+            val shadowOff = 3.0f
+            val castShadow = listOf(
+                StrokePoint(lx - cosT * (hl + 1f) + cosN * (hw + shadowOff), ly - sinT * (hl + 1f) + sinN * (hw + shadowOff)),
+                StrokePoint(lx + cosT * (hl + 1f) + cosN * (hw + shadowOff), ly + sinT * (hl + 1f) + sinN * (hw + shadowOff)),
+                StrokePoint(lx + cosT * (hl + 1f) + cosN * hw, ly + sinT * (hl + 1f) + sinN * hw),
+                StrokePoint(lx - cosT * (hl + 1f) + cosN * hw, ly - sinT * (hl + 1f) + sinN * hw)
             )
-            paths.add(PathGeom(linkOutline, isClosed = true, widthFactor = 1.15f))
+            polygons.add(PolygonGeom(castShadow, isFilled = true, alpha = 0.25f))
 
+            // 2. Main Outer Link Torus (thick forged 3D link)
+            val linkOutline = listOf(
+                StrokePoint(lx - cosT * hl + cosN * hw * 0.4f, ly - sinT * hl + sinN * hw * 0.4f),
+                StrokePoint(lx - cosT * hl * 0.6f + cosN * hw, ly - sinT * hl * 0.6f + sinN * hw),
+                StrokePoint(lx + cosT * hl * 0.6f + cosN * hw, ly + sinT * hl * 0.6f + sinN * hw),
+                StrokePoint(lx + cosT * hl + cosN * hw * 0.4f, ly + sinT * hl + sinN * hw * 0.4f),
+                StrokePoint(lx + cosT * hl - cosN * hw * 0.4f, ly + sinT * hl - sinN * hw * 0.4f),
+                StrokePoint(lx + cosT * hl * 0.6f - cosN * hw, ly + sinT * hl * 0.6f - sinN * hw),
+                StrokePoint(lx - cosT * hl * 0.6f - cosN * hw, ly - sinT * hl * 0.6f - sinN * hw),
+                StrokePoint(lx - cosT * hl - cosN * hw * 0.4f, ly - sinT * hl - sinN * hw * 0.4f)
+            )
+            paths.add(PathGeom(linkOutline, isClosed = true, widthFactor = 1.35f))
+
+            // Inner hole
             val innerHole = listOf(
                 StrokePoint(lx - cosT * ihl, ly - sinT * ihl),
-                StrokePoint(lx + cosN * ihw, ly + sinN * ihw),
+                StrokePoint(lx - cosT * ihl * 0.4f + cosN * ihw, ly - sinT * ihl * 0.4f + sinN * ihw),
+                StrokePoint(lx + cosT * ihl * 0.4f + cosN * ihw, ly + sinT * ihl * 0.4f + sinN * ihw),
                 StrokePoint(lx + cosT * ihl, ly + sinT * ihl),
-                StrokePoint(lx - cosN * ihw, ly - sinN * ihw)
+                StrokePoint(lx + cosT * ihl * 0.4f - cosN * ihw, ly + sinT * ihl * 0.4f - sinN * ihw),
+                StrokePoint(lx - cosT * ihl * 0.4f - cosN * ihw, ly - sinT * ihl * 0.4f - sinN * ihw)
             )
-            paths.add(PathGeom(innerHole, isClosed = true, widthFactor = 0.85f))
+            paths.add(PathGeom(innerHole, isClosed = true, widthFactor = 1.05f))
 
-            val spikeLen = if (i % 2 == 0) 24f else 17f
-            val spikeTip = StrokePoint(cx + (r + spikeLen) * cosN, cy + (r + spikeLen) * sinN)
-            val spikeBaseL = StrokePoint(lx - cosT * 5f + cosN * hw, ly - sinT * 5f + sinN * hw)
-            val spikeBaseR = StrokePoint(lx + cosT * 5f + cosN * hw, ly + sinT * 5f + sinN * hw)
-            polygons.add(PolygonGeom(listOf(spikeBaseL, spikeTip, spikeBaseR), isFilled = false, widthFactor = 1.1f))
-            lines.add(LineSegmentGeom(lx + cosN * hw, ly + sinN * hw, spikeTip.x, spikeTip.y, widthFactor = 0.65f, alpha = 0.85f))
+            // 3. 3D Bevel highlight line on the lit edge
+            lines.add(
+                LineSegmentGeom(
+                    lx - cosT * (hl * 0.7f) - cosN * (hw * 0.65f),
+                    ly - sinT * (hl * 0.7f) - sinN * (hw * 0.65f),
+                    lx + cosT * (hl * 0.7f) - cosN * (hw * 0.65f),
+                    ly + sinT * (hl * 0.7f) - sinN * (hw * 0.65f),
+                    widthFactor = 0.55f,
+                    alpha = 0.60f
+                )
+            )
 
-            if (i % 2 == 1) {
-                val inSpikeTip = StrokePoint(cx + (r - 14f) * cosN, cy + (r - 14f) * sinN)
-                val inBaseL = StrokePoint(lx - cosT * 4f - cosN * hw, ly - sinT * 4f - sinN * hw)
-                val inBaseR = StrokePoint(lx + cosT * 4f - cosN * hw, ly + sinT * 4f - sinN * hw)
-                polygons.add(PolygonGeom(listOf(inBaseL, inSpikeTip, inBaseR), isFilled = false, widthFactor = 0.9f))
+            // 4. Volumetric metallic cross-hatching on the shadow curve of the link
+            val hatchCount = 5
+            for (h in 0..hatchCount) {
+                val t = (h.toFloat() / hatchCount) * 2f - 1f // -1..1
+                val hx = lx + cosT * (hl * 0.65f * t)
+                val hy = ly + sinT * (hl * 0.65f * t)
+                lines.add(
+                    LineSegmentGeom(
+                        hx + cosN * (ihw * 0.9f),
+                        hy + sinN * (ihw * 0.9f),
+                        hx + cosN * (hw * 0.9f),
+                        hy + sinN * (hw * 0.9f),
+                        widthFactor = 0.45f,
+                        alpha = 0.70f
+                    )
+                )
             }
 
-            lines.add(LineSegmentGeom(lx - cosT * 7f + cosN * 2f, ly - sinT * 7f + sinN * 2f, lx - cosT * 3f + cosN * 5.5f, ly - sinT * 3f + sinN * 5.5f, widthFactor = 0.55f, alpha = 0.6f))
-            lines.add(LineSegmentGeom(lx + cosT * 3f + cosN * 5.5f, ly + sinT * 3f + sinN * 5.5f, lx + cosT * 7f + cosN * 2f, ly + sinT * 7f + sinN * 2f, widthFactor = 0.55f, alpha = 0.6f))
+            // 5. Interlocking connector side link to next link
+            val nextAngle = (i + 1) * angleStep
+            val midA = (angle + nextAngle) / 2f
+            val mx = cx + r * cos(midA)
+            val my = cy + r * sin(midA)
+            val mCosT = cos(midA + PI.toFloat() / 2f)
+            val mSinT = sin(midA + PI.toFloat() / 2f)
+            val mCosN = cos(midA)
+            val mSinN = sin(midA)
+
+            // Interlocking bridge loop
+            val interLink = listOf(
+                StrokePoint(mx - mCosT * 8f - mCosN * 5f, my - mSinT * 8f - mSinN * 5f),
+                StrokePoint(mx + mCosT * 8f - mCosN * 5f, my + mSinT * 8f - mSinN * 5f),
+                StrokePoint(mx + mCosT * 8f + mCosN * 5f, my + mSinT * 8f + mSinN * 5f),
+                StrokePoint(mx - mCosT * 8f + mCosN * 5f, my - mSinT * 8f + mSinN * 5f)
+            )
+            paths.add(PathGeom(interLink, isClosed = true, widthFactor = 0.90f))
+            lines.add(LineSegmentGeom(mx - mCosT * 6f, my - mSinT * 6f, mx + mCosT * 6f, my + mSinT * 6f, widthFactor = 0.5f, alpha = 0.5f))
+
+            // 6. 3D Forged Conical Spikes along outer rim
+            val isMajorSpike = i % 2 == 0
+            val spikeLen = if (isMajorSpike) 26f else 18f
+            val spikeTip = StrokePoint(cx + (r + spikeLen) * cosN, cy + (r + spikeLen) * sinN)
+            val spikeBaseL = StrokePoint(lx - cosT * 5.5f + cosN * hw, ly - sinT * 5.5f + sinN * hw)
+            val spikeBaseR = StrokePoint(lx + cosT * 5.5f + cosN * hw, ly + sinT * 5.5f + sinN * hw)
+            val spikeBaseMid = StrokePoint(lx + cosN * hw, ly + sinN * hw)
+
+            // Spike outline
+            polygons.add(PolygonGeom(listOf(spikeBaseL, spikeTip, spikeBaseR), isFilled = false, widthFactor = 1.20f))
+            // Spike center ridge line
+            lines.add(LineSegmentGeom(spikeBaseMid.x, spikeBaseMid.y, spikeTip.x, spikeTip.y, widthFactor = 0.90f))
+
+            // Spike shadow side cross-hatching (gives 3D conical volume)
+            for (sh in 1..4) {
+                val st = sh / 5f
+                val h1x = spikeBaseR.x + st * (spikeTip.x - spikeBaseR.x)
+                val h1y = spikeBaseR.y + st * (spikeTip.y - spikeBaseR.y)
+                val h2x = spikeBaseMid.x + st * (spikeTip.x - spikeBaseMid.x)
+                val h2y = spikeBaseMid.y + st * (spikeTip.y - spikeBaseMid.y)
+                lines.add(LineSegmentGeom(h1x, h1y, h2x, h2y, widthFactor = 0.50f, alpha = 0.70f))
+            }
+
+            // Inward forged studs on alternating links
+            if (!isMajorSpike) {
+                val inTip = StrokePoint(cx + (r - 15f) * cosN, cy + (r - 15f) * sinN)
+                val inBaseL = StrokePoint(lx - cosT * 4.5f - cosN * hw, ly - sinT * 4.5f - sinN * hw)
+                val inBaseR = StrokePoint(lx + cosT * 4.5f - cosN * hw, ly + sinT * 4.5f - sinN * hw)
+                polygons.add(PolygonGeom(listOf(inBaseL, inTip, inBaseR), isFilled = false, widthFactor = 0.95f))
+                lines.add(LineSegmentGeom(lx - cosN * hw, ly - sinN * hw, inTip.x, inTip.y, widthFactor = 0.70f))
+            }
         }
 
         return GeneratedOrnaments(lines, circles, polygons, paths)
@@ -746,35 +828,70 @@ object OrnamentGeometry {
         val polygons = mutableListOf<PolygonGeom>()
         val paths = mutableListOf<PathGeom>()
 
-        circles.add(CircleGeom(cx, cy, 150f, widthFactor = 0.7f, alpha = 0.65f))
-        circles.add(CircleGeom(cx, cy, 185f, widthFactor = 0.85f, alpha = 0.75f))
-        circles.add(CircleGeom(cx, cy, 214f, widthFactor = 0.8f, alpha = 0.70f))
+        // Circular background medallions and guard rings
+        circles.add(CircleGeom(cx, cy, 142f, widthFactor = 0.85f, alpha = 0.65f))
+        circles.add(CircleGeom(cx, cy, 145f, widthFactor = 0.45f, alpha = 0.45f))
+        circles.add(CircleGeom(cx, cy, 178f, widthFactor = 0.55f, alpha = 0.45f))
+        circles.add(CircleGeom(cx, cy, 206f, widthFactor = 0.45f, alpha = 0.45f))
+        circles.add(CircleGeom(cx, cy, 210f, widthFactor = 0.85f, alpha = 0.65f))
 
         val loops = 16
         val step = (2 * PI / loops).toFloat()
+        val ribbonWidth = 6.5f
 
+        // Interlaced Celtic Braid with dual-edge ribbon and dark cross-hatched recesses
         for (i in 0 until loops) {
             val a1 = i * step
             val a2 = (i + 1) * step
             val aMid = (a1 + a2) / 2f
+            val aNextMid = aMid + step
 
-            val pIn1 = StrokePoint(cx + 155f * cos(a1), cy + 155f * sin(a1))
-            val pOutMid = StrokePoint(cx + 210f * cos(aMid), cy + 210f * sin(aMid))
-            val pIn2 = StrokePoint(cx + 155f * cos(a2), cy + 155f * sin(a2))
+            val rIn = 148f
+            val rMid = 178f
+            val rOut = 206f
 
-            paths.add(PathGeom(listOf(pIn1, pOutMid, pIn2), isClosed = false, widthFactor = 0.9f))
+            // Ribbon Strand 1 (Inner to Outer wave)
+            val p1A = StrokePoint(cx + (rIn - ribbonWidth / 2f) * cos(a1), cy + (rIn - ribbonWidth / 2f) * sin(a1))
+            val pMidA = StrokePoint(cx + (rOut - ribbonWidth / 2f) * cos(aMid), cy + (rOut - ribbonWidth / 2f) * sin(aMid))
+            val p2A = StrokePoint(cx + (rIn - ribbonWidth / 2f) * cos(a2), cy + (rIn - ribbonWidth / 2f) * sin(a2))
 
-            val pMidCross1 = StrokePoint(cx + 185f * cos(a1), cy + 185f * sin(a1))
-            lines.add(LineSegmentGeom(pMidCross1.x, pMidCross1.y, pOutMid.x, pOutMid.y, widthFactor = 0.75f, alpha = 0.8f))
+            val p1B = StrokePoint(cx + (rIn + ribbonWidth / 2f) * cos(a1), cy + (rIn + ribbonWidth / 2f) * sin(a1))
+            val pMidB = StrokePoint(cx + (rOut + ribbonWidth / 2f) * cos(aMid), cy + (rOut + ribbonWidth / 2f) * sin(aMid))
+            val p2B = StrokePoint(cx + (rIn + ribbonWidth / 2f) * cos(a2), cy + (rIn + ribbonWidth / 2f) * sin(a2))
 
-            circles.add(CircleGeom(pMidCross1.x, pMidCross1.y, 2.5f, isFilled = true))
-            circles.add(CircleGeom(pOutMid.x, pOutMid.y, 3.0f, isFilled = false, widthFactor = 0.7f))
+            paths.add(PathGeom(listOf(p1A, pMidA, p2A), widthFactor = 0.85f))
+            paths.add(PathGeom(listOf(p1B, pMidB, p2B), widthFactor = 0.85f))
 
-            val hx1 = cx + 170f * cos(aMid)
-            val hy1 = cy + 170f * sin(aMid)
-            val hx2 = cx + 195f * cos(aMid)
-            val hy2 = cy + 195f * sin(aMid)
-            lines.add(LineSegmentGeom(hx1, hy1, hx2, hy2, widthFactor = 0.5f, alpha = 0.55f))
+            // Ribbon Strand 2 (Intersecting counter wave)
+            val c1A = StrokePoint(cx + (rOut - ribbonWidth / 2f) * cos(a1), cy + (rOut - ribbonWidth / 2f) * sin(a1))
+            val cMidA = StrokePoint(cx + (rIn + ribbonWidth / 2f) * cos(aMid), cy + (rIn + ribbonWidth / 2f) * sin(aMid))
+            val c2A = StrokePoint(cx + (rOut - ribbonWidth / 2f) * cos(a2), cy + (rOut - ribbonWidth / 2f) * sin(a2))
+
+            val c1B = StrokePoint(cx + (rOut + ribbonWidth / 2f) * cos(a1), cy + (rOut + ribbonWidth / 2f) * sin(a1))
+            val cMidB = StrokePoint(cx + (rIn - ribbonWidth / 2f) * cos(aMid), cy + (rIn - ribbonWidth / 2f) * sin(aMid))
+            val c2B = StrokePoint(cx + (rOut + ribbonWidth / 2f) * cos(a2), cy + (rOut + ribbonWidth / 2f) * sin(a2))
+
+            paths.add(PathGeom(listOf(c1A, cMidA, c2A), widthFactor = 0.85f))
+            paths.add(PathGeom(listOf(c1B, cMidB, c2B), widthFactor = 0.85f))
+
+            // Dark Recess Cross-Hatching in the voids between ribbons (creates rich depth as in photo)
+            val voidCenter = StrokePoint(cx + rMid * cos(aMid), cy + rMid * sin(aMid))
+            circles.add(CircleGeom(voidCenter.x, voidCenter.y, 2.2f, isFilled = true, alpha = 0.85f))
+
+            for (h in 1..4) {
+                val off = (h - 2.5f) * 3.5f
+                val perpA = aMid + PI.toFloat() / 2f
+                val hx1 = voidCenter.x + off * cos(aMid) - 4.5f * cos(perpA)
+                val hy1 = voidCenter.y + off * sin(aMid) - 4.5f * sin(perpA)
+                val hx2 = voidCenter.x + off * cos(aMid) + 4.5f * cos(perpA)
+                val hy2 = voidCenter.y + off * sin(aMid) + 4.5f * sin(perpA)
+                lines.add(LineSegmentGeom(hx1, hy1, hx2, hy2, widthFactor = 0.50f, alpha = 0.60f))
+            }
+
+            // Outer and inner apex studs
+            circles.add(CircleGeom(pMidB.x, pMidB.y, 2.5f, isFilled = true, alpha = 0.90f))
+            circles.add(CircleGeom(pMidB.x, pMidB.y, 4.5f, isFilled = false, widthFactor = 0.55f))
+            circles.add(CircleGeom(cMidB.x, cMidB.y, 2.0f, isFilled = true, alpha = 0.85f))
         }
 
         return GeneratedOrnaments(lines, circles, polygons, paths)
@@ -786,15 +903,17 @@ object OrnamentGeometry {
         val polygons = mutableListOf<PolygonGeom>()
         val paths = mutableListOf<PathGeom>()
 
+        // 8-pointed 3D Compass Star matching photo:
+        // Dramatic towering North ray (length 202f up to Y=48f), South ray (196f), East & West (194f), diagonals (160f)
         val rays = listOf(
-            Triple(-PI / 2, 198f, 15f),
-            Triple(PI / 2, 190f, 14f),
-            Triple(PI, 190f, 14f),
-            Triple(0.0, 190f, 14f),
-            Triple(-PI / 4, 150f, 11f),
-            Triple(-3 * PI / 4, 150f, 11f),
-            Triple(PI / 4, 150f, 11f),
-            Triple(3 * PI / 4, 150f, 11f)
+            Triple(-PI / 2, 202f, 16f),      // North (towering vertical spire)
+            Triple(PI / 2, 196f, 15f),       // South
+            Triple(0.0, 194f, 15f),          // East
+            Triple(PI, 194f, 15f),           // West
+            Triple(-PI / 4, 160f, 12f),      // North-East
+            Triple(-3 * PI / 4, 160f, 12f),  // North-West
+            Triple(PI / 4, 160f, 12f),       // South-East
+            Triple(3 * PI / 4, 160f, 12f)    // South-West
         )
 
         for ((rad, rayLen, baseHalfW) in rays) {
@@ -807,29 +926,77 @@ object OrnamentGeometry {
             val tipX = cx + rayLen * cosA
             val tipY = cy + rayLen * sinA
 
-            lines.add(LineSegmentGeom(cx, cy, tipX, tipY, widthFactor = 1.35f))
-
             val bLx = cx + perpX * baseHalfW
             val bLy = cy + perpY * baseHalfW
             val bRx = cx - perpX * baseHalfW
             val bRy = cy - perpY * baseHalfW
 
-            polygons.add(PolygonGeom(listOf(StrokePoint(cx, cy), StrokePoint(tipX, tipY), StrokePoint(bLx, bLy)), isFilled = false, widthFactor = 0.95f))
-            polygons.add(PolygonGeom(listOf(StrokePoint(cx, cy), StrokePoint(tipX, tipY), StrokePoint(bRx, bRy)), isFilled = false, widthFactor = 0.95f))
+            // 1. Ambient Drop Shadow underneath the ray
+            val shX = 3.5f
+            val shY = 4.5f
+            polygons.add(
+                PolygonGeom(
+                    listOf(
+                        StrokePoint(cx + shX, cy + shY),
+                        StrokePoint(tipX + shX, tipY + shY),
+                        StrokePoint(bRx + shX, bRy + shY)
+                    ),
+                    isFilled = true,
+                    alpha = 0.20f
+                )
+            )
 
-            val hatchSteps = 7
+            // 2. Central Ridge Line (divides lit face and shadow face with sharp 3D edge)
+            lines.add(LineSegmentGeom(cx, cy, tipX, tipY, widthFactor = 1.45f))
+
+            // 3. Lit Face (Left/Top) - clean facet with subtle highlight bevel
+            polygons.add(PolygonGeom(listOf(StrokePoint(cx, cy), StrokePoint(tipX, tipY), StrokePoint(bLx, bLy)), isFilled = false, widthFactor = 1.05f))
+            // Specular highlight parallel to ridge
+            val hlSt = 0.35f
+            lines.add(
+                LineSegmentGeom(
+                    cx + hlSt * (bLx - cx),
+                    cy + hlSt * (bLy - cy),
+                    tipX + hlSt * (bLx - tipX) * 0.4f,
+                    tipY + hlSt * (bLy - tipY) * 0.4f,
+                    widthFactor = 0.45f,
+                    alpha = 0.45f
+                )
+            )
+
+            // 4. Shadow Face (Right/Bottom) - Filled with dense, authentic angled graphite cross-hatching
+            polygons.add(PolygonGeom(listOf(StrokePoint(cx, cy), StrokePoint(tipX, tipY), StrokePoint(bRx, bRy)), isFilled = false, widthFactor = 1.15f))
+
+            val hatchSteps = 12
             for (h in 1..hatchSteps) {
                 val t = h.toFloat() / (hatchSteps + 1)
-                val sTipX = cx + t * (tipX - cx)
-                val sTipY = cy + t * (tipY - cy)
-                val sBaseX = bRx + t * (tipX - bRx) * 0.75f
-                val sBaseY = bRy + t * (tipY - bRy) * 0.75f
-                lines.add(LineSegmentGeom(sTipX, sTipY, sBaseX, sBaseY, widthFactor = 0.55f, alpha = 0.65f))
+                // From ridge to outer right border
+                val sRidgeX = cx + t * (tipX - cx)
+                val sRidgeY = cy + t * (tipY - cy)
+                val sEdgeX = bRx + t * (tipX - bRx)
+                val sEdgeY = bRy + t * (tipY - bRy)
+
+                // Angled hatching lines (cross-directional for metallic texture)
+                lines.add(LineSegmentGeom(sRidgeX, sRidgeY, sEdgeX, sEdgeY, widthFactor = 0.60f, alpha = 0.75f))
+                if (h % 2 == 0) {
+                    // Secondary micro cross-hatch near base
+                    val subX = sRidgeX + 0.5f * (sEdgeX - sRidgeX)
+                    val subY = sRidgeY + 0.5f * (sEdgeY - sRidgeY)
+                    lines.add(LineSegmentGeom(sRidgeX, sRidgeY, subX + perpX * 3f, subY + perpY * 3f, widthFactor = 0.45f, alpha = 0.55f))
+                }
             }
         }
 
-        circles.add(CircleGeom(cx, cy, 12f, isFilled = false, widthFactor = 1.2f))
-        circles.add(CircleGeom(cx, cy, 4f, isFilled = true))
+        // Center faceted octagonal hub
+        val hubR = 14f
+        val octPts = mutableListOf<StrokePoint>()
+        for (i in 0..8) {
+            val a = (2 * PI * i / 8).toFloat()
+            octPts.add(StrokePoint(cx + hubR * cos(a), cy + hubR * sin(a)))
+        }
+        paths.add(PathGeom(octPts, isClosed = true, widthFactor = 1.25f))
+        circles.add(CircleGeom(cx, cy, 7.5f, isFilled = false, widthFactor = 1.10f))
+        circles.add(CircleGeom(cx, cy, 3.5f, isFilled = true))
 
         return GeneratedOrnaments(lines, circles, polygons, paths)
     }
@@ -840,106 +1007,195 @@ object OrnamentGeometry {
         val polygons = mutableListOf<PolygonGeom>()
         val paths = mutableListOf<PathGeom>()
 
-        val frontEar = listOf(
-            StrokePoint(135f, 178f),
-            StrokePoint(145f, 132f),
-            StrokePoint(168f, 168f)
-        )
-        paths.add(PathGeom(frontEar, isClosed = false, widthFactor = 1.3f))
-        lines.add(LineSegmentGeom(145f, 138f, 150f, 165f, widthFactor = 0.7f, alpha = 0.75f))
-        lines.add(LineSegmentGeom(148f, 145f, 156f, 168f, widthFactor = 0.6f, alpha = 0.70f))
-        lines.add(LineSegmentGeom(140f, 155f, 146f, 172f, widthFactor = 0.6f, alpha = 0.70f))
-
-        val backEar = listOf(
-            StrokePoint(118f, 172f),
-            StrokePoint(124f, 142f),
-            StrokePoint(135f, 178f)
-        )
-        paths.add(PathGeom(backEar, isClosed = false, widthFactor = 1.0f))
-
+        // Realistic 3/4 wolf portrait on left side facing right toward stele:
+        // 1. Forehead & Muzzle Bridge
         val browMuzzle = listOf(
-            StrokePoint(168f, 168f),
-            StrokePoint(176f, 192f),
-            StrokePoint(188f, 212f),
-            StrokePoint(204f, 226f)
+            StrokePoint(138f, 154f), // Crown
+            StrokePoint(155f, 168f), // Forehead
+            StrokePoint(168f, 186f), // Brow ridge above eye
+            StrokePoint(180f, 204f), // Upper muzzle
+            StrokePoint(194f, 220f), // Nose bridge
+            StrokePoint(206f, 230f)  // Nose tip
         )
-        paths.add(PathGeom(browMuzzle, isClosed = false, widthFactor = 1.3f))
+        paths.add(PathGeom(browMuzzle, isClosed = false, widthFactor = 1.40f))
 
+        // 2. Black Nose Leather (anatomical with nostrils and highlight)
         val noseLeather = listOf(
-            StrokePoint(204f, 226f),
-            StrokePoint(206f, 233f),
-            StrokePoint(198f, 235f),
-            StrokePoint(196f, 228f)
+            StrokePoint(206f, 230f),
+            StrokePoint(208f, 236f),
+            StrokePoint(204f, 241f),
+            StrokePoint(196f, 238f),
+            StrokePoint(198f, 232f)
         )
         polygons.add(PolygonGeom(noseLeather, isFilled = true))
-        lines.add(LineSegmentGeom(202f, 230f, 199f, 232f, widthFactor = 0.8f))
+        // Nostril groove and highlight
+        lines.add(LineSegmentGeom(205f, 233f, 201f, 235f, widthFactor = 0.9f))
+        circles.add(CircleGeom(205f, 231.5f, 0.8f, isFilled = true)) // Specular catchlight
 
+        // 3. Upper Lip & Mouth Line
         val upperLip = listOf(
-            StrokePoint(198f, 235f),
+            StrokePoint(196f, 238f),
             StrokePoint(188f, 244f),
-            StrokePoint(168f, 250f)
+            StrokePoint(176f, 248f),
+            StrokePoint(164f, 252f) // Mouth corner (commissure)
         )
-        paths.add(PathGeom(upperLip, isClosed = false, widthFactor = 1.2f))
+        paths.add(PathGeom(upperLip, isClosed = false, widthFactor = 1.30f))
 
+        // Lower Jaw & Chin with soft fur
         val lowerJaw = listOf(
-            StrokePoint(168f, 250f),
-            StrokePoint(180f, 256f),
-            StrokePoint(190f, 246f)
+            StrokePoint(194f, 246f),
+            StrokePoint(184f, 254f),
+            StrokePoint(168f, 258f),
+            StrokePoint(156f, 260f)
         )
-        paths.add(PathGeom(lowerJaw, isClosed = false, widthFactor = 1.0f))
+        paths.add(PathGeom(lowerJaw, isClosed = false, widthFactor = 1.15f))
+        // Chin fur tufts
+        lines.add(LineSegmentGeom(186f, 252f, 182f, 258f, widthFactor = 0.6f, alpha = 0.7f))
+        lines.add(LineSegmentGeom(178f, 255f, 174f, 262f, widthFactor = 0.6f, alpha = 0.7f))
+        lines.add(LineSegmentGeom(170f, 257f, 164f, 265f, widthFactor = 0.6f, alpha = 0.7f))
 
-        val eyeTop = listOf(StrokePoint(162f, 198f), StrokePoint(170f, 196f), StrokePoint(176f, 201f))
-        val eyeBottom = listOf(StrokePoint(162f, 198f), StrokePoint(169f, 203f), StrokePoint(176f, 201f))
-        paths.add(PathGeom(eyeTop, isClosed = false, widthFactor = 1.25f))
-        paths.add(PathGeom(eyeBottom, isClosed = false, widthFactor = 1.0f))
-        circles.add(CircleGeom(169f, 199.5f, 2.0f, isFilled = true))
-        circles.add(CircleGeom(171f, 198.5f, 0.7f, isFilled = true))
-        lines.add(LineSegmentGeom(160f, 194f, 178f, 192f, widthFactor = 0.85f, alpha = 0.8f))
-
-        circles.add(CircleGeom(190f, 234f, 0.9f, isFilled = true))
-        circles.add(CircleGeom(186f, 236f, 0.9f, isFilled = true))
-        circles.add(CircleGeom(192f, 239f, 0.9f, isFilled = true))
-        circles.add(CircleGeom(188f, 241f, 0.9f, isFilled = true))
-        circles.add(CircleGeom(182f, 240f, 0.9f, isFilled = true))
-
-        val maneLocks = listOf(
-            listOf(StrokePoint(168f, 250f), StrokePoint(146f, 268f), StrokePoint(158f, 264f)),
-            listOf(StrokePoint(158f, 264f), StrokePoint(135f, 288f), StrokePoint(148f, 282f)),
-            listOf(StrokePoint(148f, 282f), StrokePoint(120f, 314f), StrokePoint(136f, 306f)),
-            listOf(StrokePoint(136f, 306f), StrokePoint(105f, 338f), StrokePoint(124f, 328f)),
-            listOf(StrokePoint(124f, 328f), StrokePoint(90f, 362f), StrokePoint(112f, 350f))
+        // 4. Whisker Pad Follicles & Curved Whiskers
+        val whiskerDots = listOf(
+            Pair(192f, 236f), Pair(188f, 238f), Pair(184f, 241f),
+            Pair(194f, 239f), Pair(190f, 242f), Pair(186f, 245f),
+            Pair(195f, 242f), Pair(191f, 245f), Pair(187f, 248f)
         )
-        for (lock in maneLocks) {
-            paths.add(PathGeom(lock, isClosed = false, widthFactor = 1.15f))
+        for ((wx, wy) in whiskerDots) {
+            circles.add(CircleGeom(wx, wy, 0.9f, isFilled = true))
+        }
+        // Graceful curved whiskers
+        val whiskers = listOf(
+            listOf(StrokePoint(192f, 236f), StrokePoint(204f, 238f), StrokePoint(218f, 242f)),
+            listOf(StrokePoint(188f, 238f), StrokePoint(202f, 242f), StrokePoint(220f, 248f)),
+            listOf(StrokePoint(184f, 241f), StrokePoint(198f, 247f), StrokePoint(216f, 256f)),
+            listOf(StrokePoint(190f, 242f), StrokePoint(205f, 249f), StrokePoint(222f, 260f)),
+            listOf(StrokePoint(186f, 245f), StrokePoint(196f, 254f), StrokePoint(212f, 268f)),
+            listOf(StrokePoint(176f, 250f), StrokePoint(188f, 260f), StrokePoint(204f, 274f))
+        )
+        for (w in whiskers) {
+            paths.add(PathGeom(w, isClosed = false, widthFactor = 0.55f, alpha = 0.80f))
         }
 
-        val neckCrest = listOf(
-            StrokePoint(118f, 172f),
-            StrokePoint(98f, 210f),
-            StrokePoint(108f, 206f),
-            StrokePoint(88f, 248f),
-            StrokePoint(98f, 244f),
-            StrokePoint(78f, 290f),
-            StrokePoint(92f, 286f),
-            StrokePoint(72f, 336f)
+        // 5. Piercing Almond Wolf Eye (almond outline, dark eyeliner, pupil, catchlight)
+        val eyeTop = listOf(
+            StrokePoint(160f, 198f), // Inner canthus
+            StrokePoint(167f, 194f),
+            StrokePoint(176f, 198f)  // Outer canthus
         )
-        paths.add(PathGeom(neckCrest, isClosed = false, widthFactor = 1.2f))
+        val eyeBottom = listOf(
+            StrokePoint(160f, 198f),
+            StrokePoint(167f, 202f),
+            StrokePoint(176f, 198f)
+        )
+        paths.add(PathGeom(eyeTop, isClosed = false, widthFactor = 1.35f))
+        paths.add(PathGeom(eyeBottom, isClosed = false, widthFactor = 1.10f))
 
-        val furHatches = listOf(
-            Pair(StrokePoint(176f, 216f), StrokePoint(182f, 226f)),
-            Pair(StrokePoint(172f, 220f), StrokePoint(178f, 230f)),
-            Pair(StrokePoint(168f, 226f), StrokePoint(174f, 236f)),
-            Pair(StrokePoint(154f, 246f), StrokePoint(144f, 260f)),
-            Pair(StrokePoint(148f, 252f), StrokePoint(138f, 266f)),
-            Pair(StrokePoint(140f, 270f), StrokePoint(128f, 286f)),
-            Pair(StrokePoint(134f, 276f), StrokePoint(122f, 292f)),
-            Pair(StrokePoint(124f, 298f), StrokePoint(110f, 316f)),
-            Pair(StrokePoint(116f, 306f), StrokePoint(102f, 324f)),
-            Pair(StrokePoint(106f, 224f), StrokePoint(96f, 236f)),
-            Pair(StrokePoint(96f, 260f), StrokePoint(86f, 274f))
+        // Iris contour and deep dark pupil
+        circles.add(CircleGeom(168f, 198f, 3.4f, isFilled = false, widthFactor = 0.85f))
+        circles.add(CircleGeom(168f, 198f, 2.2f, isFilled = true))
+        // Specular eye catchlight (gives life and intelligence to eye)
+        circles.add(CircleGeom(170f, 196.5f, 0.9f, isFilled = true))
+        // Eyelid crease and brow fur shading
+        lines.add(LineSegmentGeom(158f, 192f, 178f, 190f, widthFactor = 0.90f, alpha = 0.85f))
+        lines.add(LineSegmentGeom(162f, 188f, 175f, 187f, widthFactor = 0.65f, alpha = 0.70f))
+        lines.add(LineSegmentGeom(164f, 185f, 172f, 184f, widthFactor = 0.55f, alpha = 0.60f))
+
+        // 6. Upright Front Wolf Ear
+        val frontEarOuter = listOf(
+            StrokePoint(135f, 168f),
+            StrokePoint(142f, 126f), // Ear tip
+            StrokePoint(164f, 162f)
         )
-        for ((p1, p2) in furHatches) {
-            lines.add(LineSegmentGeom(p1.x, p1.y, p2.x, p2.y, widthFactor = 0.6f, alpha = 0.65f))
+        paths.add(PathGeom(frontEarOuter, isClosed = false, widthFactor = 1.45f))
+
+        // Deep inner ear shadow cavity
+        val innerEarCavity = listOf(
+            StrokePoint(140f, 162f),
+            StrokePoint(144f, 134f),
+            StrokePoint(156f, 160f)
+        )
+        paths.add(PathGeom(innerEarCavity, isClosed = false, widthFactor = 0.95f))
+        for (eh in 1..5) {
+            val t = eh / 6f
+            lines.add(LineSegmentGeom(140f + t * 4f, 162f - t * 26f, 148f + t * 6f, 161f - t * 15f, widthFactor = 0.55f, alpha = 0.75f))
+        }
+
+        // Soft feathery inner ear fur tufts protruding forward
+        val earTufts = listOf(
+            listOf(StrokePoint(146f, 160f), StrokePoint(154f, 150f), StrokePoint(162f, 154f)),
+            listOf(StrokePoint(148f, 155f), StrokePoint(156f, 144f), StrokePoint(165f, 148f)),
+            listOf(StrokePoint(143f, 148f), StrokePoint(150f, 138f), StrokePoint(158f, 142f))
+        )
+        for (et in earTufts) {
+            paths.add(PathGeom(et, isClosed = false, widthFactor = 0.85f, alpha = 0.85f))
+        }
+
+        // Back ear in perspective behind crown
+        val backEar = listOf(
+            StrokePoint(116f, 162f),
+            StrokePoint(120f, 134f),
+            StrokePoint(132f, 160f)
+        )
+        paths.add(PathGeom(backEar, isClosed = false, widthFactor = 1.05f))
+        lines.add(LineSegmentGeom(120f, 138f, 126f, 158f, widthFactor = 0.6f, alpha = 0.7f))
+
+        // 7. Cheek Fur Ruff & Volumetric Mane Locks
+        val cheekRuff = listOf(
+            listOf(StrokePoint(164f, 252f), StrokePoint(146f, 264f), StrokePoint(155f, 260f)),
+            listOf(StrokePoint(155f, 260f), StrokePoint(134f, 278f), StrokePoint(146f, 274f)),
+            listOf(StrokePoint(146f, 274f), StrokePoint(122f, 302f), StrokePoint(136f, 296f)),
+            listOf(StrokePoint(136f, 296f), StrokePoint(108f, 328f), StrokePoint(124f, 320f)),
+            listOf(StrokePoint(124f, 320f), StrokePoint(92f, 356f), StrokePoint(110f, 348f)),
+            listOf(StrokePoint(110f, 348f), StrokePoint(78f, 384f), StrokePoint(98f, 376f))
+        )
+        for (lock in cheekRuff) {
+            paths.add(PathGeom(lock, isClosed = false, widthFactor = 1.25f))
+        }
+
+        // Back neck crest
+        val neckCrest = listOf(
+            StrokePoint(116f, 162f),
+            StrokePoint(98f, 198f),
+            StrokePoint(106f, 194f),
+            StrokePoint(86f, 238f),
+            StrokePoint(96f, 234f),
+            StrokePoint(74f, 280f),
+            StrokePoint(86f, 276f),
+            StrokePoint(65f, 330f),
+            StrokePoint(78f, 326f),
+            StrokePoint(60f, 380f)
+        )
+        paths.add(PathGeom(neckCrest, isClosed = false, widthFactor = 1.30f))
+
+        // 8. Volumetric Directional Fur Shading (Dense realistic cross-hatching)
+        val furHatchings = listOf(
+            // Muzzle bridge fur
+            Pair(StrokePoint(176f, 206f), StrokePoint(184f, 216f)),
+            Pair(StrokePoint(172f, 210f), StrokePoint(180f, 220f)),
+            Pair(StrokePoint(168f, 216f), StrokePoint(176f, 226f)),
+            Pair(StrokePoint(164f, 222f), StrokePoint(172f, 232f)),
+            Pair(StrokePoint(160f, 228f), StrokePoint(168f, 238f)),
+            Pair(StrokePoint(156f, 234f), StrokePoint(164f, 244f)),
+            // Cheek volumetric shading
+            Pair(StrokePoint(152f, 248f), StrokePoint(140f, 262f)),
+            Pair(StrokePoint(146f, 254f), StrokePoint(134f, 268f)),
+            Pair(StrokePoint(140f, 262f), StrokePoint(128f, 278f)),
+            Pair(StrokePoint(134f, 270f), StrokePoint(122f, 286f)),
+            Pair(StrokePoint(126f, 282f), StrokePoint(114f, 298f)),
+            Pair(StrokePoint(120f, 292f), StrokePoint(106f, 310f)),
+            Pair(StrokePoint(112f, 304f), StrokePoint(98f, 322f)),
+            Pair(StrokePoint(104f, 318f), StrokePoint(90f, 336f)),
+            Pair(StrokePoint(96f, 332f), StrokePoint(82f, 352f)),
+            // Neck ruff cross-hatches
+            Pair(StrokePoint(110f, 212f), StrokePoint(100f, 226f)),
+            Pair(StrokePoint(102f, 228f), StrokePoint(92f, 242f)),
+            Pair(StrokePoint(96f, 246f), StrokePoint(84f, 262f)),
+            Pair(StrokePoint(88f, 264f), StrokePoint(76f, 280f)),
+            Pair(StrokePoint(82f, 286f), StrokePoint(70f, 304f)),
+            Pair(StrokePoint(76f, 310f), StrokePoint(64f, 330f))
+        )
+        for ((p1, p2) in furHatchings) {
+            lines.add(LineSegmentGeom(p1.x, p1.y, p2.x, p2.y, widthFactor = 0.60f, alpha = 0.70f))
         }
 
         return GeneratedOrnaments(lines, circles, polygons, paths)
@@ -951,84 +1207,125 @@ object OrnamentGeometry {
         val polygons = mutableListOf<PolygonGeom>()
         val paths = mutableListOf<PathGeom>()
 
-        val crownNape = listOf(
-            StrokePoint(336f, 196f),
-            StrokePoint(364f, 172f),
-            StrokePoint(398f, 176f),
-            StrokePoint(422f, 195f),
-            StrokePoint(434f, 228f)
-        )
-        paths.add(PathGeom(crownNape, isClosed = false, widthFactor = 1.3f))
-
+        // Realistic raven portrait on right side facing left toward stele:
+        // 1. Heavy Arched Raven Bill (Culmen, Hooked Tip, Mouth Commissure, Lower Mandible)
         val beakCulmen = listOf(
-            StrokePoint(336f, 196f),
-            StrokePoint(318f, 206f),
-            StrokePoint(302f, 220f),
-            StrokePoint(292f, 236f)
+            StrokePoint(344f, 190f), // Bill base at forehead
+            StrokePoint(326f, 202f),
+            StrokePoint(308f, 218f),
+            StrokePoint(292f, 236f)  // Sharp hooked bill tip
         )
-        paths.add(PathGeom(beakCulmen, isClosed = false, widthFactor = 1.4f))
+        paths.add(PathGeom(beakCulmen, isClosed = false, widthFactor = 1.55f))
 
         val mouthSlit = listOf(
-            StrokePoint(292f, 236f),
-            StrokePoint(312f, 232f),
-            StrokePoint(338f, 230f)
+            StrokePoint(292f, 236f), // Tip
+            StrokePoint(312f, 233f),
+            StrokePoint(336f, 231f),
+            StrokePoint(350f, 233f)  // Gape / corner of mouth
         )
-        paths.add(PathGeom(mouthSlit, isClosed = false, widthFactor = 1.25f))
+        paths.add(PathGeom(mouthSlit, isClosed = false, widthFactor = 1.30f))
 
         val lowerBeak = listOf(
             StrokePoint(292f, 236f),
-            StrokePoint(312f, 242f),
-            StrokePoint(334f, 244f)
+            StrokePoint(314f, 244f),
+            StrokePoint(336f, 246f),
+            StrokePoint(348f, 248f)
         )
-        paths.add(PathGeom(lowerBeak, isClosed = false, widthFactor = 1.2f))
+        paths.add(PathGeom(lowerBeak, isClosed = false, widthFactor = 1.35f))
 
-        lines.add(LineSegmentGeom(328f, 208f, 318f, 214f, widthFactor = 0.85f))
-        lines.add(LineSegmentGeom(334f, 202f, 324f, 206f, widthFactor = 0.6f, alpha = 0.8f))
-        lines.add(LineSegmentGeom(332f, 205f, 322f, 210f, widthFactor = 0.6f, alpha = 0.8f))
-        lines.add(LineSegmentGeom(330f, 208f, 320f, 214f, widthFactor = 0.6f, alpha = 0.8f))
+        // Glossy specular highlight along upper ridge of bill (creates solid 3D horn/keratin volume)
+        lines.add(LineSegmentGeom(338f, 196f, 322f, 208f, widthFactor = 0.90f, alpha = 0.90f))
+        lines.add(LineSegmentGeom(322f, 208f, 306f, 222f, widthFactor = 0.75f, alpha = 0.85f))
+        lines.add(LineSegmentGeom(306f, 222f, 296f, 234f, widthFactor = 0.60f, alpha = 0.80f))
 
-        val eyeCx = 352f
-        val eyeCy = 206f
-        circles.add(CircleGeom(eyeCx, eyeCy, 6.5f, isFilled = false, widthFactor = 1.15f))
-        circles.add(CircleGeom(eyeCx, eyeCy, 3.2f, isFilled = true))
-        circles.add(CircleGeom(eyeCx - 1.2f, eyeCy - 1.2f, 1.0f, isFilled = true))
-        lines.add(LineSegmentGeom(eyeCx - 8f, eyeCy - 3f, eyeCx + 8f, eyeCy - 4f, widthFactor = 0.7f, alpha = 0.75f))
-        lines.add(LineSegmentGeom(eyeCx - 7f, eyeCy + 4f, eyeCx + 8f, eyeCy + 3f, widthFactor = 0.65f, alpha = 0.70f))
+        // Bill underside shading
+        lines.add(LineSegmentGeom(334f, 243f, 316f, 241f, widthFactor = 0.65f, alpha = 0.70f))
+        lines.add(LineSegmentGeom(316f, 241f, 300f, 237f, widthFactor = 0.55f, alpha = 0.65f))
 
+        // 2. Nasal Feather Bristles (Nares covering at base of bill)
+        val nasalBristles = listOf(
+            listOf(StrokePoint(340f, 194f), StrokePoint(328f, 206f)),
+            listOf(StrokePoint(342f, 198f), StrokePoint(330f, 210f)),
+            listOf(StrokePoint(344f, 202f), StrokePoint(332f, 214f)),
+            listOf(StrokePoint(346f, 206f), StrokePoint(334f, 218f)),
+            listOf(StrokePoint(348f, 210f), StrokePoint(336f, 222f))
+        )
+        for (bristle in nasalBristles) {
+            lines.add(LineSegmentGeom(bristle[0].x, bristle[0].y, bristle[1].x, bristle[1].y, widthFactor = 0.75f, alpha = 0.85f))
+        }
+
+        // 3. Intelligent Raven Eye
+        val eyeCx = 356f
+        val eyeCy = 208f
+        // Orbital eye ring (naked skin ring)
+        circles.add(CircleGeom(eyeCx, eyeCy, 6.8f, isFilled = false, widthFactor = 1.15f))
+        // Iris & Pupil
+        circles.add(CircleGeom(eyeCx, eyeCy, 4.2f, isFilled = true))
+        // Specular glint catchlight
+        circles.add(CircleGeom(eyeCx - 1.2f, eyeCy - 1.2f, 1.2f, isFilled = true))
+        // Eyelid creases and surrounding fine feathers
+        lines.add(LineSegmentGeom(eyeCx - 9f, eyeCy - 4f, eyeCx + 9f, eyeCy - 5f, widthFactor = 0.75f, alpha = 0.80f))
+        lines.add(LineSegmentGeom(eyeCx - 8f, eyeCy + 5f, eyeCx + 9f, eyeCy + 4f, widthFactor = 0.70f, alpha = 0.75f))
+
+        // 4. Crown, Forehead & Nape Plumage
+        val crownNape = listOf(
+            StrokePoint(344f, 190f),
+            StrokePoint(370f, 170f), // Crown
+            StrokePoint(404f, 174f),
+            StrokePoint(428f, 195f), // Nape
+            StrokePoint(440f, 230f)
+        )
+        paths.add(PathGeom(crownNape, isClosed = false, widthFactor = 1.40f))
+
+        // 5. Lanceolate Throat Hackles (Iconic long pointed raven feathers)
         val throatHackles = listOf(
-            listOf(StrokePoint(334f, 244f), StrokePoint(320f, 268f), StrokePoint(335f, 262f)),
-            listOf(StrokePoint(335f, 262f), StrokePoint(326f, 294f), StrokePoint(344f, 284f)),
-            listOf(StrokePoint(344f, 284f), StrokePoint(346f, 324f), StrokePoint(365f, 310f)),
-            listOf(StrokePoint(365f, 310f), StrokePoint(375f, 355f), StrokePoint(395f, 336f))
+            listOf(StrokePoint(348f, 248f), StrokePoint(330f, 272f), StrokePoint(346f, 266f)),
+            listOf(StrokePoint(346f, 266f), StrokePoint(336f, 300f), StrokePoint(356f, 290f)),
+            listOf(StrokePoint(356f, 290f), StrokePoint(352f, 332f), StrokePoint(375f, 318f)),
+            listOf(StrokePoint(375f, 318f), StrokePoint(380f, 364f), StrokePoint(404f, 344f)),
+            listOf(StrokePoint(404f, 344f), StrokePoint(415f, 396f), StrokePoint(434f, 374f))
         )
         for (hackle in throatHackles) {
-            paths.add(PathGeom(hackle, isClosed = false, widthFactor = 1.15f))
+            paths.add(PathGeom(hackle, isClosed = false, widthFactor = 1.30f))
         }
 
+        // 6. Mantle Feathers along back of neck
         val mantleFeathers = listOf(
-            listOf(StrokePoint(434f, 228f), StrokePoint(442f, 268f), StrokePoint(430f, 262f)),
-            listOf(StrokePoint(430f, 262f), StrokePoint(438f, 305f), StrokePoint(424f, 298f)),
-            listOf(StrokePoint(424f, 298f), StrokePoint(428f, 348f), StrokePoint(408f, 338f))
+            listOf(StrokePoint(440f, 230f), StrokePoint(448f, 272f), StrokePoint(436f, 266f)),
+            listOf(StrokePoint(436f, 266f), StrokePoint(445f, 312f), StrokePoint(430f, 304f)),
+            listOf(StrokePoint(430f, 304f), StrokePoint(436f, 356f), StrokePoint(418f, 344f)),
+            listOf(StrokePoint(418f, 344f), StrokePoint(424f, 400f), StrokePoint(402f, 386f))
         )
-        for (f in mantleFeathers) {
-            paths.add(PathGeom(f, isClosed = false, widthFactor = 1.15f))
+        for (mf in mantleFeathers) {
+            paths.add(PathGeom(mf, isClosed = false, widthFactor = 1.25f))
         }
 
+        // 7. Volumetric Feather Shading & Glossy Sheen Barbs
         val featherHatches = listOf(
-            Pair(StrokePoint(366f, 185f), StrokePoint(378f, 196f)),
-            Pair(StrokePoint(375f, 188f), StrokePoint(388f, 200f)),
-            Pair(StrokePoint(386f, 194f), StrokePoint(398f, 206f)),
-            Pair(StrokePoint(342f, 252f), StrokePoint(330f, 266f)),
-            Pair(StrokePoint(348f, 256f), StrokePoint(336f, 272f)),
-            Pair(StrokePoint(354f, 275f), StrokePoint(340f, 292f)),
-            Pair(StrokePoint(362f, 280f), StrokePoint(348f, 298f)),
-            Pair(StrokePoint(372f, 305f), StrokePoint(358f, 324f)),
-            Pair(StrokePoint(382f, 312f), StrokePoint(368f, 332f)),
-            Pair(StrokePoint(412f, 240f), StrokePoint(426f, 255f)),
-            Pair(StrokePoint(406f, 275f), StrokePoint(420f, 292f))
+            // Crown barbs
+            Pair(StrokePoint(370f, 184f), StrokePoint(382f, 196f)),
+            Pair(StrokePoint(380f, 188f), StrokePoint(394f, 202f)),
+            Pair(StrokePoint(392f, 194f), StrokePoint(406f, 208f)),
+            Pair(StrokePoint(404f, 204f), StrokePoint(418f, 220f)),
+            // Cheek & ear covert feather volume
+            Pair(StrokePoint(364f, 224f), StrokePoint(378f, 238f)),
+            Pair(StrokePoint(372f, 230f), StrokePoint(386f, 246f)),
+            Pair(StrokePoint(382f, 238f), StrokePoint(398f, 256f)),
+            // Throat hackle deep charcoal cross-hatching
+            Pair(StrokePoint(354f, 256f), StrokePoint(342f, 270f)),
+            Pair(StrokePoint(360f, 262f), StrokePoint(348f, 278f)),
+            Pair(StrokePoint(366f, 280f), StrokePoint(352f, 298f)),
+            Pair(StrokePoint(374f, 286f), StrokePoint(360f, 306f)),
+            Pair(StrokePoint(382f, 310f), StrokePoint(368f, 330f)),
+            Pair(StrokePoint(392f, 318f), StrokePoint(378f, 340f)),
+            Pair(StrokePoint(402f, 342f), StrokePoint(388f, 364f)),
+            // Nape & mantle shading
+            Pair(StrokePoint(416f, 244f), StrokePoint(432f, 260f)),
+            Pair(StrokePoint(412f, 280f), StrokePoint(428f, 298f)),
+            Pair(StrokePoint(406f, 318f), StrokePoint(422f, 338f))
         )
         for ((p1, p2) in featherHatches) {
-            lines.add(LineSegmentGeom(p1.x, p1.y, p2.x, p2.y, widthFactor = 0.6f, alpha = 0.65f))
+            lines.add(LineSegmentGeom(p1.x, p1.y, p2.x, p2.y, widthFactor = 0.65f, alpha = 0.70f))
         }
 
         return GeneratedOrnaments(lines, circles, polygons, paths)
@@ -1040,33 +1337,65 @@ object OrnamentGeometry {
         val polygons = mutableListOf<PolygonGeom>()
         val paths = mutableListOf<PathGeom>()
 
-        val topY = 155f
-        val botY = 425f
-        val peakY = 115f
-        val topW = 24f
-        val botW = 34f
+        val topY = 154f
+        val botY = 426f
+        val peakY = 116f
+        val topW = 25f
+        val botW = 35f
 
-        lines.add(LineSegmentGeom(cx - topW, topY, cx - botW, botY, widthFactor = 1.3f))
-        lines.add(LineSegmentGeom(cx + topW, topY, cx + botW, botY, widthFactor = 1.3f))
-        lines.add(LineSegmentGeom(cx - topW, topY, cx, peakY, widthFactor = 1.3f))
-        lines.add(LineSegmentGeom(cx + topW, topY, cx, peakY, widthFactor = 1.3f))
-        lines.add(LineSegmentGeom(cx, peakY, cx, topY, widthFactor = 1.1f))
-        lines.add(LineSegmentGeom(cx, peakY, cx, 52f, widthFactor = 1.4f))
+        // 1. Drop shadow of monolith onto background
+        val shadowPolygon = listOf(
+            StrokePoint(cx - topW + 6f, topY + 6f),
+            StrokePoint(cx + topW + 6f, topY + 6f),
+            StrokePoint(cx + botW + 6f, botY + 6f),
+            StrokePoint(cx - botW + 6f, botY + 6f)
+        )
+        polygons.add(PolygonGeom(shadowPolygon, isFilled = true, alpha = 0.22f))
 
-        lines.add(LineSegmentGeom(cx - botW - 8f, botY, cx + botW + 8f, botY, widthFactor = 1.3f))
-        lines.add(LineSegmentGeom(cx - botW - 14f, botY + 11f, cx + botW + 14f, botY + 11f, widthFactor = 1.3f))
-        lines.add(LineSegmentGeom(cx - botW, botY, cx - botW - 14f, botY + 11f, widthFactor = 1.0f))
-        lines.add(LineSegmentGeom(cx + botW, botY, cx + botW + 14f, botY + 11f, widthFactor = 1.0f))
+        // 2. Main Stone Monolith Boundaries
+        // Left pillar boundary line
+        lines.add(LineSegmentGeom(cx - topW, topY, cx - botW, botY, widthFactor = 1.40f))
+        // Right pillar boundary line
+        lines.add(LineSegmentGeom(cx + topW, topY, cx + botW, botY, widthFactor = 1.40f))
 
-        lines.add(LineSegmentGeom(cx - topW + 6f, topY + 5f, cx - botW + 8f, botY - 5f, widthFactor = 0.65f, alpha = 0.65f))
-        lines.add(LineSegmentGeom(cx + topW - 6f, topY + 5f, cx + botW - 8f, botY - 5f, widthFactor = 0.65f, alpha = 0.65f))
+        // Pyramidal stone top cap (faceted peak)
+        lines.add(LineSegmentGeom(cx - topW, topY, cx, peakY, widthFactor = 1.40f))
+        lines.add(LineSegmentGeom(cx + topW, topY, cx, peakY, widthFactor = 1.40f))
+        // Center ridge of pyramid cap
+        lines.add(LineSegmentGeom(cx, peakY, cx, topY, widthFactor = 1.25f))
+        // Spire needle extending upward along northern ray
+        lines.add(LineSegmentGeom(cx, peakY, cx, 50f, widthFactor = 1.50f))
 
-        for (step in 1..8) {
-            val sy = topY + step * ((botY - topY) / 9f)
+        // 3. Multi-tiered Pedestal Base (chiseled stone steps)
+        lines.add(LineSegmentGeom(cx - botW - 8f, botY, cx + botW + 8f, botY, widthFactor = 1.40f))
+        lines.add(LineSegmentGeom(cx - botW - 16f, botY + 12f, cx + botW + 16f, botY + 12f, widthFactor = 1.40f))
+        lines.add(LineSegmentGeom(cx - botW - 22f, botY + 24f, cx + botW + 22f, botY + 24f, widthFactor = 1.40f))
+
+        lines.add(LineSegmentGeom(cx - botW, botY, cx - botW - 16f, botY + 12f, widthFactor = 1.10f))
+        lines.add(LineSegmentGeom(cx + botW, botY, cx + botW + 16f, botY + 12f, widthFactor = 1.10f))
+        lines.add(LineSegmentGeom(cx - botW - 16f, botY + 12f, cx - botW - 22f, botY + 24f, widthFactor = 1.10f))
+        lines.add(LineSegmentGeom(cx + botW + 16f, botY + 12f, cx + botW + 22f, botY + 24f, widthFactor = 1.10f))
+
+        // 4. Chamfered / Beveled Side Facets with directional stone shading
+        // Left bevel (lit edge)
+        lines.add(LineSegmentGeom(cx - topW + 6f, topY + 4f, cx - botW + 7f, botY - 4f, widthFactor = 0.65f, alpha = 0.55f))
+        // Right bevel (shadow edge)
+        lines.add(LineSegmentGeom(cx + topW - 6f, topY + 4f, cx + botW - 7f, botY - 4f, widthFactor = 0.75f, alpha = 0.75f))
+
+        // Stone texture: fine vertical striations and chisel cross-hatching
+        for (step in 1..10) {
+            val sy = topY + step * ((botY - topY) / 11f)
             val sw = topW + (botW - topW) * (sy - topY) / (botY - topY)
-            lines.add(LineSegmentGeom(cx - sw, sy, cx - sw + 6f, sy, widthFactor = 0.7f, alpha = 0.7f))
-            lines.add(LineSegmentGeom(cx + sw - 6f, sy, cx + sw, sy, widthFactor = 0.7f, alpha = 0.7f))
+            // Left facet chisel notches
+            lines.add(LineSegmentGeom(cx - sw, sy, cx - sw + 7f, sy - 2f, widthFactor = 0.60f, alpha = 0.65f))
+            // Right facet dense chisel shading
+            lines.add(LineSegmentGeom(cx + sw - 8f, sy - 2f, cx + sw, sy, widthFactor = 0.70f, alpha = 0.75f))
+            lines.add(LineSegmentGeom(cx + sw - 8f, sy + 2f, cx + sw, sy, widthFactor = 0.55f, alpha = 0.65f))
         }
+
+        // Stone grain vertical striations
+        lines.add(LineSegmentGeom(cx - 15f, topY + 15f, cx - 18f, botY - 15f, widthFactor = 0.45f, alpha = 0.35f))
+        lines.add(LineSegmentGeom(cx + 15f, topY + 15f, cx + 18f, botY - 15f, widthFactor = 0.45f, alpha = 0.35f))
 
         return GeneratedOrnaments(lines, circles, polygons, paths)
     }
@@ -1077,24 +1406,35 @@ object OrnamentGeometry {
         val polygons = mutableListOf<PolygonGeom>()
         val paths = mutableListOf<PathGeom>()
 
+        // 1. Background Celtic Medallion Lattice
+        val lattice = generateCelticLattice(cx, cy, strokeWidth)
+        lines.addAll(lattice.lines)
+        circles.addAll(lattice.circles)
+        polygons.addAll(lattice.polygons)
+        paths.addAll(lattice.paths)
+
+        // 2. Dramatic 3D Faceted Compass Star
         val star = generateFacetedStar(cx, cy, strokeWidth)
         lines.addAll(star.lines)
         circles.addAll(star.circles)
         polygons.addAll(star.polygons)
         paths.addAll(star.paths)
 
+        // 3. Central 3D Runic Stele Monolith
         val stele = generateRunicStele(cx, cy, strokeWidth)
         lines.addAll(stele.lines)
         circles.addAll(stele.circles)
         polygons.addAll(stele.polygons)
         paths.addAll(stele.paths)
 
+        // 4. Lifelike Wolf Guardian (Left)
         val wolf = generateWolfGuardian(cx, cy, strokeWidth)
         lines.addAll(wolf.lines)
         circles.addAll(wolf.circles)
         polygons.addAll(wolf.polygons)
         paths.addAll(wolf.paths)
 
+        // 5. Lifelike Raven Guardian (Right)
         val raven = generateRavenGuardian(cx, cy, strokeWidth)
         lines.addAll(raven.lines)
         circles.addAll(raven.circles)

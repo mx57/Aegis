@@ -152,6 +152,9 @@ fun SketchScreen(
     var hasRayBurst by remember { mutableStateOf(false) }
     var hasRunering by remember { mutableStateOf(false) }
     var hasGlowEffect by remember { mutableStateOf(true) }
+    var hasVolumetricShading by remember { mutableStateOf(true) }
+    var hasTextureGrain by remember { mutableStateOf(true) }
+    var runeChiselDepth by remember { mutableFloatStateOf(1.0f) }
     var isStencil by remember { mutableStateOf(false) }
     var seed by remember { mutableLongStateOf(4242L) }
     var animTriggerKey by remember { mutableIntStateOf(0) }
@@ -209,7 +212,7 @@ fun SketchScreen(
     val config = remember(
         selectedStyle, selectedTheme, lineWidth, hasFrameCircle, frameStyle, finialType, centerEmblem,
         cornerStyle, hasSymmetryAccents, hasBranchNotches, hasRayBurst, hasRunering, hasGlowEffect,
-        wobbleAmount, seed, isStencil
+        wobbleAmount, seed, isStencil, hasVolumetricShading, hasTextureGrain, runeChiselDepth
     ) {
         SketchConfig(
             style = selectedStyle,
@@ -227,7 +230,10 @@ fun SketchScreen(
             hasGlowEffect = hasGlowEffect,
             wobbleAmount = wobbleAmount,
             seed = seed,
-            isStencil = isStencil
+            isStencil = isStencil,
+            hasVolumetricShading = hasVolumetricShading,
+            hasTextureGrain = hasTextureGrain,
+            runeChiselDepth = runeChiselDepth
         )
     }
 
@@ -886,6 +892,44 @@ fun SketchScreen(
                             Text("Мягкий ореол вокруг рун и линий", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Switch(checked = hasGlowEffect, onCheckedChange = { hasGlowEffect = it })
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("Объёмная гравировка и тени (3D Volume)", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                            Text("Штриховка, фаски и падающие тени", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(checked = hasVolumetricShading, onCheckedChange = { hasVolumetricShading = it })
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("Текстура бумаги и камня (Grain & Vignette)", style = MaterialTheme.typography.bodyMedium)
+                            Text("Микро-зернистость пергамента и глубина", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(checked = hasTextureGrain, onCheckedChange = { hasTextureGrain = it })
+                    }
+
+                    if (hasVolumetricShading) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Глубина резьбы рун: ${String.format("%.1f", runeChiselDepth)}x",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Slider(
+                            value = runeChiselDepth,
+                            onValueChange = { runeChiselDepth = it },
+                            valueRange = 0.4f..2.2f
+                        )
                     }
 
                     Row(

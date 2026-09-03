@@ -169,6 +169,30 @@ fun RunicCanvas(
             else -> config.lineWidth
         } * scale
 
+        // Ambient Paper & Stone Texture Background
+        if (!config.isStencil && config.hasTextureGrain) {
+            val bgTheme = config.effectiveTheme
+            val bgCenter = try { Color(android.graphics.Color.parseColor(bgTheme.bgHex)) } catch (_: Exception) { Color.Transparent }
+            val bgEdge = try { Color(android.graphics.Color.parseColor(bgTheme.bgEdgeHex)) } catch (_: Exception) { Color.Transparent }
+            drawRect(
+                brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                    colors = listOf(bgCenter, bgEdge),
+                    center = Offset(250f * scale, 250f * scale),
+                    radius = 350f * scale
+                )
+            )
+
+            // Micro-speckled paper/slate texture stipples
+            val noisePrng = Random(config.seed xor 0x5EEDCAFE)
+            val noiseColor = strokeColor.copy(alpha = 0.045f)
+            for (n in 0 until 140) {
+                val nx = noisePrng.nextFloat() * 500f * scale
+                val ny = noisePrng.nextFloat() * 500f * scale
+                val nr = (noisePrng.nextFloat() * 1.6f + 0.6f) * scale
+                drawCircle(color = noiseColor, radius = nr, center = Offset(nx, ny))
+            }
+        }
+
         // Helper to draw GeneratedOrnaments with alpha factor
         fun drawOrnaments(ornaments: GeneratedOrnaments, alphaFactor: Float = 1f) {
             if (alphaFactor <= 0.001f) return
@@ -210,13 +234,14 @@ fun RunicCanvas(
                     }
                     close()
                 }
+                val polyAlpha = (poly.alpha * alphaFactor).coerceIn(0f, 1f)
                 if (poly.isFilled) {
-                    drawPath(path = path, color = strokeColor.copy(alpha = alphaFactor))
+                    drawPath(path = path, color = strokeColor.copy(alpha = polyAlpha))
                 } else {
                     val sw = (effectiveStrokeWidth * poly.widthFactor).coerceAtLeast(1f)
                     drawPath(
                         path = path,
-                        color = strokeColor.copy(alpha = alphaFactor),
+                        color = strokeColor.copy(alpha = polyAlpha),
                         style = Stroke(width = sw, join = StrokeJoin.Round)
                     )
                 }
@@ -230,13 +255,14 @@ fun RunicCanvas(
                     }
                     if (pathGeom.isClosed) close()
                 }
+                val pathAlpha = (pathGeom.alpha * alphaFactor).coerceIn(0f, 1f)
                 if (pathGeom.isFilled) {
-                    drawPath(path = path, color = strokeColor.copy(alpha = alphaFactor))
+                    drawPath(path = path, color = strokeColor.copy(alpha = pathAlpha))
                 } else {
                     val sw = (effectiveStrokeWidth * pathGeom.widthFactor).coerceAtLeast(1f)
                     drawPath(
                         path = path,
-                        color = strokeColor.copy(alpha = alphaFactor),
+                        color = strokeColor.copy(alpha = pathAlpha),
                         style = Stroke(width = sw, cap = StrokeCap.Round, join = StrokeJoin.Round)
                     )
                 }
@@ -346,6 +372,42 @@ fun RunicCanvas(
                     for (k in 1 until trimmedPts.size) {
                         lineTo(trimmedPts[k].x * scale, trimmedPts[k].y * scale)
                     }
+                }
+
+                // Volumetric 3D Chiseled Bevels (Pencil engraving & stone relief)
+                if (config.hasVolumetricShading && !config.isStencil) {
+                    val chiselOff = strokeW * 0.35f * config.runeChiselDepth
+                    val shadowPath = Path().apply {
+                        moveTo(trimmedPts[0].x * scale + chiselOff, trimmedPts[0].y * scale + chiselOff)
+                        for (k in 1 until trimmedPts.size) {
+                            lineTo(trimmedPts[k].x * scale + chiselOff, trimmedPts[k].y * scale + chiselOff)
+                        }
+                    }
+                    drawPath(
+                        path = shadowPath,
+                        color = Color.Black.copy(alpha = 0.28f * strokeAlpha),
+                        style = Stroke(
+                            width = strokeW * 0.85f,
+                            cap = StrokeCap.Round,
+                            join = StrokeJoin.Round
+                        )
+                    )
+
+                    val highlightPath = Path().apply {
+                        moveTo(trimmedPts[0].x * scale - chiselOff * 0.6f, trimmedPts[0].y * scale - chiselOff * 0.6f)
+                        for (k in 1 until trimmedPts.size) {
+                            lineTo(trimmedPts[k].x * scale - chiselOff * 0.6f, trimmedPts[k].y * scale - chiselOff * 0.6f)
+                        }
+                    }
+                    drawPath(
+                        path = highlightPath,
+                        color = glowColor.copy(alpha = 0.30f * strokeAlpha),
+                        style = Stroke(
+                            width = strokeW * 0.45f,
+                            cap = StrokeCap.Round,
+                            join = StrokeJoin.Round
+                        )
+                    )
                 }
 
                 // Glowing halo layer (if glow enabled or actively carving)
