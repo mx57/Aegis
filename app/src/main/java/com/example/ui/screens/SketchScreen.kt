@@ -191,6 +191,7 @@ fun SketchScreen(
 
     val presets = remember {
         listOf(
+            StavePreset("Древо Иггдрасиль", "🌳", "Мировое Древо, 9 миров, сакральные источники Норн и переплетённые ветви", SketchStyle.EMERALD_BRONZE, CanvasTheme.EMERALD_PATINA, FrameStyle.YGGDRASIL_BRANCHES, FinialType.CIRCLES_DOTS, CenterEmblem.YGGDRASIL_TREE, CornerStyle.NORSE_KNOTS, branchNotches = true, rayBurst = true, runering = true, lineWidth = 3.2f),
             StavePreset("Тотем Одина (Волк и Ворон)", "🐺", "Эпический монолит с волками Гери и Фреки, воронами и шипованной цепью", SketchStyle.ODIN_TOTEM, CanvasTheme.GRAPHITE_SKETCH, FrameStyle.SPIKED_CHAIN, FinialType.ARROWS, CenterEmblem.BEASTS_OF_ODIN, CornerStyle.NORSE_KNOTS, branchNotches = true, rayBurst = true, runering = true, lineWidth = 3.2f, layout = StaveLayoutType.STELE_OBELISK),
             StavePreset("Кованая Цепь и Звезда", "⛓️", "Шипованный защитный пояс, гранёная звезда Одина и строгая руническая геометрия", SketchStyle.VIKING_CHAIN, CanvasTheme.CHARCOAL_DARK, FrameStyle.SPIKED_CHAIN, FinialType.TRIDENT, CenterEmblem.FACETED_STAR, CornerStyle.SHIELD_STUDS, branchNotches = true, rayBurst = false, runering = true, lineWidth = 3.4f),
             StavePreset("Гравюра и Кельтский Медальон", "🦅", "Штриховка резцом, медальон с плетением и геральдические звери", SketchStyle.WOODCUT_ENGRAVING, CanvasTheme.GRAPHITE_SKETCH, FrameStyle.CELTIC_MEDALLION, FinialType.SPIRALS, CenterEmblem.BEASTS_OF_ODIN, CornerStyle.NORSE_KNOTS, branchNotches = true, rayBurst = true, runering = true, lineWidth = 2.8f),

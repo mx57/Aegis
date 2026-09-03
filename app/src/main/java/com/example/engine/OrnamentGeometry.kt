@@ -297,6 +297,33 @@ object OrnamentGeometry {
                 }
             }
 
+            FrameStyle.YGGDRASIL_BRANCHES -> {
+                // Interwoven roots and branches of Yggdrasil forming a sacred circular boundary
+                val rOut = 236f
+                val rIn = 210f
+                circles.add(CircleGeom(cx, cy, rOut, widthFactor = 0.95f))
+                circles.add(CircleGeom(cx, cy, rIn, widthFactor = 0.65f, alpha = 0.70f))
+
+                // 12 Intertwined Root Arcs
+                val arcs = 12
+                for (i in 0 until arcs) {
+                    val a1 = (2 * PI * i / arcs).toFloat()
+                    val a2 = (2 * PI * (i + 1) / arcs).toFloat()
+                    val aMid = (a1 + a2) / 2f
+
+                    val p1 = StrokePoint(cx + rIn * cos(a1), cy + rIn * sin(a1))
+                    val pMid = StrokePoint(cx + (rOut + 10f) * cos(aMid), cy + (rOut + 10f) * sin(aMid))
+                    val p2 = StrokePoint(cx + rIn * cos(a2), cy + rIn * sin(a2))
+
+                    paths.add(PathGeom(listOf(p1, pMid, p2), widthFactor = 1.10f))
+
+                    // Leaf node tip
+                    circles.add(CircleGeom(pMid.x, pMid.y, 2.8f, isFilled = true))
+                    // Root knot circle
+                    circles.add(CircleGeom(cx + (rIn + 8f) * cos(aMid), cy + (rIn + 8f) * sin(aMid), 1.8f, isFilled = true))
+                }
+            }
+
             FrameStyle.SACRED_OCTAGON -> {
                 // 8-pointed star / dual squares + inner octagon
                 val r = 230f
@@ -356,6 +383,58 @@ object OrnamentGeometry {
 
             CenterEmblem.RUNIC_STELE -> {
                 return generateRunicStele(cx, cy, strokeWidth)
+            }
+
+            CenterEmblem.YGGDRASIL_TREE -> {
+                // World Tree Yggdrasil: Roots (3 Norns wells), Trunk, Branching Crown, and 9 Worlds Orbs
+                val trunkBaseY = 320f
+                val trunkTopY = 210f
+
+                // 1. Triple Root Wells (Urdarbrunnr)
+                val root1 = listOf(StrokePoint(cx, trunkBaseY), StrokePoint(cx - 30f, 360f), StrokePoint(cx - 50f, 390f))
+                val root2 = listOf(StrokePoint(cx, trunkBaseY), StrokePoint(cx, 370f), StrokePoint(cx, 405f))
+                val root3 = listOf(StrokePoint(cx, trunkBaseY), StrokePoint(cx + 30f, 360f), StrokePoint(cx + 50f, 390f))
+                paths.add(PathGeom(root1, widthFactor = 1.40f))
+                paths.add(PathGeom(root2, widthFactor = 1.40f))
+                paths.add(PathGeom(root3, widthFactor = 1.40f))
+
+                circles.add(CircleGeom(cx - 50f, 390f, 4.5f, isFilled = true))
+                circles.add(CircleGeom(cx, 405f, 4.5f, isFilled = true))
+                circles.add(CircleGeom(cx + 50f, 390f, 4.5f, isFilled = true))
+
+                // 2. Powerful Twisted Tree Trunk
+                lines.add(LineSegmentGeom(cx - 6f, trunkBaseY, cx - 4f, trunkTopY, widthFactor = 1.60f))
+                lines.add(LineSegmentGeom(cx + 6f, trunkBaseY, cx + 4f, trunkTopY, widthFactor = 1.60f))
+                lines.add(LineSegmentGeom(cx, trunkBaseY, cx, trunkTopY, widthFactor = 1.10f)) // Ridge
+
+                // 3. Spreading Canopy Branches
+                val b1 = listOf(StrokePoint(cx, trunkTopY), StrokePoint(cx - 35f, 170f), StrokePoint(cx - 65f, 140f))
+                val b2 = listOf(StrokePoint(cx, trunkTopY), StrokePoint(cx - 20f, 155f), StrokePoint(cx - 30f, 115f))
+                val b3 = listOf(StrokePoint(cx, trunkTopY), StrokePoint(cx, 140f), StrokePoint(cx, 95f))
+                val b4 = listOf(StrokePoint(cx, trunkTopY), StrokePoint(cx + 20f, 155f), StrokePoint(cx + 30f, 115f))
+                val b5 = listOf(StrokePoint(cx, trunkTopY), StrokePoint(cx + 35f, 170f), StrokePoint(cx + 65f, 140f))
+                paths.add(PathGeom(b1, widthFactor = 1.30f))
+                paths.add(PathGeom(b2, widthFactor = 1.20f))
+                paths.add(PathGeom(b3, widthFactor = 1.40f))
+                paths.add(PathGeom(b4, widthFactor = 1.20f))
+                paths.add(PathGeom(b5, widthFactor = 1.30f))
+
+                // 4. Nine Norse Worlds Orbs (Asgard, Midgard, Helheim, Alfheim, etc.)
+                val worlds = listOf(
+                    Pair(cx, 95f),        // Asgard
+                    Pair(cx - 30f, 115f),  // Alfheim
+                    Pair(cx + 30f, 115f),  // Vanaheim
+                    Pair(cx - 65f, 140f),  // Jotunheim
+                    Pair(cx, 180f),        // Midgard (center hub)
+                    Pair(cx + 65f, 140f),  // Muspelheim
+                    Pair(cx - 50f, 390f),  // Niflheim
+                    Pair(cx, 405f),        // Helheim
+                    Pair(cx + 50f, 390f)   // Svartalfheim
+                )
+                for ((wx, wy) in worlds) {
+                    circles.add(CircleGeom(wx, wy, 3.5f, isFilled = true))
+                    circles.add(CircleGeom(wx, wy, 6.5f, isFilled = false, widthFactor = 0.70f))
+                }
             }
 
             CenterEmblem.VALKNUT -> {

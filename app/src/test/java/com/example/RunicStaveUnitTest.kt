@@ -142,4 +142,50 @@ class RunicStaveUnitTest {
         assertTrue("SVG should contain degree marks", svg.contains("<line"))
         assertTrue("SVG should end with valid closing tag", svg.trim().endsWith("</svg>"))
     }
+
+    @Test
+    fun svgGeneration_volumetricShadingAnd3dGradients() {
+        val stave = StaveComposer.compose(testRunes, StaveLayoutType.BINDRUNE, seed = 2026L)
+        val configGold = SketchConfig(
+            style = SketchStyle.SACRED_GOLD,
+            theme = com.example.engine.CanvasTheme.GOLDEN_EMBER,
+            hasVolumetricShading = true
+        )
+        val svgGold = SvgStaveRenderer.renderSvg(stave, configGold)
+        assertTrue("Gold SVG should contain 3D linearGradient def", svgGold.contains("""id="gold3dGrad""""))
+        assertTrue("Gold SVG should contain drop shadow filter", svgGold.contains("""id="chiselDropShadow""""))
+        assertTrue("Gold SVG should render specular highlight core lines", svgGold.contains("""transform="translate(-0.4, -0.5)"""") || svgGold.contains("""stroke="#FFF3BC""""))
+
+        val configBronze = SketchConfig(
+            style = SketchStyle.EMERALD_BRONZE,
+            theme = com.example.engine.CanvasTheme.EMERALD_PATINA,
+            hasVolumetricShading = true
+        )
+        val svgBronze = SvgStaveRenderer.renderSvg(stave, configBronze)
+        assertTrue("Bronze SVG should be valid and non-empty", svgBronze.length > 200)
+
+        val configFrost = SketchConfig(
+            style = SketchStyle.FROST_CRYSTAL,
+            theme = com.example.engine.CanvasTheme.FROST_ICE,
+            hasVolumetricShading = true
+        )
+        val svgFrost = SvgStaveRenderer.renderSvg(stave, configFrost)
+        assertTrue("Frost SVG should be valid and non-empty", svgFrost.length > 200)
+    }
+
+    @Test
+    fun svgGeneration_yggdrasilTreeAndBranches_rendersCorrectly() {
+        val stave = StaveComposer.compose(testRunes, StaveLayoutType.BINDRUNE, seed = 7777L)
+        val configYggdrasil = SketchConfig(
+            style = SketchStyle.EMERALD_BRONZE,
+            theme = com.example.engine.CanvasTheme.EMERALD_PATINA,
+            frameStyle = com.example.engine.FrameStyle.YGGDRASIL_BRANCHES,
+            centerEmblem = com.example.engine.CenterEmblem.YGGDRASIL_TREE,
+            hasVolumetricShading = true
+        )
+        val svg = SvgStaveRenderer.renderSvg(stave, configYggdrasil)
+        assertTrue("SVG should contain paths for Yggdrasil tree trunk and roots", svg.contains("<path"))
+        assertTrue("SVG should contain circles for 9 worlds orbs", svg.contains("<circle"))
+        assertTrue("SVG should end with valid closing tag", svg.trim().endsWith("</svg>"))
+    }
 }
