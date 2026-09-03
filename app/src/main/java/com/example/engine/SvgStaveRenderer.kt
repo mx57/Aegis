@@ -25,11 +25,13 @@ enum class SketchStyle(val titleRu: String, val descriptionRu: String) {
     VIKING_CHAIN("Кованая цепь викингов", "Шипованная цепь Глейпнир, кельтский медальон и гранёные лучи"),
     WOODCUT_ENGRAVING("Гравюра и штриховка", "Художественный карандашный эскиз, штриховка тушью и резьба по камню"),
     RUNIC_OBELISK("Руническая стела", "Обелиск с вертикальными рунами, окруженный гранёной звездой"),
-    SACRED_GOLD("Сакральное Золото", "Небесная геометрия, золотые орбиты, астролябия и сияющие узлы"),
+    SACRED_GOLD("Сакральное Золото", "3D объемное червленое золото, небесные орбиты и сияющая астролябия"),
+    EMERALD_BRONZE("Древняя Бронза и Изумруд", "Благородная патинированная бронза с глубоким изумрудным свечением"),
+    FROST_CRYSTAL("Ледяной Кристалл", "Кристаллический морозный рельеф с выпуклой платиновой гранью"),
     NORDIC_TATTOO("Тату-Блэкворк", "Четкая тату-графика, акцентные ромбы, плотные линии и чистый контраст"),
     VALKYRIE_SILVER("Серебро Валькирий", "Лунная платина, тончайшая вязь и морозное сияние севера"),
     ORNAMENTAL("Орнаментальный", "Северные узоры, засечки, трезубцы Агисхьяльма и узлы"),
-    WOODCARVE("Резьба по камню", "Аутентичные срезы и насечки рунических камней Еллинге"),
+    WOODCARVE("Резьба по камню", "Аутентичные 3D срезы и глубокая высечка рунических камней Еллинге"),
     CELTIC_KNOT("Кельтская вязь", "Сакральные петли, трикветры и переплетающиеся узлы"),
     AEGISHJALMUR("Шлем Ужаса", "Исландские гальдраставы, тройные вилы и защитные кресты"),
     DOTWORK("Сакральный Дотворк", "Сакральная геометрия, звездные точки и растушевка"),
@@ -85,17 +87,21 @@ enum class CanvasTheme(
     val bgEdgeHex: String,
     val strokeHex: String,
     val accentHex: String,
-    val glowHex: String
+    val glowHex: String,
+    val highlightHex: String = "#FFF5D1",
+    val shadowHex: String = "#000000"
 ) {
-    GRAPHITE_SKETCH("Графитовый эскиз", "Художественный рисунок карандашом и тушью как на фото", "#F4EFE6", "#E4DAC8", "#1E1A16", "#423830", "#332B25"),
-    GOLDEN_EMBER("Небесное Золото", "Космический обсидиан с благородным червонным золотом", "#090B10", "#030407", "#E5C158", "#F3D882", "#E5C158"),
-    AURORA_NIGHT("Северное Сияние", "Глубокая полярная ночь с изумрудно-лунным сиянием", "#0A1017", "#04070B", "#7EE0D2", "#89DDFF", "#64FFDA"),
-    VALKYRIE_MITHRIL("Серебро Валькирий", "Темный антрацит с лунным платиновым серебром", "#121418", "#08090B", "#E2E8F0", "#94A3B8", "#CBD5E1"),
-    DARK_SLATE("Тёмный сланец", "Мистический графит с теплым античным золотом", "#14181F", "#0A0D12", "#E5C07B", "#D19A66", "#E5C07B"),
-    ANCIENT_PARCHMENT("Древний пергамент", "Состаренная бумага с тёмными ореховыми чернилами", "#F5EEDC", "#D9C6A5", "#2B190E", "#7A4924", "#8C5835"),
-    CHARCOAL_DARK("Тёмный уголь", "Глубокая гравюра углём на темном сланце", "#161311", "#0C0A09", "#E8DFD0", "#C8B69B", "#E8DFD0"),
-    RUNESTONE_GRAY("Скандинавский гранит", "Высеченный в северном камне рельеф с лазурью", "#1C2128", "#12151A", "#88C0D0", "#5E81AC", "#81A1C1"),
-    STENCIL("Трафарет для тату", "Чистый черно-белый вектор для перевода на кожу", "#FFFFFF", "#FFFFFF", "#000000", "#222222", "#000000")
+    GRAPHITE_SKETCH("Графитовый эскиз", "Художественный рисунок карандашом и тушью как на фото", "#F4EFE6", "#E4DAC8", "#1E1A16", "#423830", "#332B25", "#FFFFFF", "#1E1A16"),
+    GOLDEN_EMBER("Небесное Золото", "Космический обсидиан с благородным червонным золотом", "#090B10", "#030407", "#E5C158", "#F3D882", "#E5C158", "#FFF3BC", "#000000"),
+    EMERALD_PATINA("Изумрудная Бронза", "Византийская бронза с окисленной изумрудной патиной", "#0A1310", "#030806", "#CD9B51", "#52B788", "#2A9D8F", "#FFE8B6", "#000000"),
+    AURORA_NIGHT("Северное Сияние", "Глубокая полярная ночь с изумрудно-лунным сиянием", "#0A1017", "#04070B", "#7EE0D2", "#89DDFF", "#64FFDA", "#E0FFFF", "#000000"),
+    VALKYRIE_MITHRIL("Серебро Валькирий", "Темный антрацит с лунным платиновым серебром", "#121418", "#08090B", "#E2E8F0", "#94A3B8", "#CBD5E1", "#FFFFFF", "#000000"),
+    FROST_ICE("Ледяная Платина", "Арктический морозный лед со скандинавской платиной", "#0C141D", "#050A0F", "#B0E0E6", "#708090", "#87CEFA", "#F0F8FF", "#000000"),
+    DARK_SLATE("Тёмный сланец", "Мистический графит с теплым античным золотом", "#14181F", "#0A0D12", "#E5C07B", "#D19A66", "#E5C07B", "#FFE6A7", "#000000"),
+    ANCIENT_PARCHMENT("Древний пергамент", "Состаренная бумага с тёмными ореховыми чернилами", "#F5EEDC", "#D9C6A5", "#2B190E", "#7A4924", "#8C5835", "#FFFDF7", "#1A0F08"),
+    CHARCOAL_DARK("Тёмный уголь", "Глубокая гравюра углём на темном сланце", "#161311", "#0C0A09", "#E8DFD0", "#C8B69B", "#E8DFD0", "#FFFFFF", "#000000"),
+    RUNESTONE_GRAY("Скандинавский гранит", "Высеченный в северном камне рельеф с лазурью", "#1C2128", "#12151A", "#88C0D0", "#5E81AC", "#81A1C1", "#E0F7FA", "#000000"),
+    STENCIL("Трафарет для тату", "Чистый черно-белый вектор для перевода на кожу", "#FFFFFF", "#FFFFFF", "#000000", "#222222", "#000000", "#FFFFFF", "#000000")
 }
 
 val ELDER_FUTHARK_RUNES = listOf(
@@ -143,6 +149,8 @@ object SvgStaveRenderer {
         val strokeColor = if (config.isStencil) "#000000" else when (config.theme) {
             CanvasTheme.DARK_SLATE -> when (config.style) {
                 SketchStyle.SACRED_GOLD -> "#E5C158"
+                SketchStyle.EMERALD_BRONZE -> "#CD9B51"
+                SketchStyle.FROST_CRYSTAL -> "#B0E0E6"
                 SketchStyle.NORDIC_TATTOO -> "#F8FAFC"
                 SketchStyle.VALKYRIE_SILVER -> "#E2E8F0"
                 SketchStyle.STRICT -> "#E5E9F0"
@@ -157,8 +165,10 @@ object SvgStaveRenderer {
             CanvasTheme.GRAPHITE_SKETCH -> theme.strokeHex
             CanvasTheme.CHARCOAL_DARK -> theme.strokeHex
             CanvasTheme.GOLDEN_EMBER -> "#E5C158"
+            CanvasTheme.EMERALD_PATINA -> "#CD9B51"
             CanvasTheme.AURORA_NIGHT -> "#7EE0D2"
             CanvasTheme.VALKYRIE_MITHRIL -> "#E2E8F0"
+            CanvasTheme.FROST_ICE -> "#B0E0E6"
             CanvasTheme.ANCIENT_PARCHMENT -> theme.strokeHex
             CanvasTheme.RUNESTONE_GRAY -> theme.strokeHex
             CanvasTheme.STENCIL -> "#000000"
@@ -180,13 +190,26 @@ object SvgStaveRenderer {
 
         sb.append("""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">""").append("\n")
 
-        // Definitions: Vignette gradient & Glow filter
+        // Definitions: Vignette gradient, Gold/Metallic 3D gradients, Shadow & Glow filters
         sb.append("  <defs>\n")
         if (!config.isStencil) {
             sb.append("""    <radialGradient id="bgVignette" cx="50%" cy="50%" r="72%">""").append("\n")
             sb.append("""      <stop offset="0%" stop-color="${theme.bgHex}"/>""").append("\n")
             sb.append("""      <stop offset="100%" stop-color="${theme.bgEdgeHex}"/>""").append("\n")
             sb.append("""    </radialGradient>""").append("\n")
+
+            // Metallic Gold / Bronze 3D Linear Gradient for volumetric strokes
+            sb.append("""    <linearGradient id="gold3dGrad" x1="0%" y1="0%" x2="100%" y2="100%">""").append("\n")
+            sb.append("""      <stop offset="0%" stop-color="${theme.highlightHex}"/>""").append("\n")
+            sb.append("""      <stop offset="35%" stop-color="${theme.strokeHex}"/>""").append("\n")
+            sb.append("""      <stop offset="70%" stop-color="${theme.accentHex}"/>""").append("\n")
+            sb.append("""      <stop offset="100%" stop-color="${theme.strokeHex}"/>""").append("\n")
+            sb.append("""    </linearGradient>""").append("\n")
+
+            // Volumetric Drop Shadow filter for carved/embossed depth
+            sb.append("""    <filter id="chiselDropShadow" x="-20%" y="-20%" width="140%" height="140%">""").append("\n")
+            sb.append("""      <feDropShadow dx="1.8" dy="2.4" stdDeviation="1.5" flood-color="${theme.shadowHex}" flood-opacity="0.85"/>""").append("\n")
+            sb.append("""    </filter>""").append("\n")
         }
         if (config.hasGlowEffect && !config.isStencil) {
             sb.append("""    <filter id="sacredGlow" x="-20%" y="-20%" width="140%" height="140%">""").append("\n")
@@ -282,13 +305,18 @@ object SvgStaveRenderer {
                     // Double-carved stone incision with chiseled facets
                     renderCarvedStrokeSvg(sb, pts, strokeColor, strokeW)
                 }
+                SketchStyle.SACRED_GOLD, SketchStyle.EMERALD_BRONZE, SketchStyle.FROST_CRYSTAL -> {
+                    // 3D Volumetric Metallic Embossed Stroke with Specular Highlight line
+                    renderVolumetricMetallicStrokeSvg(sb, pts, theme, strokeW, strokeOpacity, config)
+                }
                 else -> {
-                    // Standard Path rendering
+                    // Standard Path rendering with optional 3D drop shadow
+                    val shadowAttr = if (config.hasVolumetricShading && !config.isStencil) """ filter="url(#chiselDropShadow)"""" else ""
                     sb.append("""  <path d="M ${pts[0].x.format()} ${pts[0].y.format()} """)
                     for (i in 1 until pts.size) {
                         sb.append("""L ${pts[i].x.format()} ${pts[i].y.format()} """)
                     }
-                    sb.append("""" fill="none" stroke="$strokeColor" stroke-width="${strokeW.format()}" opacity="$strokeOpacity" stroke-linecap="round" stroke-linejoin="round"/>""").append("\n")
+                    sb.append("""" fill="none" stroke="$strokeColor" stroke-width="${strokeW.format()}" opacity="$strokeOpacity"$shadowAttr stroke-linecap="round" stroke-linejoin="round"/>""").append("\n")
 
                     if ((config.style == SketchStyle.BLACKWORK || config.style == SketchStyle.NORDIC_TATTOO) && stroke.isOuterPole) {
                         // Diamond joint caps at outer endpoints
@@ -403,21 +431,51 @@ object SvgStaveRenderer {
         }
     }
 
-    private fun renderCarvedStrokeSvg(sb: StringBuilder, pts: List<StrokePoint>, color: String, sw: Float) {
-        // Main chiseled stroke
-        sb.append("""  <path d="M ${pts[0].x.format()} ${pts[0].y.format()} """)
+    private fun renderVolumetricMetallicStrokeSvg(
+        sb: StringBuilder,
+        pts: List<StrokePoint>,
+        theme: CanvasTheme,
+        sw: Float,
+        opacity: String,
+        config: SketchConfig
+    ) {
+        val pathD = StringBuilder()
+        pathD.append("M ${pts[0].x.format()} ${pts[0].y.format()} ")
         for (i in 1 until pts.size) {
-            sb.append("""L ${pts[i].x.format()} ${pts[i].y.format()} """)
+            pathD.append("L ${pts[i].x.format()} ${pts[i].y.format()} ")
         }
-        sb.append("""" fill="none" stroke="$color" stroke-width="${sw.format()}" stroke-linecap="round" stroke-linejoin="round"/>""").append("\n")
 
-        // Parallel shadow incision
-        val offset = sw * 0.45f
-        sb.append("""  <path d="M ${(pts[0].x + offset).format()} ${(pts[0].y + offset).format()} """)
-        for (i in 1 until pts.size) {
-            sb.append("""L ${(pts[i].x + offset).format()} ${(pts[i].y + offset).format()} """)
+        // 1. Base Ambient/Shadow Layer for 3D depth
+        if (config.hasVolumetricShading && !config.isStencil) {
+            sb.append("""  <path d="$pathD" fill="none" stroke="${theme.shadowHex}" stroke-width="${(sw * 1.5f).format()}" opacity="0.55" stroke-linecap="round" stroke-linejoin="round" transform="translate(1.2, 1.6)"/>""").append("\n")
         }
-        sb.append("""" fill="none" stroke="$color" stroke-width="${(sw * 0.4f).format()}" opacity="0.6" stroke-linecap="round"/>""").append("\n")
+
+        // 2. Main Metallic Body Path (Gradient / Stroke Color)
+        val strokeFill = if (!config.isStencil) "url(#gold3dGrad)" else theme.strokeHex
+        sb.append("""  <path d="$pathD" fill="none" stroke="$strokeFill" stroke-width="${sw.format()}" opacity="$opacity" stroke-linecap="round" stroke-linejoin="round"/>""").append("\n")
+
+        // 3. Specular Highlight Core Line
+        if (config.hasVolumetricShading && !config.isStencil && sw > 1.5f) {
+            val hlWidth = (sw * 0.35f).coerceAtLeast(0.6f)
+            sb.append("""  <path d="$pathD" fill="none" stroke="${theme.highlightHex}" stroke-width="${hlWidth.format()}" opacity="0.85" stroke-linecap="round" stroke-linejoin="round" transform="translate(-0.4, -0.5)"/>""").append("\n")
+        }
+    }
+
+    private fun renderCarvedStrokeSvg(sb: StringBuilder, pts: List<StrokePoint>, color: String, sw: Float) {
+        val pathD = StringBuilder()
+        pathD.append("M ${pts[0].x.format()} ${pts[0].y.format()} ")
+        for (i in 1 until pts.size) {
+            pathD.append("L ${pts[i].x.format()} ${pts[i].y.format()} ")
+        }
+
+        // 1. Chiseled Deep Ambient Shadow
+        sb.append("""  <path d="$pathD" fill="none" stroke="#000000" stroke-width="${(sw * 1.6f).format()}" opacity="0.65" stroke-linecap="round" stroke-linejoin="round" transform="translate(1.5, 1.8)"/>""").append("\n")
+
+        // 2. Main chiseled groove body
+        sb.append("""  <path d="$pathD" fill="none" stroke="$color" stroke-width="${sw.format()}" stroke-linecap="round" stroke-linejoin="round"/>""").append("\n")
+
+        // 3. Inner Bevel Light Specular Reflection
+        sb.append("""  <path d="$pathD" fill="none" stroke="#FFFFFF" stroke-width="${(sw * 0.30f).coerceAtLeast(0.6f).format()}" opacity="0.50" stroke-linecap="round" stroke-linejoin="round" transform="translate(-0.6, -0.6)"/>""").append("\n")
     }
 
     private fun renderDotworkStrokeSvg(sb: StringBuilder, pts: List<StrokePoint>, strokeColor: String, prng: Random) {
@@ -500,6 +558,8 @@ object SvgStaveRenderer {
         val strokeColorInt = if (config.isStencil) Color.BLACK else when (config.theme) {
             CanvasTheme.DARK_SLATE -> when (config.style) {
                 SketchStyle.SACRED_GOLD -> Color.parseColor("#E5C158")
+                SketchStyle.EMERALD_BRONZE -> Color.parseColor("#CD9B51")
+                SketchStyle.FROST_CRYSTAL -> Color.parseColor("#B0E0E6")
                 SketchStyle.NORDIC_TATTOO -> Color.parseColor("#F8FAFC")
                 SketchStyle.VALKYRIE_SILVER -> Color.parseColor("#E2E8F0")
                 SketchStyle.STRICT -> Color.parseColor("#E5E9F0")
@@ -514,8 +574,10 @@ object SvgStaveRenderer {
             CanvasTheme.GRAPHITE_SKETCH -> Color.parseColor(theme.strokeHex)
             CanvasTheme.CHARCOAL_DARK -> Color.parseColor(theme.strokeHex)
             CanvasTheme.GOLDEN_EMBER -> Color.parseColor("#E5C158")
+            CanvasTheme.EMERALD_PATINA -> Color.parseColor("#CD9B51")
             CanvasTheme.AURORA_NIGHT -> Color.parseColor("#7EE0D2")
             CanvasTheme.VALKYRIE_MITHRIL -> Color.parseColor("#E2E8F0")
+            CanvasTheme.FROST_ICE -> Color.parseColor("#B0E0E6")
             CanvasTheme.ANCIENT_PARCHMENT -> Color.parseColor(theme.strokeHex)
             CanvasTheme.RUNESTONE_GRAY -> Color.parseColor(theme.strokeHex)
             CanvasTheme.STENCIL -> Color.BLACK

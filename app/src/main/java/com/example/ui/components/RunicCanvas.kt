@@ -121,6 +121,8 @@ fun RunicCanvas(
                 CanvasTheme.DARK_SLATE -> {
                     val color = when (config.style) {
                         SketchStyle.SACRED_GOLD -> Color(0xFFE5C158)
+                        SketchStyle.EMERALD_BRONZE -> Color(0xFFCD9B51)
+                        SketchStyle.FROST_CRYSTAL -> Color(0xFFB0E0E6)
                         SketchStyle.NORDIC_TATTOO -> Color(0xFFF8FAFC)
                         SketchStyle.VALKYRIE_SILVER -> Color(0xFFE2E8F0)
                         SketchStyle.STRICT -> themeOnPrimaryContainer
@@ -137,11 +139,17 @@ fun RunicCanvas(
                 CanvasTheme.GOLDEN_EMBER -> {
                     Pair(Color(0xFFE5C158), Color(0xFFF3D882).copy(alpha = 0.40f))
                 }
+                CanvasTheme.EMERALD_PATINA -> {
+                    Pair(Color(0xFFCD9B51), Color(0xFF52B788).copy(alpha = 0.40f))
+                }
                 CanvasTheme.AURORA_NIGHT -> {
                     Pair(Color(0xFF7EE0D2), Color(0xFF64FFDA).copy(alpha = 0.40f))
                 }
                 CanvasTheme.VALKYRIE_MITHRIL -> {
                     Pair(Color(0xFFE2E8F0), Color(0xFFCBD5E1).copy(alpha = 0.35f))
+                }
+                CanvasTheme.FROST_ICE -> {
+                    Pair(Color(0xFFB0E0E6), Color(0xFF87CEFA).copy(alpha = 0.40f))
                 }
                 CanvasTheme.ANCIENT_PARCHMENT -> {
                     Pair(Color(0xFF2E1B0F), Color(0xFF8C5835).copy(alpha = 0.28f))
@@ -374,9 +382,9 @@ fun RunicCanvas(
                     }
                 }
 
-                // Volumetric 3D Chiseled Bevels (Pencil engraving & stone relief)
+                // Volumetric 3D Metallic / Chiseled Bevels (Specular highlights and ambient occlusion)
                 if (config.hasVolumetricShading && !config.isStencil) {
-                    val chiselOff = strokeW * 0.35f * config.runeChiselDepth
+                    val chiselOff = (strokeW * 0.38f * config.runeChiselDepth).coerceAtLeast(1.2f)
                     val shadowPath = Path().apply {
                         moveTo(trimmedPts[0].x * scale + chiselOff, trimmedPts[0].y * scale + chiselOff)
                         for (k in 1 until trimmedPts.size) {
@@ -385,25 +393,25 @@ fun RunicCanvas(
                     }
                     drawPath(
                         path = shadowPath,
-                        color = Color.Black.copy(alpha = 0.28f * strokeAlpha),
+                        color = Color.Black.copy(alpha = 0.40f * strokeAlpha),
                         style = Stroke(
-                            width = strokeW * 0.85f,
+                            width = strokeW * 1.35f,
                             cap = StrokeCap.Round,
                             join = StrokeJoin.Round
                         )
                     )
 
                     val highlightPath = Path().apply {
-                        moveTo(trimmedPts[0].x * scale - chiselOff * 0.6f, trimmedPts[0].y * scale - chiselOff * 0.6f)
+                        moveTo(trimmedPts[0].x * scale - chiselOff * 0.5f, trimmedPts[0].y * scale - chiselOff * 0.5f)
                         for (k in 1 until trimmedPts.size) {
-                            lineTo(trimmedPts[k].x * scale - chiselOff * 0.6f, trimmedPts[k].y * scale - chiselOff * 0.6f)
+                            lineTo(trimmedPts[k].x * scale - chiselOff * 0.5f, trimmedPts[k].y * scale - chiselOff * 0.5f)
                         }
                     }
                     drawPath(
                         path = highlightPath,
-                        color = glowColor.copy(alpha = 0.30f * strokeAlpha),
+                        color = Color.White.copy(alpha = 0.55f * strokeAlpha),
                         style = Stroke(
-                            width = strokeW * 0.45f,
+                            width = (strokeW * 0.35f).coerceAtLeast(0.8f),
                             cap = StrokeCap.Round,
                             join = StrokeJoin.Round
                         )
