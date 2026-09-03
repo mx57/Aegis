@@ -127,4 +127,19 @@ class RunicStaveUnitTest {
         assertTrue("Should contain lines for rays or notches", svg.contains("<line"))
         assertTrue(svg.trim().endsWith("</svg>"))
     }
+
+    @Test
+    fun svgGeneration_celestialAstrolabe_rendersFiligreeOrbits() {
+        val stave = StaveComposer.compose(testRunes, StaveLayoutType.BINDRUNE, seed = 999L)
+        val config = SketchConfig(
+            style = SketchStyle.SACRED_GOLD,
+            frameStyle = com.example.engine.FrameStyle.CELESTIAL_ASTROLABE,
+            finialType = com.example.engine.FinialType.ARROWS,
+            centerEmblem = com.example.engine.CenterEmblem.FACETED_STAR
+        )
+        val svg = SvgStaveRenderer.renderSvg(stave, config)
+        assertTrue("SVG should contain circle element for astrolabe orbit", svg.contains("""<circle cx="250""""))
+        assertTrue("SVG should contain degree marks", svg.contains("<line"))
+        assertTrue("SVG should end with valid closing tag", svg.trim().endsWith("</svg>"))
+    }
 }
