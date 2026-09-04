@@ -204,4 +204,28 @@ class RunicStaveUnitTest {
         assertTrue("SVG should contain path elements for snout, jaw, tongue and tail knot", svg.contains("<path"))
         assertTrue("SVG should end with valid closing tag", svg.trim().endsWith("</svg>"))
     }
+
+    @Test
+    fun singleRuneIcon_strokeDataValidation_handlesSingleAndMultiPointStrokes() {
+        val dotRune = Rune(
+            id = "dot_rune",
+            futhark = "elder",
+            nameRu = "Точка",
+            nameEn = "Dot",
+            unicode = "•",
+            phonetic = "•",
+            keywordsRu = listOf("узел"),
+            divinationDirect = "Узел",
+            divinationReversed = "Узел",
+            magicUse = "Точка",
+            tattooSymbolism = "Центр",
+            strokes = listOf(
+                RuneStroke(listOf(StrokePoint(50f, 70f))),
+                RuneStroke(listOf(StrokePoint(20f, 10f), StrokePoint(80f, 130f)))
+            )
+        )
+        assertEquals(2, dotRune.strokes.size)
+        assertEquals(1, dotRune.strokes[0].points.size)
+        assertEquals(2, dotRune.strokes[1].points.size)
+    }
 }
