@@ -465,31 +465,93 @@ object OrnamentGeometry {
     }
 
     /**
-     * Generates central emblem elements based on CenterEmblem.
+     * Scales an ornament geometry group proportionally around a center point (cx, cy).
      */
-    fun generateCenterEmblem(emblem: CenterEmblem, strokeWidth: Float): GeneratedOrnaments {
-        val lines = mutableListOf<LineSegmentGeom>()
-        val circles = mutableListOf<CircleGeom>()
-        val polygons = mutableListOf<PolygonGeom>()
-        val paths = mutableListOf<PathGeom>()
+    fun scaleOrnaments(
+        ornaments: GeneratedOrnaments,
+        cx: Float = CENTER_X,
+        cy: Float = CENTER_Y,
+        scaleFactor: Float
+    ): GeneratedOrnaments {
+        if (Math.abs(scaleFactor - 1.0f) < 0.001f) return ornaments
+        val s = scaleFactor.coerceIn(0.4f, 1.8f)
+        val lines = ornaments.lines.map { l ->
+            LineSegmentGeom(
+                x1 = cx + (l.x1 - cx) * s,
+                y1 = cy + (l.y1 - cy) * s,
+                x2 = cx + (l.x2 - cx) * s,
+                y2 = cy + (l.y2 - cy) * s,
+                widthFactor = l.widthFactor,
+                alpha = l.alpha
+            )
+        }
+        val circles = ornaments.circles.map { c ->
+            CircleGeom(
+                cx = cx + (c.cx - cx) * s,
+                cy = cy + (c.cy - cy) * s,
+                radius = c.radius * s,
+                isFilled = c.isFilled,
+                widthFactor = c.widthFactor,
+                alpha = c.alpha
+            )
+        }
+        val polygons = ornaments.polygons.map { p ->
+            PolygonGeom(
+                points = p.points.map { pt ->
+                    StrokePoint(cx + (pt.x - cx) * s, cy + (pt.y - cy) * s)
+                },
+                isFilled = p.isFilled,
+                widthFactor = p.widthFactor,
+                alpha = p.alpha
+            )
+        }
+        val paths = ornaments.paths.map { p ->
+            PathGeom(
+                points = p.points.map { pt ->
+                    StrokePoint(cx + (pt.x - cx) * s, cy + (pt.y - cy) * s)
+                },
+                isClosed = p.isClosed,
+                isFilled = p.isFilled,
+                widthFactor = p.widthFactor,
+                alpha = p.alpha
+            )
+        }
+        return GeneratedOrnaments(lines, circles, polygons, paths)
+    }
 
+    /**
+     * Generates central emblem elements based on CenterEmblem, optionally scaled by scaleFactor.
+     */
+    fun generateCenterEmblem(emblem: CenterEmblem, strokeWidth: Float, scaleFactor: Float = 1.0f): GeneratedOrnaments {
         val cx = CENTER_X
         val cy = CENTER_Y
 
-        when (emblem) {
-            CenterEmblem.NONE -> {}
+        val baseOrnaments = when (emblem) {
+            CenterEmblem.NONE -> GeneratedOrnaments(emptyList(), emptyList(), emptyList(), emptyList())
 
             CenterEmblem.BEASTS_OF_ODIN -> {
-                return generateBeastsOfOdin(cx, cy, strokeWidth)
+                generateBeastsOfOdin(cx, cy, strokeWidth)
             }
 
             CenterEmblem.FACETED_STAR -> {
-                return generateFacetedStar(cx, cy, strokeWidth)
+                generateFacetedStar(cx, cy, strokeWidth)
             }
 
             CenterEmblem.RUNIC_STELE -> {
-                return generateRunicStele(cx, cy, strokeWidth)
+                generateRunicStele(cx, cy, strokeWidth)
             }
+
+            else -> {
+                val lines = mutableListOf<LineSegmentGeom>()
+                val circles = mutableListOf<CircleGeom>()
+                val polygons = mutableListOf<PolygonGeom>()
+                val paths = mutableListOf<PathGeom>()
+
+                when (emblem) {
+                    CenterEmblem.NONE,
+                    CenterEmblem.BEASTS_OF_ODIN,
+                    CenterEmblem.FACETED_STAR,
+                    CenterEmblem.RUNIC_STELE -> {}
 
             CenterEmblem.YGGDRASIL_TREE -> {
                 // World Tree Yggdrasil: Roots (3 Norns wells), Trunk, Branching Crown, and 9 Worlds Orbs
@@ -746,8 +808,15 @@ object OrnamentGeometry {
                 circles.add(CircleGeom(cx, cy + 30f, 2.5f, isFilled = true))
             }
         }
+        GeneratedOrnaments(lines, circles, polygons, paths)
+    }
+}
 
-        return GeneratedOrnaments(lines, circles, polygons, paths)
+        return if (Math.abs(scaleFactor - 1.0f) > 0.001f) {
+            scaleOrnaments(baseOrnaments, cx, cy, scaleFactor)
+        } else {
+            baseOrnaments
+        }
     }
 
     /**

@@ -30,14 +30,25 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Casino
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Straighten
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.ZoomOutMap
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -50,6 +61,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
@@ -58,6 +70,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -75,12 +88,20 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.core.content.FileProvider
+import com.example.data.gemini.GeminiTattooService
+import com.example.data.local.GeminiArtworkRecord
 import com.example.data.model.Rune
 import com.example.engine.CanvasTheme
 import com.example.engine.CenterEmblem
@@ -93,8 +114,11 @@ import com.example.engine.SketchStyle
 import com.example.engine.StaveComposer
 import com.example.engine.StaveLayoutType
 import com.example.engine.SvgStaveRenderer
+import com.example.ui.components.FullScreenArtworkDialog
 import com.example.ui.components.FullScreenSketchDialog
 import com.example.ui.components.RunicCanvas
+import com.example.ui.viewmodel.RuneViewModel
+import com.example.ui.viewmodel.TestConnectionStatus
 import kotlinx.coroutines.launch
 import java.util.Random
 
@@ -112,7 +136,8 @@ private data class StavePreset(
     val rayBurst: Boolean,
     val runering: Boolean = false,
     val lineWidth: Float,
-    val layout: StaveLayoutType? = null
+    val layout: StaveLayoutType? = null,
+    val elementScale: Float = 1.0f
 )
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -121,12 +146,14 @@ fun SketchScreen(
     runeIds: List<String>,
     layoutTypeName: String,
     allRunes: List<Rune>,
+    viewModel: RuneViewModel? = null,
     onBack: () -> Unit,
     onNavigateToTryOn: (runeIds: List<String>, layoutType: String, seed: Long, style: String) -> Unit,
     onNavigateToAITattoo: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val clipboardManager = LocalClipboardManager.current
 
     val runeMap = remember(allRunes) { allRunes.associateBy { it.id } }
     val runes = remember(runeIds, runeMap) { runeIds.mapNotNull { runeMap[it] } }
@@ -158,6 +185,7 @@ fun SketchScreen(
     var hasVolumetricShading by remember { mutableStateOf(true) }
     var hasTextureGrain by remember { mutableStateOf(true) }
     var runeChiselDepth by remember { mutableFloatStateOf(1.0f) }
+    var elementScale by remember { mutableFloatStateOf(1.0f) }
     var isStencil by remember { mutableStateOf(false) }
     var seed by remember { mutableLongStateOf(4242L) }
     var animTriggerKey by remember { mutableIntStateOf(0) }
@@ -165,6 +193,27 @@ fun SketchScreen(
     var isExporting by remember { mutableStateOf(false) }
     var isFullScreenOpen by remember { mutableStateOf(false) }
     var activeTab by remember { mutableIntStateOf(0) }
+
+    // Gemini Photorealistic Artwork Generation State
+    var showGeminiDialog by remember { mutableStateOf(false) }
+    var showApiKeyDialog by remember { mutableStateOf(false) }
+    var selectedArtworkForDialog by remember { mutableStateOf<GeminiArtworkRecord?>(null) }
+    var userStyleNote by remember { mutableStateOf("") }
+    var isPromptExpanded by remember { mutableStateOf(false) }
+    var apiKeyInput by remember { mutableStateOf("") }
+    var showApiKeyText by remember { mutableStateOf(false) }
+
+    val isGeneratingArtwork = viewModel?.isGeneratingArtwork?.collectAsState()?.value ?: false
+    val latestGeneratedArtwork = viewModel?.latestGeneratedArtwork?.collectAsState()?.value
+    val artworkGenerationError = viewModel?.artworkGenerationError?.collectAsState()?.value
+    val testConnectionState = viewModel?.testConnectionState?.collectAsState()?.value ?: TestConnectionStatus.Idle
+
+    LaunchedEffect(latestGeneratedArtwork) {
+        if (latestGeneratedArtwork != null) {
+            selectedArtworkForDialog = latestGeneratedArtwork
+            viewModel?.clearLatestGeneratedArtwork()
+        }
+    }
 
     val appSettings = remember(context) { com.example.data.local.AppSettings(context) }
     val userSettings by appSettings.settingsFlow.collectAsState(
@@ -220,7 +269,7 @@ fun SketchScreen(
     val config = remember(
         selectedStyle, selectedTheme, lineWidth, hasFrameCircle, frameStyle, finialType, centerEmblem,
         cornerStyle, hasSymmetryAccents, hasBranchNotches, hasRayBurst, hasRunering, hasGlowEffect,
-        wobbleAmount, seed, isStencil, hasVolumetricShading, hasTextureGrain, runeChiselDepth
+        wobbleAmount, seed, isStencil, hasVolumetricShading, hasTextureGrain, runeChiselDepth, elementScale
     ) {
         SketchConfig(
             style = selectedStyle,
@@ -241,7 +290,8 @@ fun SketchScreen(
             isStencil = isStencil,
             hasVolumetricShading = hasVolumetricShading,
             hasTextureGrain = hasTextureGrain,
-            runeChiselDepth = runeChiselDepth
+            runeChiselDepth = runeChiselDepth,
+            elementScale = elementScale
         )
     }
 
@@ -308,6 +358,366 @@ fun SketchScreen(
         )
     }
 
+    if (selectedArtworkForDialog != null) {
+        val currentArtwork = selectedArtworkForDialog!!
+        FullScreenArtworkDialog(
+            artwork = currentArtwork,
+            onDismiss = { selectedArtworkForDialog = null },
+            onNavigateToTryOn = {
+                selectedArtworkForDialog = null
+                onNavigateToTryOn(runeIds, currentArtwork.layoutType, currentArtwork.seed, currentArtwork.styleName)
+            },
+            onOpenGallery = {
+                selectedArtworkForDialog = null
+                onNavigateToAITattoo()
+            }
+        )
+    }
+
+    if (isGeneratingArtwork) {
+        Dialog(onDismissRequest = {}) {
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF10121A)),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)),
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(24.dp)
+                        .fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 3.dp,
+                        modifier = Modifier.size(50.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Синтез фотореалистичного эскиза",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Gemini 2.5 Flash визуализирует детали става, сакральную геометрию и металлическую гравировку. Эскиз автоматически сохраняется в галерею...",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFFB0BEC5),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+    }
+
+    if (artworkGenerationError != null) {
+        AlertDialog(
+            onDismissRequest = { viewModel?.clearLatestGeneratedArtwork() },
+            title = { Text("Сообщение генератора", fontWeight = FontWeight.Bold) },
+            text = { Text(artworkGenerationError ?: "") },
+            confirmButton = {
+                Button(onClick = { viewModel?.clearLatestGeneratedArtwork() }) {
+                    Text("Понятно")
+                }
+            }
+        )
+    }
+
+    if (showApiKeyDialog) {
+        AlertDialog(
+            onDismissRequest = { showApiKeyDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Key, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Ключ Gemini API", style = MaterialTheme.typography.titleMedium)
+                }
+            },
+            text = {
+                Column {
+                    Text(
+                        text = "Для фотореалистичной генерации эскизов требуется API-ключ Google AI Studio (бесплатно на aistudio.google.com):",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = apiKeyInput,
+                        onValueChange = { apiKeyInput = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("AIzaSy...") },
+                        singleLine = true,
+                        visualTransformation = if (showApiKeyText) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { showApiKeyText = !showApiKeyText }) {
+                                Icon(
+                                    if (showApiKeyText) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                    contentDescription = null
+                                )
+                            }
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        OutlinedButton(
+                            onClick = { viewModel?.testGeminiApiKey(apiKeyInput) },
+                            enabled = apiKeyInput.isNotBlank()
+                        ) {
+                            Text("Проверить", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+
+                    when (val status = testConnectionState) {
+                        is TestConnectionStatus.Success -> {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(status.message, style = MaterialTheme.typography.bodySmall, color = Color(0xFF4CAF50))
+                        }
+                        is TestConnectionStatus.Error -> {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(status.message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                        }
+                        is TestConnectionStatus.Testing -> {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text("Проверка ключа...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                        }
+                        else -> {}
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (apiKeyInput.isNotBlank()) {
+                            viewModel?.saveGeminiApiKey(apiKeyInput.trim())
+                        }
+                        showApiKeyDialog = false
+                        showGeminiDialog = true
+                    }
+                ) {
+                    Text("Сохранить и продолжить")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showApiKeyDialog = false }) {
+                    Text("Отмена")
+                }
+            }
+        )
+    }
+
+    if (showGeminiDialog) {
+        val calculatedPrompt = remember(composedStave, config, runes, userStyleNote) {
+            GeminiTattooService().buildPhotorealisticPrompt(
+                stave = composedStave,
+                config = config,
+                runes = runes,
+                userTone = userStyleNote.ifBlank { null }
+            )
+        }
+
+        AlertDialog(
+            onDismissRequest = { showGeminiDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            text = "Фотореалистичный эскиз (Gemini)",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "AI-генерация на основе элементов става",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    // Stave Composition Breakdown Card
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Text(
+                                text = "Параметры става для Gemini:",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "• Эмблема: ${centerEmblem.titleRu} (Масштаб ${(elementScale * 100).toInt()}%)",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            Text(
+                                text = "• Руны: ${if (runes.isNotEmpty()) runes.joinToString(" • ") { "${it.unicode} ${it.nameRu}" } else "Геометрический узел"}",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            Text(
+                                text = "• Геометрия: ${selectedLayout.titleRu}, ветвей: ${composedStave.branchPoints.size}",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            Text(
+                                text = "• Обрамление: ${frameStyle.titleRu}, углы: ${cornerStyle.titleRu}",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            Text(
+                                text = "• Базовый стиль: ${selectedStyle.titleRu}",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text(
+                        text = "Художественный акцент стиля:",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Preset style chips
+                    val stylePresets = listOf(
+                        "⚜️ Золото и обсидиан" to "3D embossed carved gold, polished obsidian background, rim lighting",
+                        "⚔️ Серебро Валькирий" to "Luminescent mithril silver, deep celestial shadow, sharp metallic facets",
+                        "🖋️ Блэкворк и дотворк" to "Nordic blackwork tattoo style, fine dotwork stippling, high contrast",
+                        "🪨 Рунический камень" to "Ancient Viking runestone, weathered granite relief, carved ochre runes",
+                        "🌿 Патинированная бронза" to "Ancient bronze medallion, emerald verdigris patina, museum artifact"
+                    )
+
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        stylePresets.forEach { (label, promptAddon) ->
+                            val isSelected = userStyleNote == promptAddon
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = {
+                                    userStyleNote = if (isSelected) "" else promptAddon
+                                },
+                                label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Expandable prompt inspection
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(8.dp)) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { isPromptExpanded = !isPromptExpanded },
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Default.Info,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = if (isPromptExpanded) "Скрыть промпт" else "Показать промпт Gemini",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                                Text(
+                                    text = if (isPromptExpanded) "▲" else "▼",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+
+                            if (isPromptExpanded) {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = calculatedPrompt,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                OutlinedButton(
+                                    onClick = {
+                                        clipboardManager.setText(AnnotatedString(calculatedPrompt))
+                                        Toast.makeText(context, "Промпт скопирован", Toast.LENGTH_SHORT).show()
+                                    },
+                                    modifier = Modifier.align(Alignment.End),
+                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                                ) {
+                                    Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(12.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Копировать", fontSize = 10.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showGeminiDialog = false
+                        viewModel?.generatePhotorealisticSketch(
+                            stave = composedStave,
+                            config = config,
+                            runes = runes,
+                            userStyleNote = userStyleNote.ifBlank { null }
+                        )
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Создать эскиз", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showGeminiDialog = false }) {
+                    Text("Отмена")
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -319,12 +729,18 @@ fun SketchScreen(
                 },
                 actions = {
                     IconButton(
-                        onClick = onNavigateToAITattoo,
+                        onClick = {
+                            if (viewModel != null && !viewModel.isGeminiConfigured()) {
+                                showApiKeyDialog = true
+                            } else {
+                                showGeminiDialog = true
+                            }
+                        },
                         modifier = Modifier.testTag("topbar_ai_tattoo_button")
                     ) {
                         Icon(
                             Icons.Default.AutoAwesome,
-                            contentDescription = "ИИ Тату-Концепт (Gemini)",
+                            contentDescription = "Фотореалистичный эскиз (Gemini)",
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -563,6 +979,192 @@ fun SketchScreen(
                 }
             }
 
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Quick Element Scale Control Strip (Пропорциональный масштаб элементов става)
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("element_scale_quick_bar")
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.Straighten,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Масштаб элементов:",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        IconButton(
+                            onClick = {
+                                elementScale = (elementScale - 0.10f).coerceIn(0.50f, 1.50f)
+                            },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Text("−", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.clickable { elementScale = 1.0f }
+                        ) {
+                            Text(
+                                text = "${(elementScale * 100).toInt()}%",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+
+                        IconButton(
+                            onClick = {
+                                elementScale = (elementScale + 0.10f).coerceIn(0.50f, 1.50f)
+                            },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Text("+", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        }
+
+                        Spacer(modifier = Modifier.width(4.dp))
+
+                        listOf(0.75f to "75%", 1.0f to "100%", 1.25f to "125%").forEach { (sc, label) ->
+                            val isSel = Math.abs(elementScale - sc) < 0.04f
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = if (isSel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+                                border = BorderStroke(1.dp, if (isSel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+                                modifier = Modifier.clickable { elementScale = sc }
+                            ) {
+                                Text(
+                                    text = label,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (isSel) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // ✨ Gemini Photorealistic Artwork Generation Hero Banner
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        if (viewModel != null && !viewModel.isGeminiConfigured()) {
+                            showApiKeyDialog = true
+                        } else {
+                            showGeminiDialog = true
+                        }
+                    }
+                    .testTag("gemini_photorealistic_hero_button"),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                ),
+                border = BorderStroke(
+                    1.5.dp,
+                    androidx.compose.ui.graphics.Brush.horizontalGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.primary,
+                            Color(0xFFFFD54F),
+                            MaterialTheme.colorScheme.primary
+                        )
+                    )
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+                            modifier = Modifier.size(38.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Default.AutoAwesome,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "Фотореалистичный эскиз Gemini",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = MaterialTheme.colorScheme.primary
+                                ) {
+                                    Text(
+                                        text = "2.5 Flash",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onPrimary,
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                    )
+                                }
+                            }
+                            Text(
+                                text = "Синтез по деталям става с автосохранением в галерею",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(8.dp))
 
             // Compact Category Navigation Row
@@ -626,6 +1228,7 @@ fun SketchScreen(
                                             hasRayBurst = p.rayBurst
                                             hasRunering = p.runering
                                             lineWidth = p.lineWidth
+                                            elementScale = p.elementScale
                                             p.layout?.let { selectedLayout = it }
                                             animTriggerKey++
                                         },
@@ -848,6 +1451,50 @@ fun SketchScreen(
 
                         3 -> {
                             // ⚙️ Fine Parameters
+                            // Масштаб элементов става (пропорции символов без нарушения целостности всего рисунка)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("Масштаб элементов става:", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                                    Text(
+                                        "Размер рун и символов внутри защитного круга",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Text(
+                                    "${(elementScale * 100).toInt()}%",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            Slider(
+                                value = elementScale,
+                                onValueChange = { elementScale = it },
+                                valueRange = 0.50f..1.50f,
+                                steps = 19
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                listOf(0.70f to "Компакт (70%)", 1.0f to "Эталон (100%)", 1.30f to "Крупный (130%)").forEach { (scaleVal, label) ->
+                                    FilterChip(
+                                        selected = Math.abs(elementScale - scaleVal) < 0.05f,
+                                        onClick = { elementScale = scaleVal },
+                                        label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
+                                }
+                            }
+
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                            Spacer(modifier = Modifier.height(4.dp))
+
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1028,6 +1675,30 @@ fun SketchScreen(
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text("SVG вектор", style = MaterialTheme.typography.labelMedium)
                                 }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Button(
+                                onClick = {
+                                    if (viewModel != null && !viewModel.isGeminiConfigured()) {
+                                        showApiKeyDialog = true
+                                    } else {
+                                        showGeminiDialog = true
+                                    }
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary
+                                ),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("export_tab_gemini_button")
+                            ) {
+                                Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Создать фотореалистичный эскиз (Gemini)", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                             }
 
                             Spacer(modifier = Modifier.height(8.dp))

@@ -236,6 +236,7 @@ fun MainAppHost(
                     runeIds = runeIds,
                     layoutTypeName = layoutTypeParam,
                     allRunes = runes,
+                    viewModel = viewModel,
                     onBack = { navController.popBackStack() },
                     onNavigateToTryOn = { ids, layout, seed, style ->
                         navController.navigate(AppDestinations.buildTryOnRoute(ids, layout, seed, style))

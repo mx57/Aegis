@@ -134,7 +134,8 @@ data class SketchConfig(
     val isStencil: Boolean = false,
     val hasVolumetricShading: Boolean = true,
     val hasTextureGrain: Boolean = true,
-    val runeChiselDepth: Float = 1.2f
+    val runeChiselDepth: Float = 1.2f,
+    val elementScale: Float = 1.0f // 0.4f..1.8f: Масштаб внутренних элементов эскиза без нарушения композиции
 ) {
     val effectiveTheme: CanvasTheme
         get() = if (isStencil) CanvasTheme.STENCIL else theme
@@ -286,11 +287,22 @@ object SvgStaveRenderer {
         if (filterAttr.isNotEmpty()) {
             sb.append("""  <g$filterAttr>""").append("\n")
         }
+        val elemScale = config.elementScale.coerceIn(0.4f, 1.8f)
         for (stroke in stave.strokes) {
-            val pts = if (config.wobbleAmount > 0.01f) {
-                applyWobble(stroke.points, config.wobbleAmount, prng)
+            val basePts = if (Math.abs(elemScale - 1f) > 0.001f) {
+                stroke.points.map { p ->
+                    StrokePoint(
+                        x = 250f + (p.x - 250f) * elemScale,
+                        y = 250f + (p.y - 250f) * elemScale
+                    )
+                }
             } else {
                 stroke.points
+            }
+            val pts = if (config.wobbleAmount > 0.01f) {
+                applyWobble(basePts, config.wobbleAmount, prng)
+            } else {
+                basePts
             }
 
             if (pts.size < 2) continue
@@ -360,7 +372,7 @@ object SvgStaveRenderer {
 
         // 4. Central Sacred Emblem
         if (config.centerEmblem != CenterEmblem.NONE) {
-            val centerOrnaments = OrnamentGeometry.generateCenterEmblem(config.centerEmblem, effectiveStrokeWidth)
+            val centerOrnaments = OrnamentGeometry.generateCenterEmblem(config.centerEmblem, effectiveStrokeWidth, config.elementScale)
             renderGeneratedOrnamentsSvg(sb, centerOrnaments, strokeColor, effectiveStrokeWidth, theme, config)
         }
 
@@ -1075,10 +1087,18 @@ object SvgStaveRenderer {
             drawOrnamentsOnBitmap(frameOrnaments)
         }
 
+        val elemScale = config.elementScale.coerceIn(0.4f, 1.8f)
+
         // 2.1 Pre-pass for sacred glow effect
         if (config.hasGlowEffect && !config.isStencil) {
             for (stroke in stave.strokes) {
-                val pts = stroke.points
+                val pts = if (Math.abs(elemScale - 1f) > 0.001f) {
+                    stroke.points.map { p ->
+                        StrokePoint(250f + (p.x - 250f) * elemScale, 250f + (p.y - 250f) * elemScale)
+                    }
+                } else {
+                    stroke.points
+                }
                 if (pts.size < 2) continue
                 val glowPath = Path().apply {
                     moveTo(pts[0].x * scale, pts[0].y * scale)
@@ -1092,10 +1112,17 @@ object SvgStaveRenderer {
 
         // 3. Stave Strokes
         for (stroke in stave.strokes) {
-            val pts = if (config.wobbleAmount > 0.01f) {
-                applyWobble(stroke.points, config.wobbleAmount, prng)
+            val basePts = if (Math.abs(elemScale - 1f) > 0.001f) {
+                stroke.points.map { p ->
+                    StrokePoint(250f + (p.x - 250f) * elemScale, 250f + (p.y - 250f) * elemScale)
+                }
             } else {
                 stroke.points
+            }
+            val pts = if (config.wobbleAmount > 0.01f) {
+                applyWobble(basePts, config.wobbleAmount, prng)
+            } else {
+                basePts
             }
             if (pts.size < 2) continue
 
@@ -1202,7 +1229,7 @@ object SvgStaveRenderer {
 
         // 4. Central Sacred Emblem
         if (config.centerEmblem != CenterEmblem.NONE) {
-            val centerOrnaments = OrnamentGeometry.generateCenterEmblem(config.centerEmblem, config.lineWidth)
+            val centerOrnaments = OrnamentGeometry.generateCenterEmblem(config.centerEmblem, config.lineWidth, config.elementScale)
             drawOrnamentsOnBitmap(centerOrnaments)
         }
 

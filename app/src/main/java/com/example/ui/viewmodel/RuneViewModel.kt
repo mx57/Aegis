@@ -6,12 +6,15 @@ import androidx.lifecycle.viewModelScope
 import com.example.data.gemini.GeminiTattooService
 import com.example.data.local.AppDatabase
 import com.example.data.local.AppSettings
+import com.example.data.local.GeminiArtworkRecord
 import com.example.data.local.StaveRecord
 import com.example.data.local.TattooConceptRecord
 import com.example.data.local.UserSettings
 import com.example.data.model.Rune
 import com.example.data.model.TattooConcept
 import com.example.data.repository.RuneRepository
+import com.example.engine.ComposedStave
+import com.example.engine.SketchConfig
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -26,6 +29,7 @@ class RuneViewModel(application: Application) : AndroidViewModel(application) {
     private val database = AppDatabase.getInstance(application)
     private val dao = database.staveDao()
     private val tattooConceptDao = database.tattooConceptDao()
+    private val geminiArtworkDao = database.geminiArtworkDao()
     private val geminiTattooService = GeminiTattooService()
     val appSettings = AppSettings(application)
 
@@ -44,12 +48,28 @@ class RuneViewModel(application: Application) : AndroidViewModel(application) {
     private val _generationError = MutableStateFlow<String?>(null)
     val generationError: StateFlow<String?> = _generationError.asStateFlow()
 
+    private val _isGeneratingArtwork = MutableStateFlow(false)
+    val isGeneratingArtwork: StateFlow<Boolean> = _isGeneratingArtwork.asStateFlow()
+
+    private val _latestGeneratedArtwork = MutableStateFlow<GeminiArtworkRecord?>(null)
+    val latestGeneratedArtwork: StateFlow<GeminiArtworkRecord?> = _latestGeneratedArtwork.asStateFlow()
+
+    private val _artworkGenerationError = MutableStateFlow<String?>(null)
+    val artworkGenerationError: StateFlow<String?> = _artworkGenerationError.asStateFlow()
+
     private val _testConnectionState = MutableStateFlow<TestConnectionStatus>(TestConnectionStatus.Idle)
     val testConnectionState: StateFlow<TestConnectionStatus> = _testConnectionState.asStateFlow()
 
     fun isGeminiConfigured(customKey: String? = null): Boolean {
         return geminiTattooService.isApiKeyConfigured(customKey ?: userSettings.value.geminiApiKey)
     }
+
+    val geminiArtworks: StateFlow<List<GeminiArtworkRecord>> = geminiArtworkDao.getAll()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
 
     val tattooConcepts: StateFlow<List<TattooConcept>> = tattooConceptDao.getAll()
         .map { records -> records.map { it.toModel() } }
@@ -237,6 +257,66 @@ class RuneViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteRecord(recordId: Long) {
         viewModelScope.launch {
             dao.deleteById(recordId)
+        }
+    }
+
+    fun clearLatestGeneratedArtwork() {
+        _latestGeneratedArtwork.value = null
+        _artworkGenerationError.value = null
+    }
+
+    fun generatePhotorealisticSketch(
+        stave: ComposedStave,
+        config: SketchConfig,
+        runes: List<Rune>,
+        userStyleNote: String? = null,
+        onCompleted: ((Result<GeminiArtworkRecord>) -> Unit)? = null
+    ) {
+        viewModelScope.launch {
+            _isGeneratingArtwork.value = true
+            _artworkGenerationError.value = null
+            try {
+                val context = getApplication<Application>()
+                val result = geminiTattooService.generatePhotorealisticSketch(
+                    stave = stave,
+                    config = config,
+                    runes = runes,
+                    context = context,
+                    customApiKey = userSettings.value.geminiApiKey,
+                    userStyleNote = userStyleNote
+                )
+                result.onSuccess { record ->
+                    geminiArtworkDao.insert(record)
+                    _latestGeneratedArtwork.value = record
+                    onCompleted?.invoke(Result.success(record))
+                }.onFailure { ex ->
+                    _artworkGenerationError.value = ex.localizedMessage ?: "Ошибка генерации эскиза"
+                    onCompleted?.invoke(Result.failure(ex))
+                }
+            } catch (e: Exception) {
+                _artworkGenerationError.value = e.localizedMessage ?: "Ошибка: ${e.message}"
+                onCompleted?.invoke(Result.failure(e))
+            } finally {
+                _isGeneratingArtwork.value = false
+            }
+        }
+    }
+
+    fun deleteGeminiArtwork(id: String, imagePath: String) {
+        viewModelScope.launch {
+            geminiArtworkDao.deleteById(id)
+            try {
+                val file = java.io.File(imagePath)
+                if (file.exists()) file.delete()
+            } catch (e: Exception) {
+                // Ignore file removal errors
+            }
+        }
+    }
+
+    fun toggleFavoriteGeminiArtwork(id: String, currentIsFavorite: Boolean) {
+        viewModelScope.launch {
+            geminiArtworkDao.setFavorite(id, !currentIsFavorite)
         }
     }
 

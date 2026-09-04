@@ -20,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -206,6 +207,51 @@ fun RunicCanvas(
         val isVolumetric = config.hasVolumetricShading && !config.isStencil
         val chiselOff = (effectiveStrokeWidth * 0.35f * config.runeChiselDepth).coerceAtLeast(1.2f)
 
+        val metallicBrush = if (!config.isStencil && config.hasVolumetricShading) {
+            when {
+                config.style == SketchStyle.SACRED_GOLD || config.effectiveTheme == CanvasTheme.GOLDEN_EMBER -> {
+                    Brush.linearGradient(
+                        colors = listOf(
+                            Color(0xFFFFEEA0),
+                            Color(0xFFE5C158),
+                            Color(0xFFC49118),
+                            Color(0xFFFFDF7A),
+                            Color(0xFFB8860B)
+                        ),
+                        start = Offset(0f, 0f),
+                        end = Offset(500f * scale, 500f * scale)
+                    )
+                }
+                config.style == SketchStyle.VALKYRIE_SILVER || config.effectiveTheme == CanvasTheme.VALKYRIE_MITHRIL -> {
+                    Brush.linearGradient(
+                        colors = listOf(
+                            Color(0xFFFFFFFF),
+                            Color(0xFFCBD5E1),
+                            Color(0xFF94A3B8),
+                            Color(0xFFF1F5F9),
+                            Color(0xFF64748B)
+                        ),
+                        start = Offset(0f, 0f),
+                        end = Offset(500f * scale, 500f * scale)
+                    )
+                }
+                config.style == SketchStyle.EMERALD_BRONZE || config.effectiveTheme == CanvasTheme.EMERALD_PATINA -> {
+                    Brush.linearGradient(
+                        colors = listOf(
+                            Color(0xFFF0CCA0),
+                            Color(0xFFCD9B51),
+                            Color(0xFF8C5D23),
+                            Color(0xFFDFB370),
+                            Color(0xFF5E3A10)
+                        ),
+                        start = Offset(0f, 0f),
+                        end = Offset(500f * scale, 500f * scale)
+                    )
+                }
+                else -> null
+            }
+        } else null
+
         // Helper to draw GeneratedOrnaments with alpha factor and volumetric 3D relief
         fun drawOrnaments(ornaments: GeneratedOrnaments, alphaFactor: Float = 1f) {
             if (alphaFactor <= 0.001f) return
@@ -221,13 +267,24 @@ fun RunicCanvas(
                         cap = StrokeCap.Round
                     )
                 }
-                drawLine(
-                    color = strokeColor.copy(alpha = lineAlpha),
-                    start = Offset(line.x1 * scale, line.y1 * scale),
-                    end = Offset(line.x2 * scale, line.y2 * scale),
-                    strokeWidth = sw,
-                    cap = StrokeCap.Round
-                )
+                if (metallicBrush != null) {
+                    drawLine(
+                        brush = metallicBrush,
+                        alpha = lineAlpha,
+                        start = Offset(line.x1 * scale, line.y1 * scale),
+                        end = Offset(line.x2 * scale, line.y2 * scale),
+                        strokeWidth = sw,
+                        cap = StrokeCap.Round
+                    )
+                } else {
+                    drawLine(
+                        color = strokeColor.copy(alpha = lineAlpha),
+                        start = Offset(line.x1 * scale, line.y1 * scale),
+                        end = Offset(line.x2 * scale, line.y2 * scale),
+                        strokeWidth = sw,
+                        cap = StrokeCap.Round
+                    )
+                }
                 if (isVolumetric && sw > 1.2f) {
                     drawLine(
                         color = highlightColor.copy(alpha = lineAlpha * 0.70f),
@@ -248,11 +305,20 @@ fun RunicCanvas(
                             center = Offset(circle.cx * scale + chiselOff, circle.cy * scale + chiselOff)
                         )
                     }
-                    drawCircle(
-                        color = strokeColor.copy(alpha = circleAlpha),
-                        radius = circle.radius * scale,
-                        center = Offset(circle.cx * scale, circle.cy * scale)
-                    )
+                    if (metallicBrush != null) {
+                        drawCircle(
+                            brush = metallicBrush,
+                            alpha = circleAlpha,
+                            radius = circle.radius * scale,
+                            center = Offset(circle.cx * scale, circle.cy * scale)
+                        )
+                    } else {
+                        drawCircle(
+                            color = strokeColor.copy(alpha = circleAlpha),
+                            radius = circle.radius * scale,
+                            center = Offset(circle.cx * scale, circle.cy * scale)
+                        )
+                    }
                     if (isVolumetric && circle.radius * scale > 2.0f) {
                         drawCircle(
                             color = highlightColor.copy(alpha = circleAlpha * 0.85f),
@@ -270,12 +336,22 @@ fun RunicCanvas(
                             style = Stroke(width = sw * 1.35f)
                         )
                     }
-                    drawCircle(
-                        color = strokeColor.copy(alpha = circleAlpha),
-                        radius = circle.radius * scale,
-                        center = Offset(circle.cx * scale, circle.cy * scale),
-                        style = Stroke(width = sw)
-                    )
+                    if (metallicBrush != null) {
+                        drawCircle(
+                            brush = metallicBrush,
+                            alpha = circleAlpha,
+                            radius = circle.radius * scale,
+                            center = Offset(circle.cx * scale, circle.cy * scale),
+                            style = Stroke(width = sw)
+                        )
+                    } else {
+                        drawCircle(
+                            color = strokeColor.copy(alpha = circleAlpha),
+                            radius = circle.radius * scale,
+                            center = Offset(circle.cx * scale, circle.cy * scale),
+                            style = Stroke(width = sw)
+                        )
+                    }
                     if (isVolumetric && sw > 1.2f) {
                         drawCircle(
                             color = highlightColor.copy(alpha = circleAlpha * 0.70f),
@@ -432,12 +508,23 @@ fun RunicCanvas(
 
         // --- Phase 2: Runic Stave Strokes Carving (0.10..0.75) ---
         val strokeCount = stave.strokes.size.coerceAtLeast(1)
+        val elemScale = config.elementScale.coerceIn(0.4f, 1.8f)
         for (i in stave.strokes.indices) {
             val stroke = stave.strokes[i]
-            val pts = if (config.wobbleAmount > 0.01f) {
-                applyComposeWobble(stroke.points, config.wobbleAmount, prng)
+            val basePts = if (Math.abs(elemScale - 1f) > 0.001f) {
+                stroke.points.map { p ->
+                    StrokePoint(
+                        x = 250f + (p.x - 250f) * elemScale,
+                        y = 250f + (p.y - 250f) * elemScale
+                    )
+                }
             } else {
                 stroke.points
+            }
+            val pts = if (config.wobbleAmount > 0.01f) {
+                applyComposeWobble(basePts, config.wobbleAmount, prng)
+            } else {
+                basePts
             }
             if (pts.size < 2) continue
 
@@ -535,15 +622,28 @@ fun RunicCanvas(
                 }
 
                 // Main stroke
-                drawPath(
-                    path = path,
-                    color = strokeColor.copy(alpha = strokeAlpha),
-                    style = Stroke(
-                        width = strokeW,
-                        cap = StrokeCap.Round,
-                        join = StrokeJoin.Round
+                if (metallicBrush != null) {
+                    drawPath(
+                        path = path,
+                        brush = metallicBrush,
+                        alpha = strokeAlpha,
+                        style = Stroke(
+                            width = strokeW,
+                            cap = StrokeCap.Round,
+                            join = StrokeJoin.Round
+                        )
                     )
-                )
+                } else {
+                    drawPath(
+                        path = path,
+                        color = strokeColor.copy(alpha = strokeAlpha),
+                        style = Stroke(
+                            width = strokeW,
+                            cap = StrokeCap.Round,
+                            join = StrokeJoin.Round
+                        )
+                    )
+                }
 
                 if (config.style == SketchStyle.WOODCARVE) {
                     val shadowPath = Path().apply {
@@ -772,7 +872,7 @@ fun RunicCanvas(
         // --- Phase 4.5: Central Sacred Emblem (0.78..0.98) ---
         val emblemProgress = ((currentProgress - 0.76f) / 0.22f).coerceIn(0f, 1f)
         if (config.centerEmblem != CenterEmblem.NONE && emblemProgress > 0f) {
-            val centerOrnaments = OrnamentGeometry.generateCenterEmblem(config.centerEmblem, effectiveStrokeWidth)
+            val centerOrnaments = OrnamentGeometry.generateCenterEmblem(config.centerEmblem, effectiveStrokeWidth, config.elementScale)
             drawOrnaments(centerOrnaments, alphaFactor = emblemProgress)
         }
 

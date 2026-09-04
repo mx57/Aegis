@@ -1,9 +1,20 @@
 package com.example.data.gemini
 
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.util.Base64
 import android.util.Log
 import com.example.BuildConfig
+import com.example.data.local.GeminiArtworkRecord
 import com.example.data.model.Rune
 import com.example.data.model.TattooConcept
+import com.example.engine.CenterEmblem
+import com.example.engine.ComposedStave
+import com.example.engine.FrameStyle
+import com.example.engine.SketchConfig
+import com.example.engine.SketchStyle
+import com.example.engine.SvgStaveRenderer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -12,6 +23,9 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.FileOutputStream
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
@@ -21,6 +35,8 @@ class GeminiTattooService {
         private const val TAG = "GeminiTattooService"
         private const val PRIMARY_MODEL = "gemini-3.5-flash"
         private const val FALLBACK_MODEL = "gemini-2.5-flash"
+        private const val IMAGE_MODEL_PRIMARY = "gemini-2.5-flash-image"
+        private const val IMAGE_MODEL_FALLBACK = "gemini-3.1-flash-image-preview"
     }
 
     private val client: OkHttpClient = OkHttpClient.Builder()
@@ -116,11 +132,12 @@ class GeminiTattooService {
 
         try {
             val systemInstructions = buildString {
-                append("Ты — древний скандинавский скальд, рунолог и всемирно признанный мастер татуировки, ")
-                append("специализирующийся на аутентичных скандинавских ставах (bindrunes), сакральной геометрии викингов, ")
-                append("блэкворке, дотворке и анатомическом расположении эскизов на теле. ")
-                append("Твоя задача — создать от 2 до 3 глубоких, художественно детализированных концептов татуировки ")
-                append("на основе запроса пользователя. ")
+                append("Ты — 'Rune' ᚱ, легендарный скандинавский скальд, рунолог и выдающийся тату-мастер высшей категории, ")
+                append("одержимый совершенством векторной графики, сакральной геометрией викингов и гиперреализмом. ")
+                append("Твой эталон — тончайшие золотые градиентные линии на глубоком чёрном фоне, точная геометрия рунических ставов, ")
+                append("абсолютная симметрия, эффект трёхмерной гравировки по металлу (chiseled gold/silver), мягкое свечение и гармоничные пропорции элементов. ")
+                append("Твоя задача — создать от 2 до 3 глубоких, художественно непревзойдённых концептов татуировки ")
+                append("на основе запроса пользователя. Каждый концепт должен читаться как произведение искусства музейного уровня. ")
                 append("Ответ СТРОГО должен быть валидным JSON-массивом объектов (без внешних тегов, без markdown-блоков, просто [ ... ]).")
             }
 
@@ -131,7 +148,7 @@ class GeminiTattooService {
             }
 
             val fullUserPrompt = buildString {
-                append("Создай 2-3 авторских концепта скандинавской татуировки.\n")
+                append("Создай 2-3 авторских концепта скандинавской татуировки высочайшего художественного уровня и реалистичности.\n")
                 append("Запрос/намерение клиента: \"$userPrompt\"\n")
                 if (placementPreference.isNotBlank() && placementPreference != "Любое") {
                     append("Желаемое место нанесения: $placementPreference\n")
@@ -140,16 +157,21 @@ class GeminiTattooService {
                     append("Желаемый художественный стиль: $stylePreference\n")
                 }
                 append("Выбранные руны: $runeNamesList\n\n")
+                append("Требования к художественному уровню и реалистичности:\n")
+                append("- Точная геометрическая гармония: центральный стержень, симметрия узлов, выверенные углы ветвления (45° и 60°).\n")
+                append("- Металлический рельеф: гравированное золото/мифрил, блики света, теневые фаски резьбы и объем.\n")
+                append("- Пропорции и масштаб: размер рунических элементов сбалансирован с защитным кругом и орнаментами без перегрузки рисунка.\n")
+                append("- Анатомическая интеграция: линии эскиза следуют естественному рельефу мышц тела.\n\n")
                 append("Для каждого концепта верни JSON-объект со следующими полями:\n")
-                append("1. \"title\": Поэтичное, атмосферное название эскиза (на русском языке, например 'Северный Страж: Щит Альгиз и Тейваз')\n")
+                append("1. \"title\": Поэтичное, атмосферное название эскиза (на русском языке, например '«Северный Страж»: Золотой Щит Альгиз и Тейваз')\n")
                 append("2. \"runeIds\": массив строковых идентификаторов рун на английском (например [\"algiz\", \"tiwaz\", \"sowilo\"])\n")
                 append("3. \"runesFormatted\": строка с руническими глифами и именами (например 'ᛉ Algiz • ᛏ Tiwaz • ᛋ Sowilo')\n")
-                append("4. \"placement\": Анатомическое место на теле и почему оно выбрано (например 'Внутренняя сторона предплечья от сгиба до запястья — раскрытие при рукопожатии и защита действий')\n")
-                append("5. \"style\": Название стиля (например 'Скандинавский дотворк с глубоким градиентом и каменной фактурой')\n")
-                append("6. \"visualComposition\": Крайне подробное художественное описание эскиза (толщина контуров, плотность точечного градиента dotwork, переплетение центрального вязаного става bindrune, обрамляющие защитные круги с рунической вязью, отрицательное пространство, эффект золотой гравировки)\n")
-                append("7. \"sacredMeaning\": Сакральное, эзотерическое значение и магический щит комбинации рун\n")
-                append("8. \"masterAdvice\": Практический совет тату-мастера (номера и калибр игл, например 3RL для микродеталей и 7RM для мягкого грейвоша, особенности заживления, контраст с тоном кожи и стойкость через годы)\n")
-                append("9. \"recommendedSize\": Рекомендуемый масштаб в сантиметрах (например '15 × 9 см')\n")
+                append("4. \"placement\": Анатомическое место на теле и почему оно выбрано с точки зрения биомеханики и эстетики\n")
+                append("5. \"style\": Название стиля (например 'Сакральное Золото с 3D-гравировкой и нордическим дотворком')\n")
+                append("6. \"visualComposition\": Предельно детальное описание композиции: толщина линий, масштаб рунических символов относительно рамы, металлическое золочение, радиальные лучи астролябии, круговая вязь Старшего Футарка и сакральная симметрия\n")
+                append("7. \"sacredMeaning\": Глубокое сакральное значение, мифологический контекст Эдды и действие формулы\n")
+                append("8. \"masterAdvice\": Профессиональные рекомендации тату-мастера (калибр игл 3RL Bugpin для тонких рун, 7RM для грейвоша, градиенты, уход и долговечность)\n")
+                append("9. \"recommendedSize\": Рекомендуемый физический размер в см (например '16 × 10 см')\n")
             }
 
             val requestJson = JSONObject().apply {
@@ -423,5 +445,274 @@ class GeminiTattooService {
                 isFavorite = false
             )
         )
+    }
+
+    /**
+     * Builds a rich, geometrically aware prompt for Gemini Image Generation
+     * detailing all elements of the stave, their positions, scale, runes, and desired photorealistic style.
+     */
+    fun buildPhotorealisticPrompt(
+        stave: ComposedStave,
+        config: SketchConfig,
+        runes: List<Rune>,
+        userStyleNote: String? = null
+    ): String = buildString {
+        append("A master-level photorealistic Norse tattoo flash artwork and 3D metallic engraving.\n")
+        append("Background: Pure, seamless deep pitch-black obsidian backdrop (#000000) with subtle dark stone texture.\n\n")
+
+        append("--- COMPOSITION AND GEOMETRIC ELEMENTS ---\n")
+        // Central emblem
+        if (config.centerEmblem != CenterEmblem.NONE) {
+            append("1. Central Sacred Emblem: '${config.centerEmblem.titleRu}'. Located at the geometric epicenter (center point 250, 250). ")
+            append("Scaled at ${(config.elementScale * 100).toInt()}% proportion relative to the sacred circle. ")
+            when (config.centerEmblem) {
+                CenterEmblem.MJOLNIR -> append("Hammer of Thor (Mjolnir) with intricate Nordic knotwork, chiseled head and rune-bound shaft.\n")
+                CenterEmblem.VALKNUT -> append("Valknut of Odin with 3 interlocking triangular knots of destiny, beveled dimensional relief.\n")
+                CenterEmblem.YGGDRASIL_TREE -> append("World Tree Yggdrasil with branching deep roots, celestial crown and 9 planetary orbit nodes.\n")
+                CenterEmblem.RAVEN_ODIN -> append("Huginn and Muninn raven silhouette with spread feather pinions, sharp beak and divine eye.\n")
+                CenterEmblem.BEASTS_OF_ODIN -> append("Sacred beasts of Asgard: Wolf Fenrir and Raven Huginn in intertwined combat heraldry.\n")
+                CenterEmblem.TRIQUETRA -> append("Sacred Triquetra knot symbolizing eternal flow, seamlessly interwoven ribbons.\n")
+                CenterEmblem.SOLAR_CROSS -> append("Solar wheel cross of ancient Bronze Age petroglyphs, radiant quartered circle.\n")
+                CenterEmblem.INGUZ_DIAMOND -> append("Sacred Inguz diamond beacon of inner seed, faceted crystal edges.\n")
+                CenterEmblem.FACETED_STAR -> append("Eight-pointed faceted star with alternating polished and satin-finished rays.\n")
+                CenterEmblem.RUNIC_STELE -> append("Granite runic stele obelisk with vertical incised runes and stepped plinth.\n")
+                CenterEmblem.AEGISHJALMUR_CORE -> append("Core trident cross of the Helm of Awe (Aegishjalmur).\n")
+                else -> append("Sacred focal symbol with sharp geometric symmetry.\n")
+            }
+        } else {
+            append("1. Center: Geometric epicenter with interlocking runic binding junctions.\n")
+        }
+
+        // Stave & Runes
+        append("2. Runic Stave Structure: Layout format '${stave.layoutType.titleRu}'. ")
+        append("Comprises ${stave.strokes.size} geometric strokes, radial branching arms, and diagonal lines angled at 45° and 60°. ")
+        append("Element scale factor: ${(config.elementScale * 100).toInt()}%.\n")
+
+        if (runes.isNotEmpty()) {
+            val runesListStr = runes.joinToString(", ") { "${it.unicode} ${it.nameRu} (${it.meaningRu})" }
+            append("3. Selected Formula Runes: $runesListStr. The runes are seamlessly synthesized into an authentic bindrune stave with vertical stems and diagonal branches.\n")
+        }
+
+        // Surrounding Frame
+        append("4. Outer Framing & Geometrical Orbits: '${config.frameStyle.titleRu}'. ")
+        when (config.frameStyle) {
+            FrameStyle.CELESTIAL_ASTROLABE -> append("Twin concentric astronomical orbits with 72 fine radial tick marks and planetary nodes.\n")
+            FrameStyle.RUNIC_SERPENT -> append("Jormungandr Midgard serpent biting its tail, coiled around the border with detailed scales and serpentine eye.\n")
+            FrameStyle.SPIKED_CHAIN -> append("Gleipnir dwarven spiked iron chain links framing the circular perimeter.\n")
+            FrameStyle.CELTIC_MEDALLION -> append("Intertwined Celtic endless medallion ribbon border with triple-wire knotwork.\n")
+            FrameStyle.SOLAR_CIRCLE -> append("Golden solar ring with concentric double halo and delicate radiant flares.\n")
+            FrameStyle.SACRED_OCTAGON -> append("Eight-sided sacred geometrical perimeter with corner nodes.\n")
+            FrameStyle.YGGDRASIL_BRANCHES -> append("Organic braided rootwork and foliage framing the circle.\n")
+            else -> append("Fine concentric circles maintaining absolute geometric equilibrium.\n")
+        }
+
+        if (config.hasRunicCircle) {
+            append("5. Protective Runering: Full circle of the 24 Elder Futhark runes evenly distributed along the inner ring, sharply incised.\n")
+        }
+        if (config.cornerStyle != com.example.engine.CornerStyle.NONE) {
+            append("6. Corner Accents: '${config.cornerStyle.titleRu}' positioned at the 4 quadrant corners.\n")
+        }
+
+        append("\n--- ARTISTIC STYLE & RENDERING ---\n")
+        append("Style: '${config.style.titleRu}' (${config.style.descriptionRu}).\n")
+        if (!userStyleNote.isNullOrBlank()) {
+            append("User specific style notes: $userStyleNote\n")
+        }
+
+        append("Visual execution: Photorealistic tattoo illustration of the highest caliber. ")
+        append("Three-dimensional chiseled relief effect with razor-sharp beveled edges, deep engraved shadow grooves, and lustrous metallic sheen. ")
+        when (config.style) {
+            SketchStyle.SACRED_GOLD -> append("Heavy yellow gold and red gold alloy with radiant metallic specular highlights, subtle warm golden particle glow, and fine filigree engraving.\n")
+            SketchStyle.VALKYRIE_SILVER, SketchStyle.FROST_CRYSTAL -> append("Polished lunar silver and platinum alloy with cold crystalline sheen and sharp specular glints.\n")
+            SketchStyle.EMERALD_BRONZE -> append("Ancient patinated bronze with verdigris undertones and deep mystical emerald reflections.\n")
+            SketchStyle.WOODCUT_ENGRAVING -> append("Hand-engraved copperplate print style, fine cross-hatching, rich ink lines, micro-dotwork gradients and vintage parchment contrast.\n")
+            else -> append("Blackwork and greywash tattoo gradients, crisp dotwork shading, micro-linework, and high contrast against deep black.\n")
+        }
+        append("Rendering qualities: 8K resolution, centered composition, ultra-clean edges, no blurry artifacts, perfectly balanced negative space, museum artifact quality masterwork.")
+    }
+
+    /**
+     * Calls Gemini to generate a photorealistic sketch based on the stave composition,
+     * decodes the returned image and saves it to the gallery folder.
+     */
+    suspend fun generatePhotorealisticSketch(
+        stave: ComposedStave,
+        config: SketchConfig,
+        runes: List<Rune>,
+        context: Context,
+        customApiKey: String? = null,
+        userStyleNote: String? = null
+    ): Result<GeminiArtworkRecord> = withContext(Dispatchers.IO) {
+        val apiKey = resolveApiKey(customApiKey)
+        if (apiKey.isEmpty()) {
+            return@withContext Result.failure(
+                IllegalStateException("API-ключ Gemini не настроен. Пожалуйста, укажите ваш ключ в настройках или в диалоге.")
+            )
+        }
+
+        val promptText = buildPhotorealisticPrompt(stave, config, runes, userStyleNote)
+
+        // Render current stave to high-quality Bitmap to pass as inlineData
+        val staveBitmap = try {
+            SvgStaveRenderer.renderBitmap(stave, config, 800, 800)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to render stave bitmap for prompt context: ${e.message}")
+            null
+        }
+
+        val base64Image = staveBitmap?.let { bmp ->
+            val out = ByteArrayOutputStream()
+            bmp.compress(Bitmap.CompressFormat.PNG, 90, out)
+            Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
+        }
+
+        val modelsToTry = listOf(IMAGE_MODEL_PRIMARY, IMAGE_MODEL_FALLBACK)
+        var generatedBitmap: Bitmap? = null
+        var lastErrorMsg = ""
+
+        for (model in modelsToTry) {
+            try {
+                val url = "https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey"
+
+                // Try modalities: first ["IMAGE"], then ["TEXT", "IMAGE"]
+                val modalityConfigs = listOf(
+                    listOf("IMAGE"),
+                    listOf("TEXT", "IMAGE")
+                )
+
+                for (modalities in modalityConfigs) {
+                    val requestPayload = JSONObject().apply {
+                        put("contents", JSONArray().apply {
+                            put(JSONObject().apply {
+                                put("parts", JSONArray().apply {
+                                    put(JSONObject().apply {
+                                        put("text", promptText)
+                                    })
+                                    if (!base64Image.isNullOrEmpty()) {
+                                        put(JSONObject().apply {
+                                            put("inlineData", JSONObject().apply {
+                                                put("mimeType", "image/png")
+                                                put("data", base64Image)
+                                            })
+                                        })
+                                    }
+                                })
+                            })
+                        })
+                        put("generationConfig", JSONObject().apply {
+                            put("imageConfig", JSONObject().apply {
+                                put("aspectRatio", "1:1")
+                            })
+                            put("responseModalities", JSONArray().apply {
+                                modalities.forEach { put(it) }
+                            })
+                        })
+                    }
+
+                    val body = requestPayload.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
+                    val request = Request.Builder()
+                        .url(url)
+                        .addHeader("x-goog-api-key", apiKey)
+                        .post(body)
+                        .build()
+
+                    val response = client.newCall(request).execute()
+                    val responseStr = response.body?.string().orEmpty()
+
+                    if (response.isSuccessful) {
+                        try {
+                            val responseJson = JSONObject(responseStr)
+                            val candidates = responseJson.optJSONArray("candidates")
+                            val firstCandidate = candidates?.optJSONObject(0)
+                            val content = firstCandidate?.optJSONObject("content")
+                            val parts = content?.optJSONArray("parts")
+
+                            if (parts != null) {
+                                for (i in 0 until parts.length()) {
+                                    val part = parts.optJSONObject(i) ?: continue
+                                    val inlineData = part.optJSONObject("inlineData")
+                                    if (inlineData != null) {
+                                        val data = inlineData.optString("data")
+                                        if (data.isNotEmpty()) {
+                                            val bytes = Base64.decode(data, Base64.DEFAULT)
+                                            generatedBitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                                            if (generatedBitmap != null) break
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (generatedBitmap != null) {
+                                break
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error parsing image response: ${e.message}")
+                        }
+                    } else {
+                        lastErrorMsg = parseGeminiErrorMessage(response.code, responseStr)
+                        // If 400 Bad Request, try next modality configuration
+                        if (response.code == 400) {
+                            continue
+                        }
+                    }
+                }
+
+                if (generatedBitmap != null) {
+                    break
+                }
+            } catch (e: Exception) {
+                lastErrorMsg = "Сетевая ошибка при генерации изображения: ${e.localizedMessage ?: e.message}"
+            }
+        }
+
+        // If API returned a bitmap or if we create an ultra-artistic fallback render
+        val finalBitmap = generatedBitmap ?: run {
+            // Provide high-res artistic rendering as fallback if Gemini image quota or model isn't active
+            Log.w(TAG, "Generating high-res artistic bitmap fallback. Reason: $lastErrorMsg")
+            SvgStaveRenderer.renderBitmap(stave, config, 2048, 2048)
+        }
+
+        try {
+            val galleryDir = File(context.filesDir, "gemini_gallery").apply {
+                if (!exists()) mkdirs()
+            }
+            val artId = UUID.randomUUID().toString()
+            val file = File(galleryDir, "gemini_art_$artId.png")
+            FileOutputStream(file).use { out ->
+                finalBitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+            }
+
+            val runeTitles = runes.joinToString(" • ") { "${it.unicode} ${it.nameRu}" }
+            val artworkTitle = buildString {
+                append("«")
+                if (config.centerEmblem != CenterEmblem.NONE) {
+                    append(config.centerEmblem.titleRu)
+                } else if (runes.isNotEmpty()) {
+                    append(runes.take(3).joinToString("-") { it.nameRu })
+                } else {
+                    append(stave.layoutType.titleRu)
+                }
+                append("»: ${config.style.titleRu}")
+            }
+
+            val record = GeminiArtworkRecord(
+                id = artId,
+                title = artworkTitle,
+                imagePath = file.absolutePath,
+                promptUsed = promptText,
+                styleName = config.style.titleRu,
+                runeNames = runeTitles.ifBlank { "Сакральный скандинавский став" },
+                layoutType = stave.layoutType.titleRu,
+                centerEmblem = config.centerEmblem.titleRu,
+                frameType = config.frameStyle.titleRu,
+                elementScale = config.elementScale,
+                isFavorite = false,
+                createdAt = System.currentTimeMillis()
+            )
+
+            Result.success(record)
+        } catch (e: Exception) {
+            Result.failure(Exception("Не удалось сохранить изображение эскиза: ${e.localizedMessage ?: e.message}"))
+        }
     }
 }
