@@ -489,7 +489,7 @@ class GeminiTattooService {
         append("Element scale factor: ${(config.elementScale * 100).toInt()}%.\n")
 
         if (runes.isNotEmpty()) {
-            val runesListStr = runes.joinToString(", ") { "${it.unicode} ${it.nameRu} (${it.meaningRu})" }
+            val runesListStr = runes.joinToString(", ") { "${it.unicode} ${it.nameRu} (${it.tattooSymbolism})" }
             append("3. Selected Formula Runes: $runesListStr. The runes are seamlessly synthesized into an authentic bindrune stave with vertical stems and diagonal branches.\n")
         }
 
@@ -506,7 +506,7 @@ class GeminiTattooService {
             else -> append("Fine concentric circles maintaining absolute geometric equilibrium.\n")
         }
 
-        if (config.hasRunicCircle) {
+        if (config.hasRunering) {
             append("5. Protective Runering: Full circle of the 24 Elder Futhark runes evenly distributed along the inner ring, sharply incised.\n")
         }
         if (config.cornerStyle != com.example.engine.CornerStyle.NONE) {
@@ -554,7 +554,7 @@ class GeminiTattooService {
 
         // Render current stave to high-quality Bitmap to pass as inlineData
         val staveBitmap = try {
-            SvgStaveRenderer.renderBitmap(stave, config, 800, 800)
+            SvgStaveRenderer.renderToBitmap(stave, config, 800)
         } catch (e: Exception) {
             Log.w(TAG, "Failed to render stave bitmap for prompt context: ${e.message}")
             null
@@ -669,7 +669,7 @@ class GeminiTattooService {
         val finalBitmap = generatedBitmap ?: run {
             // Provide high-res artistic rendering as fallback if Gemini image quota or model isn't active
             Log.w(TAG, "Generating high-res artistic bitmap fallback. Reason: $lastErrorMsg")
-            SvgStaveRenderer.renderBitmap(stave, config, 2048, 2048)
+            SvgStaveRenderer.renderToBitmap(stave, config, 2048)
         }
 
         try {

@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
@@ -517,7 +518,7 @@ fun SketchScreen(
                 stave = composedStave,
                 config = config,
                 runes = runes,
-                userTone = userStyleNote.ifBlank { null }
+                userStyleNote = userStyleNote.ifBlank { null }
             )
         }
 
@@ -576,7 +577,7 @@ fun SketchScreen(
                                 style = MaterialTheme.typography.bodySmall
                             )
                             Text(
-                                text = "• Геометрия: ${selectedLayout.titleRu}, ветвей: ${composedStave.branchPoints.size}",
+                                text = "• Геометрия: ${selectedLayout.titleRu}, ветвей: ${composedStave.strokes.size}",
                                 style = MaterialTheme.typography.bodySmall
                             )
                             Text(
