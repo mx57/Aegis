@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.data.gemini.GeminiTattooService
 import com.example.data.local.AppDatabase
 import com.example.data.local.AppSettings
+import com.example.data.local.DivinationRecord
 import com.example.data.local.GeminiArtworkRecord
 import com.example.data.local.StaveRecord
 import com.example.data.local.TattooConceptRecord
@@ -30,6 +31,7 @@ class RuneViewModel(application: Application) : AndroidViewModel(application) {
     private val dao = database.staveDao()
     private val tattooConceptDao = database.tattooConceptDao()
     private val geminiArtworkDao = database.geminiArtworkDao()
+    private val divinationDao = database.divinationDao()
     private val geminiTattooService = GeminiTattooService()
     val appSettings = AppSettings(application)
 
@@ -99,6 +101,12 @@ class RuneViewModel(application: Application) : AndroidViewModel(application) {
     )
 
     val history: StateFlow<List<StaveRecord>> = dao.getAllHistory().stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
+    val divinationHistory: StateFlow<List<DivinationRecord>> = divinationDao.getLatest10().stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
@@ -324,6 +332,47 @@ class RuneViewModel(application: Application) : AndroidViewModel(application) {
         val currentRunes = _runes.value
         val map = currentRunes.associateBy { it.id }
         return ids.mapNotNull { map[it] }
+    }
+
+    fun saveDivination(
+        spreadType: String,
+        spreadTitleRu: String,
+        runeIds: List<String>,
+        reversedFlags: List<Boolean>,
+        questionOrContext: String = "",
+        interpretationSummary: String = "",
+        notes: String = ""
+    ) {
+        viewModelScope.launch {
+            val record = DivinationRecord(
+                spreadType = spreadType,
+                spreadTitleRu = spreadTitleRu,
+                runeIdsCsv = runeIds.joinToString(","),
+                reversedFlagsCsv = reversedFlags.joinToString(",") { if (it) "1" else "0" },
+                questionOrContext = questionOrContext,
+                interpretationSummary = interpretationSummary,
+                notes = notes,
+                createdAt = System.currentTimeMillis()
+            )
+            divinationDao.insert(record)
+            divinationDao.pruneOldRecords()
+        }
+    }
+
+    fun deleteDivination(id: Long) {
+        viewModelScope.launch {
+            divinationDao.deleteById(id)
+        }
+    }
+
+    fun deleteDivination(record: DivinationRecord) {
+        deleteDivination(record.id)
+    }
+
+    fun clearDivinationHistory() {
+        viewModelScope.launch {
+            divinationDao.clearAll()
+        }
     }
 }
 

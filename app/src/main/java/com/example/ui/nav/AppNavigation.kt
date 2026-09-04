@@ -215,6 +215,7 @@ fun MainAppHost(
             composable(BottomNavItem.Divination.route) {
                 DivinationScreen(
                     allRunes = runes,
+                    viewModel = viewModel,
                     onNavigateToSketch = { ids, layout ->
                         navController.navigate(AppDestinations.buildSketchRoute(ids, layout))
                     }

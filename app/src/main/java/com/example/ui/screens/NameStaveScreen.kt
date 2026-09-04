@@ -21,11 +21,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Brush
+import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -56,6 +59,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.translit.RuneTransliteration
+import com.example.engine.CenterEmblem
+import com.example.engine.CornerStyle
+import com.example.engine.FinialType
+import com.example.engine.FrameStyle
+import com.example.engine.RunicWordGenerator
 import com.example.engine.SketchConfig
 import com.example.engine.SketchStyle
 import com.example.engine.StaveComposer
@@ -99,7 +107,17 @@ fun NameStaveScreen(
 
     val userSettings by viewModel.userSettings.collectAsState()
 
-    val sketchConfig = remember(userSettings.defaultStyle) {
+    val sketchConfig = remember(
+        userSettings.defaultStyle,
+        userSettings.nameStaveShowFrame,
+        userSettings.nameStaveShowRuneRing,
+        userSettings.nameStaveShowCenterEmblem,
+        userSettings.nameStaveShowRayBurst,
+        userSettings.nameStaveShowBranchNotches,
+        userSettings.nameStaveShowFinials,
+        userSettings.nameStaveShowCornerAccents,
+        userSettings.nameStaveShowGlow
+    ) {
         val style = try {
             SketchStyle.valueOf(userSettings.defaultStyle)
         } catch (_: Exception) {
@@ -108,7 +126,17 @@ fun NameStaveScreen(
         SketchConfig(
             style = style,
             lineWidth = 3.6f,
-            hasFrameCircle = true,
+            hasFrameCircle = userSettings.nameStaveShowFrame,
+            frameStyle = if (userSettings.nameStaveShowFrame) FrameStyle.YGGDRASIL_BRANCHES else FrameStyle.NONE,
+            hasRunering = userSettings.nameStaveShowRuneRing,
+            centerEmblem = if (userSettings.nameStaveShowCenterEmblem) CenterEmblem.YGGDRASIL_TREE else CenterEmblem.NONE,
+            hasRayBurst = userSettings.nameStaveShowRayBurst,
+            hasBranchNotches = userSettings.nameStaveShowBranchNotches,
+            finialType = if (userSettings.nameStaveShowFinials) FinialType.TRIDENT else FinialType.NONE,
+            cornerStyle = if (userSettings.nameStaveShowCornerAccents) CornerStyle.NORSE_KNOTS else CornerStyle.NONE,
+            hasSymmetryAccents = userSettings.nameStaveShowCornerAccents,
+            hasGlowEffect = userSettings.nameStaveShowGlow,
+            hasVolumetricShading = userSettings.nameStaveShowGlow,
             seed = 1001L
         )
     }
@@ -143,30 +171,110 @@ fun NameStaveScreen(
                     modifier = Modifier.padding(vertical = 6.dp)
                 )
 
-                OutlinedTextField(
-                    value = inputText,
-                    onValueChange = {
-                        inputText = it
-                        isSavedToFav = false
-                    },
-                    label = { Text("Имя или слово") },
-                    singleLine = true,
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("name_input_field"),
-                    trailingIcon = {
-                        if (inputText.isNotEmpty()) {
-                            IconButton(onClick = { inputText = "" }) {
-                                Icon(Icons.Default.Clear, contentDescription = "Очистить")
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = inputText,
+                        onValueChange = {
+                            inputText = it
+                            isSavedToFav = false
+                        },
+                        label = { Text("Имя или намерение") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("name_input_field"),
+                        trailingIcon = {
+                            if (inputText.isNotEmpty()) {
+                                IconButton(onClick = { inputText = "" }) {
+                                    Icon(Icons.Default.Clear, contentDescription = "Очистить")
+                                }
                             }
-                        }
-                    },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                        )
                     )
-                )
+
+                    Button(
+                        onClick = {
+                            inputText = RunicWordGenerator.getRandomWord(inputText)
+                            isSavedToFav = false
+                        },
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier
+                            .height(56.dp)
+                            .testTag("word_generator_button"),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Casino,
+                                contentDescription = "Сгенерировать случайное слово",
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = "Случайно",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Священные намерения:",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "${RunicWordGenerator.allWords.size} слов в словаре",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    val quickWords = remember { listOf("СИЛА", "ПОБЕДА", "ЗАЩИТА", "МУДРОСТЬ", "ЛЮБОВЬ", "ИЗОБИЛИЕ", "ЗДОРОВЬЕ", "ПУТЬ ВОИНА") }
+                    quickWords.forEach { word ->
+                        FilterChip(
+                            selected = inputText.equals(word, ignoreCase = true),
+                            onClick = {
+                                inputText = word
+                                isSavedToFav = false
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            label = { Text(word, style = MaterialTheme.typography.labelSmall) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                            )
+                        )
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(10.dp))
 
@@ -318,6 +426,25 @@ fun NameStaveScreen(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.outline,
                     modifier = Modifier.padding(top = 2.dp)
+                )
+
+                val activeElementsCount = listOf(
+                    userSettings.nameStaveShowFrame,
+                    userSettings.nameStaveShowRuneRing,
+                    userSettings.nameStaveShowCenterEmblem,
+                    userSettings.nameStaveShowRayBurst,
+                    userSettings.nameStaveShowBranchNotches,
+                    userSettings.nameStaveShowFinials,
+                    userSettings.nameStaveShowCornerAccents,
+                    userSettings.nameStaveShowGlow
+                ).count { it }
+
+                Text(
+                    text = if (activeElementsCount == 0) "🛡️ Режим чистой руны (все декорации выключены)" else "✨ Декор: $activeElementsCount/8 элементов (настраивается в ⚙️ Настройках)",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (activeElementsCount == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.padding(top = 3.dp)
                 )
             }
         }

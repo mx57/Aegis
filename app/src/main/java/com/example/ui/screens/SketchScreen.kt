@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -793,14 +794,15 @@ fun SketchScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(8.dp),
+                        .padding(12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Tap-to-Zoom Interactive Canvas Area
+                    // Tap-to-Zoom Interactive Canvas Area (Spacious square preview preventing vertical clipping)
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
+                            .aspectRatio(1f)
+                            .clip(RoundedCornerShape(16.dp))
                             .clickable { isFullScreenOpen = true },
                         contentAlignment = Alignment.Center
                     ) {
@@ -809,41 +811,40 @@ fun SketchScreen(
                             config = config,
                             animationKey = animTriggerKey,
                             animationDurationMs = userSettings.animationSpeedMs,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(290.dp)
+                            modifier = Modifier.fillMaxSize()
                         )
 
-                        // Subtle tap-to-zoom badge hint
+                        // Unobtrusive Fullscreen Hint Badge at Top End (Never overlaps top or bottom of stave)
                         Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = if (isStencil) Color(0xEEFFFFFF) else Color(0xCC11141C),
-                            border = BorderStroke(1.dp, if (isStencil) Color.LightGray else Color(0x33E5C158)),
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isStencil) Color(0xEEFFFFFF) else Color(0xDD0D1117),
+                            border = BorderStroke(1.dp, if (isStencil) Color.LightGray else Color(0x44E5C158)),
                             modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .padding(bottom = 6.dp)
+                                .align(Alignment.TopEnd)
+                                .padding(10.dp)
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
                                     Icons.Default.ZoomOutMap,
-                                    contentDescription = null,
+                                    contentDescription = "Во весь экран",
                                     tint = if (isStencil) Color.Black else MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(12.dp)
+                                    modifier = Modifier.size(14.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = "Тапните для зума во весь экран",
+                                    text = "Зум",
                                     style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
                                     color = if (isStencil) Color.Black else MaterialTheme.colorScheme.primary
                                 )
                             }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     // Compact Title and Description
                     Text(

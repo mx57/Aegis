@@ -46,6 +46,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -65,6 +67,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.example.data.local.AppSettings
 import com.example.engine.SketchStyle
 import com.example.ui.viewmodel.RuneViewModel
 import com.example.ui.viewmodel.TestConnectionStatus
@@ -191,10 +194,11 @@ fun SettingsScreen(
                     }
 
                     val speedDescription = when {
-                        userSettings.animationSpeedMs <= 1800 -> "⚡ Быстрое начертание (динамично)"
-                        userSettings.animationSpeedMs <= 3500 -> "✨ Сбалансированная сакральная резка"
-                        userSettings.animationSpeedMs <= 5500 -> "🧘 Медитативное глубокое высечение"
-                        else -> "👑 Эпический ритуал (максимальная детализация)"
+                        userSettings.animationSpeedMs <= 2000 -> "⚡ Быстрое начертание (динамично)"
+                        userSettings.animationSpeedMs <= 5000 -> "✨ Сбалансированная сакральная резка"
+                        userSettings.animationSpeedMs <= 10000 -> "🧘 Медитативное глубокое высечение"
+                        userSettings.animationSpeedMs <= 15000 -> "👑 Эпический ритуал (детализированное вырезание)"
+                        else -> "🔥 Монументальное плазменное начертание (до 20 сек)"
                     }
 
                     Text(
@@ -207,14 +211,14 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(4.dp))
 
                     Slider(
-                        value = userSettings.animationSpeedMs.toFloat(),
+                        value = userSettings.animationSpeedMs.toFloat().coerceIn(1000f, 20000f),
                         onValueChange = { newMs ->
                             coroutineScope.launch {
                                 viewModel.appSettings.setAnimationSpeedMs(newMs.toInt())
                             }
                         },
-                        valueRange = 1000f..8000f,
-                        steps = 13, // increments of ~500ms
+                        valueRange = 1000f..20000f,
+                        steps = 18, // increments of 1000ms
                         colors = SliderDefaults.colors(
                             thumbColor = MaterialTheme.colorScheme.primary,
                             activeTrackColor = MaterialTheme.colorScheme.primary
@@ -225,9 +229,119 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("1.0 с (Быстро)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
-                        Text("4.0 с (Медитация)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
-                        Text("8.0 с (Эпично)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                        Text("1 с (Быстро)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                        Text("10 с (Медитация)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                        Text("20 с (Эпично)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                    }
+                }
+            }
+
+            // Name Stave Decorative Elements Toggle Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Элементы генерации по имени",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "Отключайте декоративные элементы по отдельности или оставьте только чистую руну без лишних обрамлений:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    viewModel.appSettings.setNameStaveAllElements(false)
+                                }
+                            },
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("🛡️ Только руна", style = MaterialTheme.typography.labelSmall)
+                        }
+
+                        Button(
+                            onClick = {
+                                coroutineScope.launch {
+                                    viewModel.appSettings.setNameStaveAllElements(true)
+                                }
+                            },
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("✨ Включить всё", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    val elements = listOf(
+                        Triple("⭕ Внешняя защитная рама", "Защитный двойной круг и священный обод", Pair(AppSettings.KEY_NAME_STAVE_SHOW_FRAME, userSettings.nameStaveShowFrame)),
+                        Triple("ᚠ Рунический круг Футарка", "Концентрический венец из 24 рун Старшего Футарка", Pair(AppSettings.KEY_NAME_STAVE_SHOW_RUNERING, userSettings.nameStaveShowRuneRing)),
+                        Triple("🌳 Центральная эмблема", "Сакральный знак в ядре става (Иггдрасиль)", Pair(AppSettings.KEY_NAME_STAVE_SHOW_CENTER_EMBLEM, userSettings.nameStaveShowCenterEmblem)),
+                        Triple("☀️ Сакральные лучи", "Радиальные вспышки и солнечный ореол силы", Pair(AppSettings.KEY_NAME_STAVE_SHOW_RAY_BURST, userSettings.nameStaveShowRayBurst)),
+                        Triple("🔱 Наконечники ветвей", "Трезубцы и копья на внешних полюсах рун", Pair(AppSettings.KEY_NAME_STAVE_SHOW_FINIALS, userSettings.nameStaveShowFinials)),
+                        Triple("🌿 Боковые насечки на осях", "Ритмичные насечки на центральных стеблях", Pair(AppSettings.KEY_NAME_STAVE_SHOW_BRANCH_NOTCHES, userSettings.nameStaveShowBranchNotches)),
+                        Triple("🛡️ Угловые узлы и вязь", "Скандинавские защитные плетения по углам", Pair(AppSettings.KEY_NAME_STAVE_SHOW_CORNER_ACCENTS, userSettings.nameStaveShowCornerAccents)),
+                        Triple("💫 3D-гравировка и свечение", "Объемные тени, светотеневые фаски и аура", Pair(AppSettings.KEY_NAME_STAVE_SHOW_GLOW, userSettings.nameStaveShowGlow))
+                    )
+
+                    elements.forEachIndexed { index, (title, desc, keyPair) ->
+                        if (index > 0) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 4.dp),
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                            )
+                        }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    coroutineScope.launch {
+                                        viewModel.appSettings.setNameStaveElement(keyPair.first, !keyPair.second)
+                                    }
+                                }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                                Text(
+                                    text = title,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = desc,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Switch(
+                                checked = keyPair.second,
+                                onCheckedChange = { isChecked ->
+                                    coroutineScope.launch {
+                                        viewModel.appSettings.setNameStaveElement(keyPair.first, isChecked)
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
             }

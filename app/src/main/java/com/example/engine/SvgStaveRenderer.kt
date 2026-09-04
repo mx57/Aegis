@@ -54,6 +54,7 @@ enum class FrameStyle(val titleRu: String) {
 }
 
 enum class FinialType(val titleRu: String) {
+    NONE("Без наверший"),
     DEFAULT("Классические"),
     TRIDENT("Трезубцы (Вилы)"),
     ARROWS("Стрелы Тюра"),

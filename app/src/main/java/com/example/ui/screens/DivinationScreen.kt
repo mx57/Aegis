@@ -63,11 +63,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.Rune
 import com.example.engine.StaveLayoutType
+import com.example.ui.components.DivinationHistoryView
 import com.example.ui.components.PouchRitualState
 import com.example.ui.components.RuneInterpretationCard
 import com.example.ui.components.SacredRunePouch
 import com.example.ui.components.SacredRuneTablet
 import com.example.ui.components.SingleRuneIcon
+import com.example.ui.viewmodel.RuneViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -78,11 +82,14 @@ import java.util.Random
 @Composable
 fun DivinationScreen(
     allRunes: List<Rune>,
+    viewModel: RuneViewModel? = null,
     onNavigateToSketch: (runeIds: List<String>, layoutType: String) -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
-    var selectedTab by remember { mutableIntStateOf(0) } // 0: Pouch (1 Rune), 1: Rune of Day, 2: 3 Norns Spread
+    var selectedTab by remember { mutableIntStateOf(0) } // 0: Pouch (1 Rune), 1: Rune of Day, 2: 3 Norns Spread, 3: History
     val elderRunes = remember(allRunes) { allRunes.filter { it.futhark == "elder" } }
+
+    val historyList by (viewModel?.divinationHistory ?: MutableStateFlow(emptyList())).collectAsStateWithLifecycle(emptyList())
 
     val todayDateStr = remember {
         SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
@@ -139,6 +146,22 @@ fun DivinationScreen(
             )
 
             singleRitualState = PouchRitualState.REVEALED
+
+            // Auto-save single rune reading to history (persisting last 10)
+            val rSaved = drawnSingleRune
+            if (rSaved != null) {
+                val orientStr = if (singleReversed) "Перевернутое положение" else "Прямое положение"
+                val interp = if (singleReversed) rSaved.divinationReversed else rSaved.divinationDirect
+                viewModel?.saveDivination(
+                    spreadType = "POUCH",
+                    spreadTitleRu = "Мешочек судьбы (1 руна)",
+                    runeIds = listOf(rSaved.id),
+                    reversedFlags = listOf(singleReversed),
+                    questionOrContext = "Вопрошание священного мешочка рун",
+                    interpretationSummary = "${rSaved.nameRu} ($orientStr): $interp",
+                    notes = "Ключевые слова: ${rSaved.keywordsRu.joinToString(", ")}"
+                )
+            }
         }
     }
 
@@ -155,6 +178,25 @@ fun DivinationScreen(
     // --- State for Rune of the Day Ritual ---
     var dayRevealed by remember { mutableStateOf(false) }
     val dayFlipAnim = remember { Animatable(0f) }
+
+    fun revealRuneOfDay() {
+        if (dayRevealed || runeOfDay == null) return
+        dayRevealed = true
+        coroutineScope.launch {
+            dayFlipAnim.snapTo(0f)
+            dayFlipAnim.animateTo(1f, tween(durationMillis = 750, easing = FastOutSlowInEasing))
+            val r = runeOfDay
+            viewModel?.saveDivination(
+                spreadType = "DAY",
+                spreadTitleRu = "Руна дня ($todayDisplayStr)",
+                runeIds = listOf(r.id),
+                reversedFlags = listOf(false),
+                questionOrContext = "Знак дня по сакральному кругу",
+                interpretationSummary = "${r.nameRu} (Прямое положение): ${r.divinationDirect}",
+                notes = "Совет дня: ${r.magicUse}"
+            )
+        }
+    }
 
     // --- State for 3 Norns Spread ---
     data class NornDrawn(val rune: Rune, val isReversed: Boolean)
@@ -177,6 +219,24 @@ fun DivinationScreen(
             }
             isNornsDrawing = false
             selectedNornIndex = 0
+
+            // Auto-save Three Norns reading to history
+            val nornPositions = listOf("1. Урд (Истоки)", "2. Верданди (Действие)", "3. Скульд (Исход)")
+            val summary = results.mapIndexed { idx, item ->
+                val orient = if (item.isReversed) "перевернутая" else "прямая"
+                val meaning = if (item.isReversed) item.rune.divinationReversed else item.rune.divinationDirect
+                "${nornPositions.getOrElse(idx) { "" }}: ${item.rune.nameRu} ($orient) — $meaning"
+            }.joinToString("\n\n")
+
+            viewModel?.saveDivination(
+                spreadType = "NORNS",
+                spreadTitleRu = "Три Норны (Прошлое, Настоящее, Будущее)",
+                runeIds = results.map { it.rune.id },
+                reversedFlags = results.map { it.isReversed },
+                questionOrContext = "Расклад Трех Сестер Судьбы у корней Иггдрасиля",
+                interpretationSummary = summary,
+                notes = "Руны триады: ${results.joinToString(" • ") { it.rune.nameRu }}"
+            )
         }
     }
 
@@ -214,17 +274,28 @@ fun DivinationScreen(
             Tab(
                 selected = selectedTab == 0,
                 onClick = { selectedTab = 0 },
-                text = { Text("🔮 Мешочек (1 руна)", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall) }
+                text = { Text("🔮 Мешочек", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall) }
             )
             Tab(
                 selected = selectedTab == 1,
                 onClick = { selectedTab = 1 },
-                text = { Text("☀️ Руна дня", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall) }
+                text = { Text("☀️ День", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall) }
             )
             Tab(
                 selected = selectedTab == 2,
                 onClick = { selectedTab = 2 },
-                text = { Text("⚔️ Три Норны", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall) }
+                text = { Text("⚔️ Норны", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall) }
+            )
+            Tab(
+                selected = selectedTab == 3,
+                onClick = { selectedTab = 3 },
+                text = {
+                    Text(
+                        text = if (historyList.isNotEmpty()) "📜 История (${historyList.size})" else "📜 История",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
             )
         }
 
@@ -421,24 +492,12 @@ fun DivinationScreen(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     SacredRunePouch(
-                                        onClick = {
-                                            coroutineScope.launch {
-                                                dayRevealed = true
-                                                dayFlipAnim.snapTo(0f)
-                                                dayFlipAnim.animateTo(1f, tween(durationMillis = 750, easing = FastOutSlowInEasing))
-                                            }
-                                        }
+                                        onClick = { revealRuneOfDay() }
                                     )
                                 }
 
                                 Button(
-                                    onClick = {
-                                        coroutineScope.launch {
-                                            dayRevealed = true
-                                            dayFlipAnim.snapTo(0f)
-                                            dayFlipAnim.animateTo(1f, tween(durationMillis = 750, easing = FastOutSlowInEasing))
-                                        }
-                                    },
+                                    onClick = { revealRuneOfDay() },
                                     shape = RoundedCornerShape(18.dp),
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = MaterialTheme.colorScheme.primary
@@ -647,6 +706,20 @@ fun DivinationScreen(
                         }
                     }
                 }
+            }
+
+            3 -> {
+                // ==========================================
+                // 4. DIVINATION HISTORY ARCHIVE (LAST 10 READINGS)
+                // ==========================================
+                DivinationHistoryView(
+                    records = historyList,
+                    allRunes = allRunes,
+                    onDeleteRecord = { record -> viewModel?.deleteDivination(record) },
+                    onClearAll = { viewModel?.clearDivinationHistory() },
+                    onNavigateToSketch = onNavigateToSketch,
+                    onStartDivination = { selectedTab = 0 }
+                )
             }
         }
 

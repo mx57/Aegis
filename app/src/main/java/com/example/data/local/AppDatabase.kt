@@ -5,12 +5,13 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [StaveRecord::class, TattooConceptRecord::class, GeminiArtworkRecord::class], version = 3, exportSchema = false)
+@Database(entities = [StaveRecord::class, TattooConceptRecord::class, GeminiArtworkRecord::class, DivinationRecord::class], version = 4, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun staveDao(): StaveDao
     abstract fun tattooConceptDao(): TattooConceptDao
     abstract fun geminiArtworkDao(): GeminiArtworkDao
+    abstract fun divinationDao(): DivinationDao
 
     companion object {
         @Volatile

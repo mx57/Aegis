@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.nativeCanvas
 import com.example.data.model.StrokePoint
 import com.example.engine.CanvasTheme
@@ -43,6 +44,7 @@ import com.example.engine.SketchConfig
 import com.example.engine.SketchStyle
 import java.util.Random
 import kotlin.math.PI
+import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -103,7 +105,11 @@ fun RunicCanvas(
             .aspectRatio(1f)
     ) {
         val canvasSize = size.minDimension
-        val scale = canvasSize / 500f
+        val margin = 14f // Safety padding preventing outer glyphs from clipping
+        val usable = (canvasSize - margin * 2f).coerceAtLeast(10f)
+        val scale = usable / 500f
+        val offX = (size.width - 500f * scale) / 2f
+        val offY = (size.height - 500f * scale) / 2f
         val prng = Random(config.seed)
 
         // Palette resolution
@@ -202,7 +208,10 @@ fun RunicCanvas(
             }
         }
 
-        val highlightColor = try { Color(android.graphics.Color.parseColor(config.effectiveTheme.highlightHex)) } catch (_: Exception) { Color.White }
+        withTransform({
+            translate(left = offX, top = offY)
+        }) {
+            val highlightColor = try { Color(android.graphics.Color.parseColor(config.effectiveTheme.highlightHex)) } catch (_: Exception) { Color.White }
         val shadowColor = try { Color(android.graphics.Color.parseColor(config.effectiveTheme.shadowHex)) } catch (_: Exception) { Color.Black }
         val isVolumetric = config.hasVolumetricShading && !config.isStencil
         val chiselOff = (effectiveStrokeWidth * 0.35f * config.runeChiselDepth).coerceAtLeast(1.2f)
@@ -678,32 +687,32 @@ fun RunicCanvas(
                     }
                 }
 
-                // Magical Chisel Spark on active stroke tip
-                if (rawProg in 0.02f..0.99f && tipPoint != null) {
+                // --- Cinematic Electric Lightning, Welding Torch Flame & Smoke Animation ---
+                if (rawProg in 0.012f..0.995f && tipPoint != null) {
                     val tipX = tipPoint.x * scale
                     val tipY = tipPoint.y * scale
-                    // Outer glow spark
-                    drawCircle(
-                        color = Color(0xFFFFE699).copy(alpha = 0.70f),
-                        radius = 8f * scale,
-                        center = Offset(tipX, tipY)
-                    )
-                    // Core fiery point
-                    drawCircle(
-                        color = Color(0xFFFFFFFF),
-                        radius = 3.5f * scale,
-                        center = Offset(tipX, tipY)
-                    )
-                    // Radiating mini sparks
-                    for (sp in 0 until 3) {
-                        val sa = (prng.nextFloat() * 2 * PI).toFloat()
-                        val sr = (5f + prng.nextFloat() * 9f) * scale
-                        drawCircle(
-                            color = Color(0xFFFFD54F).copy(alpha = 0.85f),
-                            radius = 1.4f * scale,
-                            center = Offset(tipX + sr * cos(sa), tipY + sr * sin(sa))
-                        )
+
+                    // Direction vector of carving travel
+                    val (dirX, dirY) = if (trimmedPts.size >= 2) {
+                        val pPrev = trimmedPts[trimmedPts.size - 2]
+                        val dX = tipPoint.x - pPrev.x
+                        val dY = tipPoint.y - pPrev.y
+                        val len = sqrt(dX * dX + dY * dY).coerceAtLeast(0.001f)
+                        Pair(dX / len, dY / len)
+                    } else {
+                        Pair(1f, 0f)
                     }
+
+                    val frameSeed = (currentProgress * 4000f + i * 100f).toInt()
+
+                    // 1. Billowing Smoke trailing behind the welding torch
+                    drawWeldingSmoke(trimmedPts, tipPoint, scale, frameSeed)
+
+                    // 2. Crackling Electric Lightning striking into the carving tip
+                    drawElectricLightning(tipX, tipY, dirX, dirY, scale, frameSeed)
+
+                    // 3. Blazing Welding Torch Flame & incandescent flying sparks
+                    drawWeldingFlameTorch(tipX, tipY, dirX, dirY, scale, frameSeed)
                 }
             }
 
@@ -726,7 +735,7 @@ fun RunicCanvas(
                 }
 
                 // Finials - ONLY on outer poles
-                if (config.finialType != FinialType.DEFAULT && stroke.isOuterPole && pts.size >= 2) {
+                if (config.finialType != FinialType.NONE && config.finialType != FinialType.DEFAULT && stroke.isOuterPole && pts.size >= 2) {
                     val pLast = pts.last()
                     val pPrev = pts[pts.size - 2]
                     val finials = OrnamentGeometry.generateFinial(pLast, pLast.x - pPrev.x, pLast.y - pPrev.y, config.finialType)
@@ -896,6 +905,7 @@ fun RunicCanvas(
                 )
             }
         }
+        }
     }
 }
 
@@ -955,4 +965,315 @@ private fun applyComposeWobble(points: List<StrokePoint>, wobble: Float, prng: R
         result.add(StrokePoint(jx, jy))
     }
     return result
+}
+
+/**
+ * Draws realistic trailing smoke puffs billowing and drifting upward behind the welding tip.
+ */
+private fun DrawScope.drawWeldingSmoke(
+    trimmedPts: List<StrokePoint>,
+    tipPoint: StrokePoint,
+    scale: Float,
+    frameSeed: Int
+) {
+    if (trimmedPts.size < 2) return
+    val prng = Random(frameSeed.toLong() * 31L + 997L)
+    val totalPoints = trimmedPts.size
+    val sampleIndices = listOf(
+        (totalPoints - 2).coerceAtLeast(0),
+        (totalPoints - 4).coerceAtLeast(0),
+        (totalPoints - 7).coerceAtLeast(0),
+        (totalPoints - 11).coerceAtLeast(0),
+        (totalPoints - 16).coerceAtLeast(0),
+        (totalPoints - 22).coerceAtLeast(0)
+    ).distinct()
+
+    sampleIndices.forEachIndexed { i, idx ->
+        val pt = trimmedPts[idx]
+        val age = i + 1 // 1 is closest to tip, 6 is oldest
+        val rise = age * 4.5f * scale
+        val driftX = (sin(age * 1.5 + frameSeed * 0.1) * age * 2.5f).toFloat() * scale
+        val smokeX = pt.x * scale + driftX + (prng.nextFloat() - 0.5f) * 4f * scale
+        val smokeY = pt.y * scale - rise + (prng.nextFloat() - 0.5f) * 3f * scale
+        val smokeRadius = (5f + age * 3.8f) * scale
+        val smokeAlpha = (0.32f - age * 0.045f).coerceIn(0.04f, 0.35f)
+
+        // Soft outer wispy puff
+        drawCircle(
+            color = Color(0xFF455A64).copy(alpha = smokeAlpha * 0.6f),
+            radius = smokeRadius * 1.35f,
+            center = Offset(smokeX, smokeY)
+        )
+        // Denser inner warm ash core
+        drawCircle(
+            color = Color(0xFF607D8B).copy(alpha = smokeAlpha),
+            radius = smokeRadius,
+            center = Offset(smokeX, smokeY)
+        )
+        // Lingering ember trace in fresh smoke
+        if (age <= 2) {
+            drawCircle(
+                color = Color(0xFFFF7043).copy(alpha = smokeAlpha * 0.45f),
+                radius = smokeRadius * 0.45f,
+                center = Offset(smokeX, smokeY)
+            )
+        }
+    }
+}
+
+/**
+ * Draws a realistic, coherent high-energy plasma beam (плазменный луч) focused
+ * directly into the carving contact point, featuring volumetric ionized bloom,
+ * harmonic wave oscillations, magnetic vortex sheath, and intense focal spot corona.
+ */
+private fun DrawScope.drawElectricLightning(
+    tipX: Float,
+    tipY: Float,
+    dirX: Float,
+    dirY: Float,
+    scale: Float,
+    frameSeed: Int
+) {
+    val boltPrng = Random(frameSeed.toLong() * 89L + 41L)
+
+    // Compute coherent emitter orientation angled trailing the incision stroke
+    val baseAngle = atan2(dirY.toDouble(), dirX.toDouble()).toFloat() + PI.toFloat()
+    // Smooth angle wobble for realistic ionized beam tracking
+    val wobble = (sin(frameSeed * 0.12) * 0.15f).toFloat()
+    val beamAngle = baseAngle - 0.35f + wobble
+
+    val beamDist = (52f + sin(frameSeed * 0.18) * 8f).toFloat() * scale
+    val startX = tipX + cos(beamAngle) * beamDist
+    val startY = tipY + sin(beamAngle) * beamDist
+
+    // Normal vector perpendicular to the beam axis
+    val axisX = tipX - startX
+    val axisY = tipY - startY
+    val axisLen = sqrt(axisX * axisX + axisY * axisY).coerceAtLeast(0.001f)
+    val normX = -axisY / axisLen
+    val normY = axisX / axisLen
+
+    val segments = 22
+    val primaryBeamPath = Path()
+    val vortexFilamentPath = Path()
+
+    primaryBeamPath.moveTo(startX, startY)
+    vortexFilamentPath.moveTo(startX, startY)
+
+    for (s in 1 until segments) {
+        val frac = s.toFloat() / segments
+        // Dampening envelope: 0 at both source emitter and contact tip
+        val envelope = sin(frac * PI).toFloat()
+
+        // High-velocity harmonic plasma oscillation (smooth wave, no crooked kinks)
+        val wave1 = sin(frac * PI * 2.8 + frameSeed * 0.28).toFloat() * 2.2f * scale * envelope
+        val wave2 = sin(frac * PI * 6.5 - frameSeed * 0.42).toFloat() * 0.9f * scale * envelope
+        val displacement = wave1 + wave2
+
+        val px = startX + axisX * frac + normX * displacement
+        val py = startY + axisY * frac + normY * displacement
+        primaryBeamPath.lineTo(px, py)
+
+        // Helical companion ionization filament (magnetic pinch vortex)
+        val helixDisp = cos(frac * PI * 4.6 + frameSeed * 0.38).toFloat() * 2.8f * scale * envelope
+        val vx = startX + axisX * frac + normX * helixDisp
+        val vy = startY + axisY * frac + normY * helixDisp
+        vortexFilamentPath.lineTo(vx, vy)
+    }
+
+    primaryBeamPath.lineTo(tipX, tipY)
+    vortexFilamentPath.lineTo(tipX, tipY)
+
+    // --- Multi-Layer Volumetric Plasma Beam Rendering ---
+
+    // 1. Outer Ethereal Ionized Aura (broad soft atmospheric glow)
+    drawPath(
+        path = primaryBeamPath,
+        color = Color(0x2000E5FF),
+        style = Stroke(width = 14.0f * scale, cap = StrokeCap.Round, join = StrokeJoin.Round)
+    )
+
+    // 2. Secondary Ionized Plasma Sheath
+    drawPath(
+        path = primaryBeamPath,
+        color = Color(0x6000B0FF),
+        style = Stroke(width = 7.0f * scale, cap = StrokeCap.Round, join = StrokeJoin.Round)
+    )
+
+    // 3. High-Energy Focused Plasma Column
+    drawPath(
+        path = primaryBeamPath,
+        color = Color(0xCC80D8FF),
+        style = Stroke(width = 3.6f * scale, cap = StrokeCap.Round, join = StrokeJoin.Round)
+    )
+
+    // 4. Companion Helical Vortex Filament
+    drawPath(
+        path = vortexFilamentPath,
+        color = Color(0x8840C4FF),
+        style = Stroke(width = 1.3f * scale, cap = StrokeCap.Round, join = StrokeJoin.Round)
+    )
+
+    // 5. Superheated Incandescent White Core Beam
+    drawPath(
+        path = primaryBeamPath,
+        color = Color.White,
+        style = Stroke(width = 1.3f * scale, cap = StrokeCap.Round, join = StrokeJoin.Round)
+    )
+
+    // --- Plasma Impact Spot Corona (Contact Point) ---
+    // Concentric plasma ionization rings
+    drawCircle(
+        color = Color(0x3000E5FF),
+        radius = 16.0f * scale,
+        center = Offset(tipX, tipY)
+    )
+    drawCircle(
+        color = Color(0x7580D8FF),
+        radius = 8.5f * scale,
+        center = Offset(tipX, tipY)
+    )
+    drawCircle(
+        color = Color.White,
+        radius = 3.2f * scale,
+        center = Offset(tipX, tipY)
+    )
+
+    // 2-3 High-Velocity Directional Ionized Micro-Jets spraying forward
+    for (j in 0 until 3) {
+        val jetAngle = baseAngle + PI.toFloat() + (boltPrng.nextFloat() - 0.5f) * 0.75f
+        val jetDist = (6f + boltPrng.nextFloat() * 12f) * scale
+        val endX = tipX + cos(jetAngle) * jetDist
+        val endY = tipY + sin(jetAngle) * jetDist
+
+        drawLine(
+            color = Color(0xB080D8FF),
+            start = Offset(tipX, tipY),
+            end = Offset(endX, endY),
+            strokeWidth = 1.2f * scale,
+            cap = StrokeCap.Round
+        )
+        drawLine(
+            color = Color.White,
+            start = Offset(tipX, tipY),
+            end = Offset(endX, endY),
+            strokeWidth = 0.6f * scale,
+            cap = StrokeCap.Round
+        )
+    }
+}
+
+/**
+ * Draws an intense welding torch flame plume and molten spatter at the active cutting tip.
+ */
+private fun DrawScope.drawWeldingFlameTorch(
+    tipX: Float,
+    tipY: Float,
+    dirX: Float,
+    dirY: Float,
+    scale: Float,
+    frameSeed: Int
+) {
+    val torchPrng = Random(frameSeed.toLong() * 89L + 43L)
+
+    val backAngle = if (dirX != 0f || dirY != 0f) {
+        atan2(-dirY.toDouble(), -dirX.toDouble()).toFloat()
+    } else {
+        -PI.toFloat() / 2f
+    }
+
+    // 1. Plasma corona glow around welding pool
+    drawCircle(
+        color = Color(0xFFFF6D00).copy(alpha = 0.45f),
+        radius = 16f * scale,
+        center = Offset(tipX, tipY)
+    )
+    drawCircle(
+        color = Color(0xFFFFD600).copy(alpha = 0.65f),
+        radius = 10f * scale,
+        center = Offset(tipX, tipY)
+    )
+
+    // 2. Directional torch flame plume (flaring backwards like a gas/arc welding torch)
+    val flameLength = (16f + torchPrng.nextFloat() * 12f) * scale
+    val flameSpread = 0.45f
+    val flameTipX = tipX + cos(backAngle) * flameLength
+    val flameTipY = tipY + sin(backAngle) * flameLength
+
+    val flameLeftX = tipX + cos(backAngle - flameSpread) * (flameLength * 0.6f)
+    val flameLeftY = tipY + sin(backAngle - flameSpread) * (flameLength * 0.6f)
+
+    val flameRightX = tipX + cos(backAngle + flameSpread) * (flameLength * 0.6f)
+    val flameRightY = tipY + sin(backAngle + flameSpread) * (flameLength * 0.6f)
+
+    val flamePath = Path().apply {
+        moveTo(tipX, tipY)
+        lineTo(flameLeftX, flameLeftY)
+        lineTo(flameTipX, flameTipY)
+        lineTo(flameRightX, flameRightY)
+        close()
+    }
+    drawPath(path = flamePath, color = Color(0xFFFF3D00).copy(alpha = 0.75f))
+
+    val innerLength = flameLength * 0.65f
+    val innerTipX = tipX + cos(backAngle) * innerLength
+    val innerTipY = tipY + sin(backAngle) * innerLength
+    val innerLeftX = tipX + cos(backAngle - flameSpread * 0.8f) * (innerLength * 0.5f)
+    val innerLeftY = tipY + sin(backAngle - flameSpread * 0.8f) * (innerLength * 0.5f)
+    val innerRightX = tipX + cos(backAngle + flameSpread * 0.8f) * (innerLength * 0.5f)
+    val innerRightY = tipY + sin(backAngle + flameSpread * 0.8f) * (innerLength * 0.5f)
+
+    val innerFlamePath = Path().apply {
+        moveTo(tipX, tipY)
+        lineTo(innerLeftX, innerLeftY)
+        lineTo(innerTipX, innerTipY)
+        lineTo(innerRightX, innerRightY)
+        close()
+    }
+    drawPath(path = innerFlamePath, color = Color(0xFFFFEA00).copy(alpha = 0.90f))
+
+    // 3. Incandescent electric arc center (white-blue hot molten core)
+    drawCircle(
+        color = Color(0xFF80D8FF).copy(alpha = 0.90f),
+        radius = 5.2f * scale,
+        center = Offset(tipX, tipY)
+    )
+    drawCircle(
+        color = Color.White,
+        radius = 3.2f * scale,
+        center = Offset(tipX, tipY)
+    )
+
+    // 4. Welding spatter & flying sparks (10-14 incandescent metal droplets spraying out)
+    val sparkCount = 10 + torchPrng.nextInt(5)
+    for (sp in 0 until sparkCount) {
+        val sa = backAngle + (torchPrng.nextFloat() - 0.5f) * 2.8f
+        val sr = (8f + torchPrng.nextFloat() * 26f) * scale
+        val sparkX = tipX + cos(sa) * sr
+        val sparkY = tipY + sin(sa) * sr
+        val sparkRadius = (1.2f + torchPrng.nextFloat() * 1.5f) * scale
+
+        val streakLen = (sr * 0.28f).coerceAtMost(7f * scale)
+        val streakStartX = sparkX - cos(sa) * streakLen
+        val streakStartY = sparkY - sin(sa) * streakLen
+
+        val sparkColor = when (sp % 3) {
+            0 -> Color.White
+            1 -> Color(0xFFFFD600)
+            else -> Color(0xFFFF6D00)
+        }
+
+        drawLine(
+            color = sparkColor.copy(alpha = 0.85f),
+            start = Offset(streakStartX, streakStartY),
+            end = Offset(sparkX, sparkY),
+            strokeWidth = 1.2f * scale,
+            cap = StrokeCap.Round
+        )
+        drawCircle(
+            color = sparkColor,
+            radius = sparkRadius,
+            center = Offset(sparkX, sparkY)
+        )
+    }
 }

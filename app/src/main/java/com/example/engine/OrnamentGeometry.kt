@@ -838,6 +838,8 @@ object OrnamentGeometry {
         val y = pt.y
 
         when (finial) {
+            FinialType.NONE -> {}
+
             FinialType.DEFAULT -> {
                 circles.add(CircleGeom(x, y, 3.0f, isFilled = true))
             }
