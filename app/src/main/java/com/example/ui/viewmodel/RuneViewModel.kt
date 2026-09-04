@@ -63,7 +63,8 @@ class RuneViewModel(application: Application) : AndroidViewModel(application) {
     val testConnectionState: StateFlow<TestConnectionStatus> = _testConnectionState.asStateFlow()
 
     fun isGeminiConfigured(customKey: String? = null): Boolean {
-        return geminiTattooService.isApiKeyConfigured(customKey ?: userSettings.value.geminiApiKey)
+        val effectiveKey = customKey?.takeIf { it.isNotBlank() } ?: userSettings.value.geminiApiKey
+        return geminiTattooService.isApiKeyConfigured(effectiveKey)
     }
 
     val geminiArtworks: StateFlow<List<GeminiArtworkRecord>> = geminiArtworkDao.getAll()
