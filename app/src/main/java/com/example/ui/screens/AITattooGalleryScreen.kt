@@ -63,8 +63,6 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import com.example.ui.viewmodel.TestConnectionStatus
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -112,6 +110,7 @@ import com.example.engine.SketchConfig
 import com.example.engine.SketchStyle
 import com.example.engine.StaveComposer
 import com.example.engine.StaveLayoutType
+import com.example.ui.components.GeminiApiKeyTextField
 import com.example.ui.components.RunicCanvas
 import com.example.ui.viewmodel.RuneViewModel
 import java.text.SimpleDateFormat
@@ -392,56 +391,21 @@ fun AITattooGalleryScreen(
 
                                         Spacer(modifier = Modifier.height(8.dp))
 
-                                        OutlinedTextField(
+                                        GeminiApiKeyTextField(
                                             value = apiKeyInput,
                                             onValueChange = {
                                                 apiKeyInput = it
                                                 viewModel.clearTestConnectionState()
                                             },
-                                            modifier = Modifier.fillMaxWidth(),
-                                            label = { Text("API-ключ Gemini (AIzaSy...)") },
-                                            placeholder = { Text("Вставьте ваш API-ключ") },
-                                            singleLine = true,
-                                            visualTransformation = if (isKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                                            leadingIcon = {
-                                                Icon(
-                                                    Icons.Default.Key,
-                                                    contentDescription = null,
-                                                    tint = MaterialTheme.colorScheme.primary,
-                                                    modifier = Modifier.size(18.dp)
-                                                )
-                                            },
-                                            trailingIcon = {
-                                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                                    IconButton(onClick = { isKeyVisible = !isKeyVisible }) {
-                                                        Icon(
-                                                            imageVector = if (isKeyVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                                            contentDescription = if (isKeyVisible) "Скрыть" else "Показать",
-                                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                                        )
-                                                    }
-                                                    IconButton(
-                                                        onClick = {
-                                                            val clip = clipboardManager.getText()?.text?.trim().orEmpty()
-                                                            if (clip.isNotEmpty()) {
-                                                                apiKeyInput = clip
-                                                                Toast.makeText(context, "Вставлено из буфера", Toast.LENGTH_SHORT).show()
-                                                            }
-                                                        }
-                                                    ) {
-                                                        Icon(
-                                                            imageVector = Icons.Default.ContentPaste,
-                                                            contentDescription = "Вставить",
-                                                            tint = MaterialTheme.colorScheme.primary
-                                                        )
-                                                    }
+                                            isKeyVisible = isKeyVisible,
+                                            onToggleKeyVisibility = { isKeyVisible = !isKeyVisible },
+                                            onPasteFromClipboard = {
+                                                val clip = clipboardManager.getText()?.text?.trim().orEmpty()
+                                                if (clip.isNotEmpty()) {
+                                                    apiKeyInput = clip
+                                                    Toast.makeText(context, "Вставлено из буфера", Toast.LENGTH_SHORT).show()
                                                 }
-                                            },
-                                            shape = RoundedCornerShape(12.dp),
-                                            colors = OutlinedTextFieldDefaults.colors(
-                                                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-                                            )
+                                            }
                                         )
 
                                         Spacer(modifier = Modifier.height(10.dp))
