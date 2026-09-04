@@ -17,6 +17,7 @@ data class GeminiArtworkRecord(
     val centerEmblem: String,
     val frameType: String,
     val elementScale: Float = 1.0f,
+    val seed: Long = 0L,
     val isFavorite: Boolean = false,
     val createdAt: Long = System.currentTimeMillis()
 )
