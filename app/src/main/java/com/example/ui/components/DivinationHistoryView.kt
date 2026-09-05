@@ -297,6 +297,8 @@ private fun DivinationRecordCard(
         "POUCH" -> Pair("🔮 Мешочек", Color(0xFF64B5F6))
         "DAY" -> Pair("☀️ Руна дня", Color(0xFFFFD54F))
         "NORNS" -> Pair("⚔️ Три Норны", Color(0xFF81C784))
+        "YGGDRASIL" -> Pair("🌳 Иггдрасиль", Color(0xFF4CAF50))
+        "WEEK" -> Pair("📅 7 Дней", Color(0xFFBA68C8))
         else -> Pair("📜 Расклад", Color(0xFFE5C158))
     }
 
@@ -359,51 +361,93 @@ private fun DivinationRecordCard(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Runes in reading row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = if (runesInSpread.size == 1) Arrangement.Start else Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                runesInSpread.forEachIndexed { idx, rune ->
-                    val isRev = reversedFlags.getOrElse(idx) { false }
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(horizontal = 6.dp)
-                    ) {
-                        if (record.spreadType == "NORNS") {
+            // Runes in reading view
+            if (runesInSpread.size <= 3) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = if (runesInSpread.size == 1) Arrangement.Start else Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    runesInSpread.forEachIndexed { idx, rune ->
+                        val isRev = reversedFlags.getOrElse(idx) { false }
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(horizontal = 6.dp)
+                        ) {
+                            if (record.spreadType == "NORNS") {
+                                Text(
+                                    text = nornPositions.getOrElse(idx) { "" },
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontSize = 10.sp,
+                                    color = Color(0xFFFFE082),
+                                    modifier = Modifier.padding(bottom = 4.dp)
+                                )
+                            }
+
+                            SacredRuneTablet(
+                                rune = rune,
+                                isReversed = isRev,
+                                flipProgress = 1f,
+                                size = if (runesInSpread.size == 1) 78.dp else 68.dp
+                            )
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
                             Text(
-                                text = nornPositions.getOrElse(idx) { "" },
+                                text = rune.nameRu,
                                 style = MaterialTheme.typography.labelSmall,
-                                fontSize = 10.sp,
-                                color = Color(0xFFFFE082),
-                                modifier = Modifier.padding(bottom = 4.dp)
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+
+                            Text(
+                                text = if (isRev) "Перевернутая" else "Прямая",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontSize = 9.sp,
+                                color = if (isRev) Color(0xFFFF8A80) else Color(0xFFA5D6A7)
                             )
                         }
+                    }
+                }
+            } else {
+                // Multi-row grid layout for 7 or 9 runes (Yggdrasil / Week)
+                val chunkSize = if (runesInSpread.size == 9) 3 else 4
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    runesInSpread.chunked(chunkSize).forEachIndexed { rowIndex, chunk ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            chunk.forEachIndexed { colIndex, rune ->
+                                val realIdx = rowIndex * chunkSize + colIndex
+                                val isRev = reversedFlags.getOrElse(realIdx) { false }
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier.padding(horizontal = 2.dp)
+                                ) {
+                                    SacredRuneTablet(
+                                        rune = rune,
+                                        isReversed = isRev,
+                                        flipProgress = 1f,
+                                        size = if (runesInSpread.size == 9) 58.dp else 60.dp
+                                    )
 
-                        // Tablet representation
-                        SacredRuneTablet(
-                            rune = rune,
-                            isReversed = isRev,
-                            flipProgress = 1f,
-                            size = if (runesInSpread.size == 1) 78.dp else 68.dp
-                        )
+                                    Spacer(modifier = Modifier.height(2.dp))
 
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        Text(
-                            text = rune.nameRu,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-
-                        Text(
-                            text = if (isRev) "Перевернутая" else "Прямая",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontSize = 9.sp,
-                            color = if (isRev) Color(0xFFFF8A80) else Color(0xFFA5D6A7)
-                        )
+                                    Text(
+                                        text = rune.nameRu,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
