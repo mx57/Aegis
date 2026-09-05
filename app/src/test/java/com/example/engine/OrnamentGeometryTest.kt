@@ -137,6 +137,27 @@ class OrnamentGeometryTest {
     }
 
     @Test
+    fun generateCenterEmblem_valknut_generatesInterlockingTrianglesAndOrnaments() {
+        val valknut = OrnamentGeometry.generateCenterEmblem(com.example.engine.CenterEmblem.VALKNUT, 3.0f)
+
+        // Valknut should contain 3 drop shadow polygons, boundary paths, facet ridge lines, and central node circles
+        assertTrue("Valknut should generate drop shadow polygons", valknut.polygons.isNotEmpty())
+        assertTrue("Valknut should generate boundary paths for interlocking ribbons", valknut.paths.size >= 6)
+        assertTrue("Valknut should generate facet ridge and shading lines", valknut.lines.isNotEmpty())
+        assertTrue("Valknut should generate apex and hub circles", valknut.circles.isNotEmpty())
+    }
+
+    @Test
+    fun generateCenterEmblem_triquetra_generatesArcuatePetalsAndOrnaments() {
+        val triquetra = OrnamentGeometry.generateCenterEmblem(com.example.engine.CenterEmblem.TRIQUETRA, 3.0f)
+
+        // Triquetra should generate arcuate dual-ribbon petal paths, solar circle, shading lines, and central studs
+        assertTrue("Triquetra should generate arcuate petal and shadow paths", triquetra.paths.isNotEmpty())
+        assertTrue("Triquetra should generate central solar circle and studs", triquetra.circles.size >= 5)
+        assertTrue("Triquetra should generate recess shading lines across ribbon", triquetra.lines.isNotEmpty())
+    }
+
+    @Test
     fun scaleOrnaments_coercesScaleFactorBoundaries() {
         val circle = CircleGeom(cx = 250f, cy = 250f, radius = 100f)
         val ornaments = GeneratedOrnaments(circles = listOf(circle))

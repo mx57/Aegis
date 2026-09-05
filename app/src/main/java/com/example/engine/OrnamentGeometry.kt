@@ -606,36 +606,154 @@ object OrnamentGeometry {
             }
 
             CenterEmblem.VALKNUT -> {
-                // Three interlocking triangles of Odin
-                val r = 24f
-                val offsets = listOf(
-                    Pair(0f, -8f),
-                    Pair(-7f, 5f),
-                    Pair(7f, 5f)
+                // Sacred Valknut of Odin (Hrungnir's Heart):
+                // 3-fold Borromean interlocking triangular ribbons with 3D faceted bevels,
+                // lit/shadow ridge facets, dark cross-hatching, and sacred central node.
+                val rOuter = 34f
+                val rInner = 22f
+                val ribbonW = 5.5f
+
+                // 3 Interlocking Triangles arranged at 0, 120, 240 degrees
+                val triangleCenters = listOf(
+                    Pair(0f, -12f),
+                    Pair(-10.4f, 6f),
+                    Pair(10.4f, 6f)
                 )
 
-                for ((ox, oy) in offsets) {
-                    val triPoints = mutableListOf<StrokePoint>()
-                    for (i in 0..3) {
-                        val angle = (-PI / 2 + 2 * PI * i / 3).toFloat()
-                        triPoints.add(StrokePoint(cx + ox + r * cos(angle), cy + oy + r * sin(angle)))
+                for ((idx, offset) in triangleCenters.withIndex()) {
+                    val (ox, oy) = offset
+                    val tcX = cx + ox
+                    val tcY = cy + oy
+
+                    // 3 Vertices for this triangle
+                    val vOuter = mutableListOf<StrokePoint>()
+                    val vInner = mutableListOf<StrokePoint>()
+
+                    for (v in 0 until 3) {
+                        val angle = (-PI / 2 + 2 * PI * v / 3 + idx * PI / 6).toFloat()
+                        vOuter.add(StrokePoint(tcX + rOuter * cos(angle), tcY + rOuter * sin(angle)))
+                        vInner.add(StrokePoint(tcX + rInner * cos(angle), tcY + rInner * sin(angle)))
                     }
-                    paths.add(PathGeom(triPoints, isClosed = true, widthFactor = 1.2f))
+
+                    // 1. Ambient Drop Shadow underneath triangle base
+                    val shadowPoly = vOuter.map { StrokePoint(it.x + 2.5f, it.y + 3.2f) }
+                    polygons.add(PolygonGeom(shadowPoly, isFilled = true, alpha = 0.22f))
+
+                    // 2. Outer and Inner Ribbon Boundary Paths
+                    val outerPath = vOuter + listOf(vOuter.first())
+                    val innerPath = vInner + listOf(vInner.first())
+                    paths.add(PathGeom(outerPath, isClosed = true, widthFactor = 1.35f))
+                    paths.add(PathGeom(innerPath, isClosed = true, widthFactor = 0.95f))
+
+                    // 3. Central Facet Ridge Lines (divides lit and shadow facets)
+                    for (v in 0 until 3) {
+                        val pOut1 = vOuter[v]
+                        val pOut2 = vOuter[(v + 1) % 3]
+                        val pIn1 = vInner[v]
+                        val pIn2 = vInner[(v + 1) % 3]
+
+                        val midOutX = (pOut1.x + pOut2.x) / 2f
+                        val midOutY = (pOut1.y + pOut2.y) / 2f
+                        val midInX = (pIn1.x + pIn2.x) / 2f
+                        val midInY = (pIn1.y + pIn2.y) / 2f
+
+                        // Longitudinal center ridge line along the ribbon edge
+                        lines.add(LineSegmentGeom(midInX, midInY, midOutX, midOutY, widthFactor = 0.70f, alpha = 0.85f))
+
+                        // Corner vertex facet join lines
+                        lines.add(LineSegmentGeom(pIn1.x, pIn1.y, pOut1.x, pOut1.y, widthFactor = 1.10f))
+
+                        // Volumetric Shadow Cross-Hatching on alternate facets
+                        val hatchSteps = 4
+                        for (h in 1..hatchSteps) {
+                            val t = h.toFloat() / (hatchSteps + 1)
+                            val hx1 = pIn1.x + t * (pIn2.x - pIn1.x)
+                            val hy1 = pIn1.y + t * (pIn2.y - pIn1.y)
+                            val hx2 = pOut1.x + t * (pOut2.x - pOut1.x)
+                            val hy2 = pOut1.y + t * (pOut2.y - pOut1.y)
+                            lines.add(LineSegmentGeom(hx1, hy1, hx2, hy2, widthFactor = 0.45f, alpha = 0.65f))
+                        }
+                    }
+
+                    // Apex vertex node studs
+                    for (v in vOuter) {
+                        circles.add(CircleGeom(v.x, v.y, 2.2f, isFilled = true))
+                    }
                 }
-                circles.add(CircleGeom(cx, cy, 2.0f, isFilled = true))
+
+                // Central Sacred Hub & Guard Rings
+                circles.add(CircleGeom(cx, cy, 3.2f, isFilled = true))
+                circles.add(CircleGeom(cx, cy, 6.5f, isFilled = false, widthFactor = 0.65f, alpha = 0.70f))
             }
 
             CenterEmblem.TRIQUETRA -> {
-                // Sacred 3-leaf Celtic knot + center circle
-                circles.add(CircleGeom(cx, cy, 14f, isFilled = false, widthFactor = 1.2f))
+                // Sacred 3-leaf Celtic Triquetra Knot:
+                // Interwoven arcuate dual-ribbon petals, central solar circle,
+                // crossing node studs, and volumetric recess shading.
+                val R = 32f // Radius of vesica piscis petal arc centers
+                val ribbonHalfW = 2.8f
+
+                // Intertwined Solar Circle
+                circles.add(CircleGeom(cx, cy, 28f, isFilled = false, widthFactor = 1.30f))
+                circles.add(CircleGeom(cx, cy, 28f - ribbonHalfW * 2f, isFilled = false, widthFactor = 0.75f, alpha = 0.65f))
+
+                // 3 Petal Arcs oriented at angles -PI/2 (top), -PI/2 + 2PI/3 (right), -PI/2 + 4PI/3 (left)
                 for (i in 0 until 3) {
                     val angle = (-PI / 2 + 2 * PI * i / 3).toFloat()
-                    val leafX = cx + 22f * cos(angle)
-                    val leafY = cy + 22f * sin(angle)
-                    lines.add(LineSegmentGeom(cx, cy, leafX, leafY, widthFactor = 1.5f))
-                    circles.add(CircleGeom(leafX, leafY, 4f, isFilled = true))
+                    val leafCx = cx + 18f * cos(angle)
+                    val leafCy = cy + 18f * sin(angle)
+
+                    // Generate smooth arcuate petal path (Bezier-like arc)
+                    val arcSteps = 16
+                    val arcPtsOuter = mutableListOf<StrokePoint>()
+                    val arcPtsInner = mutableListOf<StrokePoint>()
+                    val arcPtsCenter = mutableListOf<StrokePoint>()
+
+                    val startAngle = angle - PI.toFloat() / 1.8f
+                    val endAngle = angle + PI.toFloat() / 1.8f
+
+                    for (s in 0..arcSteps) {
+                        val t = s.toFloat() / arcSteps
+                        val a = startAngle + t * (endAngle - startAngle)
+                        val radOut = R + ribbonHalfW
+                        val radIn = R - ribbonHalfW
+
+                        arcPtsOuter.add(StrokePoint(leafCx + radOut * cos(a), leafCy + radOut * sin(a)))
+                        arcPtsInner.add(StrokePoint(leafCx + radIn * cos(a), leafCy + radIn * sin(a)))
+                        arcPtsCenter.add(StrokePoint(leafCx + R * cos(a), leafCy + R * sin(a)))
+                    }
+
+                    // 1. Ambient Drop Shadow under petal ribbon
+                    val shadowPath = arcPtsOuter.map { StrokePoint(it.x + 2.2f, it.y + 2.8f) }
+                    paths.add(PathGeom(shadowPath, isClosed = false, widthFactor = 1.40f, alpha = 0.22f))
+
+                    // 2. Dual Ribbon Outer and Inner Boundary Paths
+                    paths.add(PathGeom(arcPtsOuter, isClosed = false, widthFactor = 1.15f))
+                    paths.add(PathGeom(arcPtsInner, isClosed = false, widthFactor = 1.15f))
+                    paths.add(PathGeom(arcPtsCenter, isClosed = false, widthFactor = 0.50f, alpha = 0.60f)) // Central spine
+
+                    // 3. Recess Shading Lines across ribbon
+                    for (s in 2 until arcSteps - 2 step 3) {
+                        val pIn = arcPtsInner[s]
+                        val pOut = arcPtsOuter[s]
+                        lines.add(LineSegmentGeom(pIn.x, pIn.y, pOut.x, pOut.y, widthFactor = 0.50f, alpha = 0.65f))
+                    }
+
+                    // 4. Petal Tip Apex Nodes & Crossing Studs
+                    val tipX = cx + 42f * cos(angle)
+                    val tipY = cy + 42f * sin(angle)
+                    circles.add(CircleGeom(tipX, tipY, 3.2f, isFilled = true))
+                    circles.add(CircleGeom(tipX, tipY, 6.0f, isFilled = false, widthFactor = 0.65f, alpha = 0.70f))
                 }
+
+                // Central Sacred Hub & Trinity Studs
                 circles.add(CircleGeom(cx, cy, 3.5f, isFilled = true))
+                circles.add(CircleGeom(cx, cy, 7.5f, isFilled = false, widthFactor = 0.80f))
+
+                for (i in 0 until 3) {
+                    val angle = (-PI / 2 + 2 * PI * i / 3 + PI / 3).toFloat()
+                    circles.add(CircleGeom(cx + 12f * cos(angle), cy + 12f * sin(angle), 1.8f, isFilled = true))
+                }
             }
 
             CenterEmblem.SOLAR_CROSS -> {
