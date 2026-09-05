@@ -37,9 +37,9 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -79,6 +79,41 @@ import java.util.Date
 import java.util.Locale
 import java.util.Random
 
+data class RealmInfo(
+    val id: String,
+    val nameRu: String,
+    val titleRu: String,
+    val descriptionRu: String
+)
+
+val YGGDRASIL_REALMS = listOf(
+    RealmInfo("asgard", "1. Асгард", "Мир Богов-Асов", "Духовные цели, высшее предназначение, триумф воли"),
+    RealmInfo("alfheim", "2. Альвхейм", "Мир Светлых Альвов", "Разум, вдохновение, мечты, творческий союз"),
+    RealmInfo("vanaheim", "3. Ванахейм", "Мир Богов-Ванов", "Интуиция, изобилие, природные чувства и гармония"),
+    RealmInfo("midgard", "4. Мидгард", "Мир Людей", "Текущая реальность, физическое тело, Явь"),
+    RealmInfo("jotunheim", "5. Ётунхейм", "Мир Великанов", "Хаос, вызовы, внешние препятствия и испытания"),
+    RealmInfo("muspelheim", "6. Муспельхейм", "Мир Огня", "Страсть, активная энергия, трансформация, импульс"),
+    RealmInfo("niflheim", "7. Нифльхейм", "Мир Льда", "Застой, страхи, иллюзии, необходимость выдержки"),
+    RealmInfo("svartalfheim", "8. Свартальвхейм", "Мир Тёмных Альвов", "Ремесло, материальные ресурсы, практический труд"),
+    RealmInfo("helheim", "9. Хельхейм", "Мир Смерти и Тей", "Подсознание, скрытые истоки прошлых поступков")
+)
+
+data class DayInfo(
+    val dayNameRu: String,
+    val deityRu: String,
+    val sphereRu: String
+)
+
+val WEEK_DAYS = listOf(
+    DayInfo("Понедельник", "День Мани (Луна)", "Начинания, интуиция, внутренние намерения"),
+    DayInfo("Вторник", "День Тюра (Марс)", "Решимость, смелость, преодоление преград"),
+    DayInfo("Среда", "День Одина (Меркурий)", "Мудрость, контакты, важные решения"),
+    DayInfo("Четверг", "День Тора (Юпитер)", "Защита, процветание, расширение возможностей"),
+    DayInfo("Пятница", "День Фрейи (Венера)", "Любовь, гармония, творчество и союз"),
+    DayInfo("Суббота", "День Норн (Сатурн)", "Подведение итогов, очищение, закладывание судеб"),
+    DayInfo("Воскресенье", "День Соль (Солнце)", "Восстановление сил, радость, ясный свет")
+)
+
 @Composable
 fun DivinationScreen(
     allRunes: List<Rune>,
@@ -86,7 +121,7 @@ fun DivinationScreen(
     onNavigateToSketch: (runeIds: List<String>, layoutType: String) -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
-    var selectedTab by remember { mutableIntStateOf(0) } // 0: Pouch (1 Rune), 1: Rune of Day, 2: 3 Norns Spread, 3: History
+    var selectedTab by remember { mutableIntStateOf(0) } // 0: Pouch, 1: Day, 2: 3 Norns, 3: Yggdrasil, 4: Week, 5: History
     val elderRunes = remember(allRunes) { allRunes.filter { it.futhark == "elder" } }
 
     val historyList by (viewModel?.divinationHistory ?: MutableStateFlow(emptyList())).collectAsStateWithLifecycle(emptyList())
@@ -240,6 +275,86 @@ fun DivinationScreen(
         }
     }
 
+    // --- State for Yggdrasil 9 Worlds Spread ---
+    data class RealmDrawn(val realm: RealmInfo, val rune: Rune, val isReversed: Boolean)
+    var drawnYggdrasilRunes by remember { mutableStateOf<List<RealmDrawn>>(emptyList()) }
+    var selectedYggdrasilIndex by remember { mutableIntStateOf(0) }
+    var isYggdrasilDrawing by remember { mutableStateOf(false) }
+
+    fun drawYggdrasilSpread() {
+        if (elderRunes.size < 9) return
+        coroutineScope.launch {
+            isYggdrasilDrawing = true
+            drawnYggdrasilRunes = emptyList()
+            val shuffled = elderRunes.shuffled().take(9)
+            val results = mutableListOf<RealmDrawn>()
+
+            for (i in 0 until 9) {
+                delay(120)
+                results.add(RealmDrawn(YGGDRASIL_REALMS[i], shuffled[i], Random().nextBoolean()))
+                drawnYggdrasilRunes = results.toList()
+            }
+            isYggdrasilDrawing = false
+            selectedYggdrasilIndex = 0
+
+            val summary = results.joinToString("\n\n") { item ->
+                val orient = if (item.isReversed) "перевернутая" else "прямая"
+                val meaning = if (item.isReversed) item.rune.divinationReversed else item.rune.divinationDirect
+                "${item.realm.nameRu} (${item.realm.titleRu}): ${item.rune.nameRu} ($orient) — $meaning"
+            }
+
+            viewModel?.saveDivination(
+                spreadType = "YGGDRASIL",
+                spreadTitleRu = "Древо Иггдрасиль (9 миров мироздания)",
+                runeIds = results.map { it.rune.id },
+                reversedFlags = results.map { it.isReversed },
+                questionOrContext = "Глубокое вопрошание мироустройства по 9 мирам древа Иггдрасиль",
+                interpretationSummary = summary,
+                notes = "Девять миров: ${results.joinToString(" • ") { it.rune.nameRu }}"
+            )
+        }
+    }
+
+    // --- State for 7 Days of the Week Spread ---
+    data class DayDrawn(val day: DayInfo, val rune: Rune, val isReversed: Boolean)
+    var drawnWeekRunes by remember { mutableStateOf<List<DayDrawn>>(emptyList()) }
+    var selectedWeekIndex by remember { mutableIntStateOf(0) }
+    var isWeekDrawing by remember { mutableStateOf(false) }
+
+    fun drawWeekSpread() {
+        if (elderRunes.size < 7) return
+        coroutineScope.launch {
+            isWeekDrawing = true
+            drawnWeekRunes = emptyList()
+            val shuffled = elderRunes.shuffled().take(7)
+            val results = mutableListOf<DayDrawn>()
+
+            for (i in 0 until 7) {
+                delay(140)
+                results.add(DayDrawn(WEEK_DAYS[i], shuffled[i], Random().nextBoolean()))
+                drawnWeekRunes = results.toList()
+            }
+            isWeekDrawing = false
+            selectedWeekIndex = 0
+
+            val summary = results.joinToString("\n\n") { item ->
+                val orient = if (item.isReversed) "перевернутая" else "прямая"
+                val meaning = if (item.isReversed) item.rune.divinationReversed else item.rune.divinationDirect
+                "${item.day.dayNameRu} (${item.day.deityRu}): ${item.rune.nameRu} ($orient) — $meaning"
+            }
+
+            viewModel?.saveDivination(
+                spreadType = "WEEK",
+                spreadTitleRu = "Семидневный расклад недельного цикла",
+                runeIds = results.map { it.rune.id },
+                reversedFlags = results.map { it.isReversed },
+                questionOrContext = "Прогноз и советы Норн на 7 дней предстоящей недели",
+                interpretationSummary = summary,
+                notes = "Семидневка: ${results.joinToString(" • ") { it.rune.nameRu }}"
+            )
+        }
+    }
+
     val scrollState = rememberScrollState()
 
     Column(
@@ -264,11 +379,12 @@ fun DivinationScreen(
             modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
         )
 
-        // Mode Selector TabRow
-        TabRow(
+        // Mode Selector ScrollableTabRow
+        ScrollableTabRow(
             selectedTabIndex = selectedTab,
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
             contentColor = MaterialTheme.colorScheme.primary,
+            edgePadding = 8.dp,
             modifier = Modifier.clip(RoundedCornerShape(16.dp))
         ) {
             Tab(
@@ -289,6 +405,16 @@ fun DivinationScreen(
             Tab(
                 selected = selectedTab == 3,
                 onClick = { selectedTab = 3 },
+                text = { Text("🌳 Иггдрасиль", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall) }
+            )
+            Tab(
+                selected = selectedTab == 4,
+                onClick = { selectedTab = 4 },
+                text = { Text("📅 7 Дней", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall) }
+            )
+            Tab(
+                selected = selectedTab == 5,
+                onClick = { selectedTab = 5 },
                 text = {
                     Text(
                         text = if (historyList.isNotEmpty()) "📜 История (${historyList.size})" else "📜 История",
@@ -710,7 +836,388 @@ fun DivinationScreen(
 
             3 -> {
                 // ==========================================
-                // 4. DIVINATION HISTORY ARCHIVE (LAST 10 READINGS)
+                // 4. YGGDRASIL 9 WORLDS SPREAD
+                // ==========================================
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(26.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x44E5C158)),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF10131B))
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(18.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Древо Иггдрасиль — 9 Миров",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "Глубокое исследование жизненной ситуации по всем 9 мирам великого древа.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.secondary,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        if (drawnYggdrasilRunes.isEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(210.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                SacredRunePouch(
+                                    isShaking = isYggdrasilDrawing,
+                                    onClick = { drawYggdrasilSpread() }
+                                )
+                            }
+
+                            Button(
+                                onClick = { drawYggdrasilSpread() },
+                                shape = RoundedCornerShape(18.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Default.AutoAwesome, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Вытянуть 9 рун для 9 миров Иггдрасиля")
+                            }
+                        } else {
+                            // 3x3 Grid for 9 Realms
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                for (row in 0 until 3) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceEvenly
+                                    ) {
+                                        for (col in 0 until 3) {
+                                            val idx = row * 3 + col
+                                            val realmItem = drawnYggdrasilRunes.getOrNull(idx)
+                                            if (realmItem != null) {
+                                                val isSelected = selectedYggdrasilIndex == idx
+                                                Column(
+                                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                                    modifier = Modifier
+                                                        .clip(RoundedCornerShape(14.dp))
+                                                        .clickable { selectedYggdrasilIndex = idx }
+                                                        .padding(2.dp)
+                                                ) {
+                                                    Text(
+                                                        text = realmItem.realm.nameRu,
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        fontSize = 9.sp,
+                                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                                        color = if (isSelected) Color(0xFFFFE082) else Color.Gray
+                                                    )
+                                                    Spacer(modifier = Modifier.height(2.dp))
+                                                    Box(
+                                                        modifier = if (isSelected) {
+                                                            Modifier.border(2.dp, Color(0xFFE5C158), RoundedCornerShape(14.dp))
+                                                        } else Modifier
+                                                    ) {
+                                                        SacredRuneTablet(
+                                                            rune = realmItem.rune,
+                                                            isReversed = realmItem.isReversed,
+                                                            flipProgress = 1f,
+                                                            size = 72.dp
+                                                        )
+                                                    }
+                                                    Spacer(modifier = Modifier.height(2.dp))
+                                                    Text(
+                                                        text = realmItem.rune.nameRu,
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        fontSize = 10.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = MaterialTheme.colorScheme.primary
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            // Action buttons
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                OutlinedButton(
+                                    onClick = { drawYggdrasilSpread() },
+                                    shape = RoundedCornerShape(14.dp),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x44E5C158)),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Новый расклад", style = MaterialTheme.typography.labelSmall)
+                                }
+
+                                Button(
+                                    onClick = {
+                                        onNavigateToSketch(drawnYggdrasilRunes.map { it.rune.id }, StaveLayoutType.BINDRUNE.name)
+                                    },
+                                    shape = RoundedCornerShape(14.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary
+                                    ),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(Icons.Default.Brush, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Став из 9 миров", style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
+
+                            // Active Realm Details Card
+                            val activeRealm = drawnYggdrasilRunes.getOrNull(selectedYggdrasilIndex)
+                            if (activeRealm != null) {
+                                Spacer(modifier = Modifier.height(18.dp))
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = Color(0xFF161B26),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x33E5C158))
+                                ) {
+                                    Column(modifier = Modifier.padding(14.dp)) {
+                                        Text(
+                                            text = "${activeRealm.realm.nameRu} — ${activeRealm.realm.titleRu}",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                        Text(
+                                            text = activeRealm.realm.descriptionRu,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.secondary,
+                                            modifier = Modifier.padding(top = 2.dp, bottom = 8.dp)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                RuneInterpretationCard(
+                                    rune = activeRealm.rune,
+                                    isReversed = activeRealm.isReversed,
+                                    onToggleReversed = {
+                                        val updated = drawnYggdrasilRunes.toMutableList()
+                                        updated[selectedYggdrasilIndex] = activeRealm.copy(isReversed = !activeRealm.isReversed)
+                                        drawnYggdrasilRunes = updated
+                                    },
+                                    onCreateStave = {
+                                        onNavigateToSketch(listOf(activeRealm.rune.id), StaveLayoutType.ROW.name)
+                                    },
+                                    onPutBack = {
+                                        drawnYggdrasilRunes = emptyList()
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            4 -> {
+                // ==========================================
+                // 5. 7 DAYS OF THE WEEK SPREAD
+                // ==========================================
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(26.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x44E5C158)),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF10131B))
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(18.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Расклад на 7 Дней Недели",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "Семидневный сакральный цикл: советы Норн и покровителей дней.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.secondary,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        if (drawnWeekRunes.isEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(210.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                SacredRunePouch(
+                                    isShaking = isWeekDrawing,
+                                    onClick = { drawWeekSpread() }
+                                )
+                            }
+
+                            Button(
+                                onClick = { drawWeekSpread() },
+                                shape = RoundedCornerShape(18.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Default.AutoAwesome, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Вытянуть 7 рун недели из мешочка")
+                            }
+                        } else {
+                            // 7 Days Row
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                drawnWeekRunes.forEachIndexed { idx, dayItem ->
+                                    val isSelected = selectedWeekIndex == idx
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .clickable { selectedWeekIndex = idx }
+                                            .padding(2.dp)
+                                    ) {
+                                        Text(
+                                            text = dayItem.day.dayNameRu.take(3),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontSize = 9.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (isSelected) Color(0xFFFFE082) else Color.Gray
+                                        )
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Box(
+                                            modifier = if (isSelected) {
+                                                Modifier.border(2.dp, Color(0xFFE5C158), RoundedCornerShape(12.dp))
+                                            } else Modifier
+                                        ) {
+                                            SacredRuneTablet(
+                                                rune = dayItem.rune,
+                                                isReversed = dayItem.isReversed,
+                                                flipProgress = 1f,
+                                                size = 62.dp
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = dayItem.rune.nameRu,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            // Action buttons
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                OutlinedButton(
+                                    onClick = { drawWeekSpread() },
+                                    shape = RoundedCornerShape(14.dp),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x44E5C158)),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Новая неделя", style = MaterialTheme.typography.labelSmall)
+                                }
+
+                                Button(
+                                    onClick = {
+                                        onNavigateToSketch(drawnWeekRunes.map { it.rune.id }, StaveLayoutType.ROW.name)
+                                    },
+                                    shape = RoundedCornerShape(14.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary
+                                    ),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(Icons.Default.Brush, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Недельный став", style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
+
+                            // Active Day Details Card
+                            val activeDay = drawnWeekRunes.getOrNull(selectedWeekIndex)
+                            if (activeDay != null) {
+                                Spacer(modifier = Modifier.height(18.dp))
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = Color(0xFF161B26),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x33E5C158))
+                                ) {
+                                    Column(modifier = Modifier.padding(14.dp)) {
+                                        Text(
+                                            text = "${activeDay.day.dayNameRu} — ${activeDay.day.deityRu}",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                        Text(
+                                            text = "Сфера влияния: ${activeDay.day.sphereRu}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.secondary,
+                                            modifier = Modifier.padding(top = 2.dp)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                RuneInterpretationCard(
+                                    rune = activeDay.rune,
+                                    isReversed = activeDay.isReversed,
+                                    onToggleReversed = {
+                                        val updated = drawnWeekRunes.toMutableList()
+                                        updated[selectedWeekIndex] = activeDay.copy(isReversed = !activeDay.isReversed)
+                                        drawnWeekRunes = updated
+                                    },
+                                    onCreateStave = {
+                                        onNavigateToSketch(listOf(activeDay.rune.id), StaveLayoutType.ROW.name)
+                                    },
+                                    onPutBack = {
+                                        drawnWeekRunes = emptyList()
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            5 -> {
+                // ==========================================
+                // 6. DIVINATION HISTORY ARCHIVE (LAST 10 READINGS)
                 // ==========================================
                 DivinationHistoryView(
                     records = historyList,
