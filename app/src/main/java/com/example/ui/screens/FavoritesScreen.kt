@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Brush
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -34,12 +35,14 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -165,6 +168,39 @@ fun StaveRecordCard(
     val dateFormatted = remember(record.createdAt) {
         SimpleDateFormat("d MMM yyyy, HH:mm", Locale("ru")).format(Date(record.createdAt))
     }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = false },
+            title = {
+                Text(
+                    text = "Удалить став?",
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            },
+            text = {
+                Text("Вы уверены, что хотите удалить «${record.title}» из сохранённых ставов?")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDelete()
+                        showDeleteConfirmDialog = false
+                    }
+                ) {
+                    Text("Удалить", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                    Text("Отмена")
+                }
+            },
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -196,14 +232,14 @@ fun StaveRecordCard(
                     IconButton(onClick = onToggleFavorite) {
                         Icon(
                             imageVector = if (record.isFavorite) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                            contentDescription = "Избранное",
+                            contentDescription = if (record.isFavorite) "Убрать из избранного" else "Добавить в избранное",
                             tint = if (record.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    IconButton(onClick = onDelete) {
+                    IconButton(onClick = { showDeleteConfirmDialog = true }) {
                         Icon(
                             imageVector = Icons.Default.DeleteOutline,
-                            contentDescription = "Удалить",
+                            contentDescription = "Удалить став",
                             tint = MaterialTheme.colorScheme.outline
                         )
                     }
