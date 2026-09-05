@@ -119,4 +119,55 @@ class ImageVectorizerTest {
         assertTrue(result.pathCount > 0)
         assertTrue("Polyline SVG contains L commands", result.svgString.contains(" L "))
     }
+
+    @Test
+    fun testSauvolaPrecisionPreset() = runBlocking {
+        val sample = SampleRasterSketches.createSampleBitmap("ancient_parchment", 240, 240)
+        val config = VectorizerConfig.fromPreset(VectorizerPreset.SAUVOLA_PRECISION)
+
+        val result = ImageVectorizer.vectorize(sample, config)
+
+        assertNotNull(result)
+        assertTrue("Sauvola threshold should extract fine ink strokes", result.pathCount > 0)
+        assertTrue("High similarity on parchment", result.similarityPercent >= 80.0f)
+    }
+
+    @Test
+    fun testColorQuantizedTracing() = runBlocking {
+        val sample = SampleRasterSketches.createSampleBitmap("odin_raven", 200, 200)
+        val config = VectorizerConfig.fromPreset(VectorizerPreset.COLOR_PALETTE_KMEANS)
+
+        val result = ImageVectorizer.vectorize(sample, config)
+
+        assertNotNull(result)
+        assertTrue("Color quantized mode should find paths", result.pathCount > 0)
+        assertTrue("SVG contains fill attributes for palette colors", result.svgString.contains("fill=\"#"))
+    }
+
+    @Test
+    fun testEngravingHatchingTracing() = runBlocking {
+        val sample = SampleRasterSketches.createSampleBitmap("vegvisir", 200, 200)
+        val config = VectorizerConfig.fromPreset(VectorizerPreset.WOODCUT_HATCHING)
+
+        val result = ImageVectorizer.vectorize(sample, config)
+
+        assertNotNull(result)
+        assertTrue("Engraving hatching should generate lines", result.pathCount > 0)
+        assertTrue("SVG should contain stroke commands for hatching", result.svgString.contains("stroke="))
+    }
+
+    @Test
+    fun testSacredGoldGradientsAndDropShadow() = runBlocking {
+        val sample = SampleRasterSketches.createSampleBitmap("bindrune_strength", 200, 200)
+        val config = VectorizerConfig.fromPreset(VectorizerPreset.SACRED_GOLD_ENGRAVING)
+
+        val result = ImageVectorizer.vectorize(sample, config)
+
+        assertNotNull(result)
+        assertTrue("SVG must contain defs element", result.svgString.contains("<defs>"))
+        assertTrue("SVG must contain sacred gold linear gradient", result.svgString.contains("id=\"sacredGoldGrad\""))
+        assertTrue("SVG must reference gradient URL", result.svgString.contains("url(#sacredGoldGrad)"))
+        assertTrue("SVG must include drop shadow filter", result.svgString.contains("id=\"chiselDrop\""))
+        assertTrue("SVG layer must apply chiselDrop filter", result.svgString.contains("filter=\"url(#chiselDrop)\""))
+    }
 }

@@ -114,8 +114,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.example.engine.SvgStaveRenderer
+import com.example.engine.vectorizer.ColorStyle
 import com.example.engine.vectorizer.CurveFittingType
 import com.example.engine.vectorizer.ImageVectorizer
+import com.example.engine.vectorizer.MorphologyOp
 import com.example.engine.vectorizer.SampleRasterSketches
 import com.example.engine.vectorizer.ThresholdMode
 import com.example.engine.vectorizer.TracingMode
@@ -734,6 +736,77 @@ fun VectorizerScreen(
                             colors = SliderDefaults.colors(thumbColor = MaterialTheme.colorScheme.primary)
                         )
                     }
+
+                    if (config.mode == TracingMode.COLOR_QUANTIZED) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Цветовые кластеры (K-Means):", style = MaterialTheme.typography.labelSmall)
+                            Text("${config.colorClusters} цветов", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        }
+                        Slider(
+                            value = config.colorClusters.toFloat(),
+                            onValueChange = { config = config.copy(colorClusters = it.roundToInt()) },
+                            valueRange = 2f..8f,
+                            steps = 5,
+                            colors = SliderDefaults.colors(thumbColor = MaterialTheme.colorScheme.primary)
+                        )
+                    }
+
+                    if (config.mode == TracingMode.ENGRAVING_HATCHING) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Шаг штриховки гравюры:", style = MaterialTheme.typography.labelSmall)
+                            Text("${config.hatchingDensity} px", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        }
+                        Slider(
+                            value = config.hatchingDensity.toFloat(),
+                            onValueChange = { config = config.copy(hatchingDensity = it.roundToInt()) },
+                            valueRange = 4f..24f,
+                            steps = 19,
+                            colors = SliderDefaults.colors(thumbColor = MaterialTheme.colorScheme.primary)
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Угол наклона штрихов:", style = MaterialTheme.typography.labelSmall)
+                            Text("${config.hatchingAngle.toInt()}°", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        }
+                        Slider(
+                            value = config.hatchingAngle,
+                            onValueChange = { config = config.copy(hatchingAngle = it) },
+                            valueRange = 0f..180f,
+                            colors = SliderDefaults.colors(thumbColor = MaterialTheme.colorScheme.primary)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Sub-pixel interpolation switch
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Субпиксельная интерполяция", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                            Text("100% плавность контуров без ступенек", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(
+                            checked = config.subPixelInterpolation,
+                            onCheckedChange = { config = config.copy(subPixelInterpolation = it) }
+                        )
+                    }
                 }
             }
 
@@ -749,9 +822,10 @@ fun VectorizerScreen(
                     Text("Метод расчёта порога:", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(6.dp))
 
-                    Row(
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         ThresholdMode.values().forEach { tMode ->
                             val isSel = config.thresholdMode == tMode
@@ -759,15 +833,46 @@ fun VectorizerScreen(
                                 selected = isSel,
                                 onClick = { config = config.copy(thresholdMode = tMode) },
                                 label = { Text(tMode.titleRu.substringBefore(" ("), style = MaterialTheme.typography.labelSmall) },
-                                modifier = Modifier.weight(1f),
                                 shape = RoundedCornerShape(10.dp)
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    if (config.thresholdMode == ThresholdMode.SAUVOLA_LOCAL) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Коэффициент Sauvola k (порог теней):", style = MaterialTheme.typography.labelSmall)
+                            Text("%.2f".format(config.sauvolaK), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        }
+                        Slider(
+                            value = config.sauvolaK,
+                            onValueChange = { config = config.copy(sauvolaK = it) },
+                            valueRange = 0.05f..0.50f
+                        )
+                    }
+
+                    if (config.thresholdMode == ThresholdMode.ADAPTIVE_LOCAL || config.thresholdMode == ThresholdMode.SAUVOLA_LOCAL) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Окно адаптации (Block size):", style = MaterialTheme.typography.labelSmall)
+                            Text("${config.adaptiveBlockSize} px", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        }
+                        Slider(
+                            value = config.adaptiveBlockSize.toFloat(),
+                            onValueChange = { config = config.copy(adaptiveBlockSize = it.roundToInt()) },
+                            valueRange = 7f..51f,
+                            steps = 21
+                        )
+                    }
 
                     if (config.thresholdMode == ThresholdMode.MANUAL) {
+                        Spacer(modifier = Modifier.height(10.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
@@ -796,6 +901,34 @@ fun VectorizerScreen(
                         valueRange = 0.5f..2.5f
                     )
 
+                    // Sharpness Boost (Unsharp Mask)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Повышение резкости (Unsharp Mask):", style = MaterialTheme.typography.labelSmall)
+                        Text("%.2fx".format(config.sharpnessBoost), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    }
+                    Slider(
+                        value = config.sharpnessBoost,
+                        onValueChange = { config = config.copy(sharpnessBoost = it) },
+                        valueRange = 0.0f..2.5f
+                    )
+
+                    // Gamma correction
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Гамма-коррекция (Gamma curve):", style = MaterialTheme.typography.labelSmall)
+                        Text("%.2f".format(config.gamma), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    }
+                    Slider(
+                        value = config.gamma,
+                        onValueChange = { config = config.copy(gamma = it) },
+                        valueRange = 0.4f..2.5f
+                    )
+
                     // Denoise Blur Radius
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -811,13 +944,61 @@ fun VectorizerScreen(
                         steps = 3
                     )
 
+                    // Morphology Operations
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text("Морфология маски:", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        MorphologyOp.values().forEach { mop ->
+                            val isChosen = config.morphology == mop
+                            FilterChip(
+                                selected = isChosen,
+                                onClick = { config = config.copy(morphology = mop) },
+                                label = { Text(mop.titleRu, style = MaterialTheme.typography.labelSmall) },
+                                shape = RoundedCornerShape(10.dp)
+                            )
+                        }
+                    }
+
+                    // Resolution Limit
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Макс. разрешение обработки:", style = MaterialTheme.typography.labelSmall)
+                        Text("${config.maxResolution} px", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    }
+                    val resolutions = listOf(1000, 1600, 2400, 4096)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        resolutions.forEach { res ->
+                            val isSel = config.maxResolution == res
+                            FilterChip(
+                                selected = isSel,
+                                onClick = { config = config.copy(maxResolution = res) },
+                                label = { Text(if (res == 4096) "4K Ultra" else "${res}px", style = MaterialTheme.typography.labelSmall) },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(10.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
                     // Invert Polarity Switch
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text("Инверсия полярности", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                             Text("Светлые штрихи на тёмном фоне", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
@@ -946,51 +1127,98 @@ fun VectorizerScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Color swatches for stroke
-                    Text("Цвет векторного штриха:", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    val paletteColors = listOf(
-                        "#E5C158" to "Сакральное Золото",
-                        "#000000" to "Тату Блэкворк",
-                        "#E2E8F0" to "Серебро Валькирий",
-                        "#CD7F32" to "Древняя Бронза",
-                        "#C83535" to "Охристая Киноварь"
-                    )
-
-                    Row(
+                    // Color Style Selection (Gradients & Metallic Shaders)
+                    Text("Стиль окраски и текстура:", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        paletteColors.forEach { (hex, _) ->
-                            val isChosen = config.strokeColorHex == hex
-                            Box(
-                                modifier = Modifier
-                                    .size(38.dp)
-                                    .background(Color(android.graphics.Color.parseColor(hex)), CircleShape)
-                                    .border(
-                                        width = if (isChosen) 3.dp else 1.dp,
-                                        color = if (isChosen) MaterialTheme.colorScheme.primary else Color.Gray,
-                                        shape = CircleShape
+                        ColorStyle.values().forEach { style ->
+                            val isChosen = config.colorStyle == style
+                            FilterChip(
+                                selected = isChosen,
+                                onClick = {
+                                    config = config.copy(
+                                        colorStyle = style,
+                                        strokeColorHex = style.primaryHex,
+                                        fillColorHex = style.primaryHex
                                     )
-                                    .clickable {
-                                        config = config.copy(strokeColorHex = hex, fillColorHex = hex)
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (isChosen) {
-                                    Icon(
-                                        Icons.Default.Check,
-                                        contentDescription = null,
-                                        tint = if (hex == "#000000") Color.White else Color.Black,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                            }
+                                },
+                                label = { Text(style.titleRu.substringBefore(" ("), style = MaterialTheme.typography.labelSmall) },
+                                shape = RoundedCornerShape(10.dp)
+                            )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // If CUSTOM_COLOR, allow custom swatch selection
+                    if (config.colorStyle == ColorStyle.CUSTOM_COLOR) {
+                        Text("Пользовательский цвет штриха:", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        val paletteColors = listOf(
+                            "#E5C158" to "Сакральное Золото",
+                            "#000000" to "Тату Блэкворк",
+                            "#E2E8F0" to "Серебро Валькирий",
+                            "#CD7F32" to "Древняя Бронза",
+                            "#C83535" to "Охристая Киноварь",
+                            "#4A148C" to "Гектограф Тату"
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            paletteColors.forEach { (hex, _) ->
+                                val isChosen = config.strokeColorHex == hex
+                                Box(
+                                    modifier = Modifier
+                                        .size(38.dp)
+                                        .background(Color(android.graphics.Color.parseColor(hex)), CircleShape)
+                                        .border(
+                                            width = if (isChosen) 3.dp else 1.dp,
+                                            color = if (isChosen) MaterialTheme.colorScheme.primary else Color.Gray,
+                                            shape = CircleShape
+                                        )
+                                        .clickable {
+                                            config = config.copy(strokeColorHex = hex, fillColorHex = hex)
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (isChosen) {
+                                        Icon(
+                                            Icons.Default.Check,
+                                            contentDescription = null,
+                                            tint = if (hex == "#000000" || hex == "#4A148C") Color.White else Color.Black,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
+                    }
+
+                    // 3D Drop Shadow Switch
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Объёмная гравировка (3D Drop Shadow)", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                            Text("Мягкая тень для эффекта чеканки по металлу", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(
+                            checked = config.enableSvgDropShadow,
+                            onCheckedChange = { config = config.copy(enableSvgDropShadow = it) }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     // Background selection
                     Text("Фон SVG холста:", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
