@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Brush
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -44,6 +45,7 @@ import com.example.ui.screens.OnboardingScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.screens.SketchScreen
 import com.example.ui.screens.TryOnScreen
+import com.example.ui.screens.VectorizerScreen
 import com.example.ui.viewmodel.RuneViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -91,6 +93,9 @@ fun MainAppHost(
                         )
                     },
                     actions = {
+                        IconButton(onClick = { navController.navigate(AppDestinations.VECTORIZER) }) {
+                            Icon(Icons.Default.Brush, contentDescription = "Векторизатор в SVG", tint = MaterialTheme.colorScheme.primary)
+                        }
                         IconButton(onClick = { navController.navigate(AppDestinations.AI_TATTOO_GALLERY) }) {
                             Icon(Icons.Default.AutoAwesome, contentDescription = "ИИ Тату-Концепты", tint = MaterialTheme.colorScheme.primary)
                         }
@@ -199,6 +204,9 @@ fun MainAppHost(
                     },
                     onNavigateToAITattoo = {
                         navController.navigate(AppDestinations.AI_TATTOO_GALLERY)
+                    },
+                    onNavigateToVectorizer = {
+                        navController.navigate(AppDestinations.VECTORIZER)
                     }
                 )
             }
@@ -244,6 +252,9 @@ fun MainAppHost(
                     },
                     onNavigateToAITattoo = {
                         navController.navigate(AppDestinations.AI_TATTOO_GALLERY)
+                    },
+                    onNavigateToVectorizer = {
+                        navController.navigate(AppDestinations.VECTORIZER)
                     }
                 )
             }
@@ -310,6 +321,12 @@ fun MainAppHost(
                             popUpTo(0) { inclusive = true }
                         }
                     }
+                )
+            }
+
+            composable(AppDestinations.VECTORIZER) {
+                VectorizerScreen(
+                    onBack = { navController.popBackStack() }
                 )
             }
         }

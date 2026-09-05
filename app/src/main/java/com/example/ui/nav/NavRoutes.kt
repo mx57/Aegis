@@ -27,6 +27,7 @@ object AppDestinations {
     const val FAVORITES = "favorites"
     const val SETTINGS = "settings"
     const val AI_TATTOO_GALLERY = "ai_tattoo_gallery"
+    const val VECTORIZER = "vectorizer"
 
     fun buildSketchRoute(runeIds: List<String>, layoutType: String): String =
         "sketch/${runeIds.joinToString(",")}/$layoutType"
