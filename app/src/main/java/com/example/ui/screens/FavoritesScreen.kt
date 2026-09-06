@@ -48,6 +48,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.data.local.StaveRecord
@@ -259,7 +261,8 @@ fun StaveRecordCard(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
                             .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .padding(horizontal = 6.dp, vertical = 3.dp),
+                            .padding(horizontal = 6.dp, vertical = 3.dp)
+                            .semantics(mergeDescendants = true) { contentDescription = "Руна ${rune.nameRu}" },
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         SingleRuneIcon(rune = rune, size = 16.dp, color = MaterialTheme.colorScheme.primary)
