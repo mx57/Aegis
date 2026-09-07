@@ -55,6 +55,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -467,7 +471,12 @@ fun NameStaveScreen(
                 val isSelected = selectedLayout == layout
                 Card(
                     onClick = { selectedLayout = layout },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .semantics {
+                            role = Role.RadioButton
+                            selected = isSelected
+                        },
                     shape = RoundedCornerShape(16.dp),
                     border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                     colors = CardDefaults.cardColors(
@@ -563,7 +572,7 @@ fun NameStaveScreen(
             ) {
                 Icon(
                     imageVector = if (isSavedToFav) Icons.Default.Check else Icons.Default.BookmarkBorder,
-                    contentDescription = "В избранное",
+                    contentDescription = if (isSavedToFav) "Сохранено в избранное" else "Добавить в избранное",
                     tint = if (isSavedToFav) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }

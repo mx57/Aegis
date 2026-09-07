@@ -1,0 +1,3 @@
+## 2025-05-18 - [Accessibility for State-Changing Icon Buttons and Custom Selectors]
+**Learning:** Icon buttons with toggled states (such as favorite buttons) must provide dynamic `contentDescription` text reflective of the state ("Сохранено в избранное" vs. "Добавить в избранное") for TalkBack screen readers. Additionally, custom selectable cards in grid/row layout options need explicit `Role.RadioButton` and `selected` properties in `semantics` modifier so screen readers announce them properly as interactive options.
+**Action:** Always check toggle IconButton `contentDescription` for state awareness and apply `Modifier.semantics { role = Role.RadioButton; selected = isSelected }` to non-standard radio-like interactive Card components.
