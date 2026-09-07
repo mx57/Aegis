@@ -440,6 +440,7 @@ fun SacredRuneTablet(
                 size = size * 0.65f,
                 color = Color(0xFFFFE082),
                 strokeWidthDp = 4.5.dp,
+                useMetallicGradient = true,
                 modifier = Modifier.align(Alignment.Center)
             )
         } else {
