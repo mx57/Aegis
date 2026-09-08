@@ -339,14 +339,8 @@ fun BuilderScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Layout Type Selector (Scrollable Row with all geometric styles including Obelisk)
-        val layouts = listOf(
-            StaveLayoutType.BINDRUNE,
-            StaveLayoutType.ROW,
-            StaveLayoutType.CIRCLE,
-            StaveLayoutType.MIRROR,
-            StaveLayoutType.STELE_OBELISK
-        )
+        // Layout Type Selector (Scrollable Row with all geometric styles including Solar 12-Ray & Obelisk)
+        val layouts = StaveLayoutType.values().toList()
 
         LazyRow(
             modifier = Modifier.fillMaxWidth(),

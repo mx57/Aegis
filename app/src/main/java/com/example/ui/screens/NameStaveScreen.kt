@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -55,6 +57,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -451,23 +457,23 @@ fun NameStaveScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Layout Type Selector (Geometric Balance 4-button grid)
-        val layouts = listOf(
-            StaveLayoutType.BINDRUNE,
-            StaveLayoutType.ROW,
-            StaveLayoutType.CIRCLE,
-            StaveLayoutType.MIRROR
-        )
+        // Layout Type Selector (Scrollable Row with all geometric styles)
+        val layouts = StaveLayoutType.values().toList()
 
-        Row(
+        LazyRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            layouts.forEach { layout ->
+            items(layouts) { layout ->
                 val isSelected = selectedLayout == layout
                 Card(
                     onClick = { selectedLayout = layout },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .semantics {
+                            role = Role.RadioButton
+                            selected = isSelected
+                        },
                     shape = RoundedCornerShape(16.dp),
                     border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                     colors = CardDefaults.cardColors(
@@ -476,8 +482,7 @@ fun NameStaveScreen(
                 ) {
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 12.dp, horizontal = 4.dp),
+                            .padding(vertical = 10.dp, horizontal = 14.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -563,7 +568,7 @@ fun NameStaveScreen(
             ) {
                 Icon(
                     imageVector = if (isSavedToFav) Icons.Default.Check else Icons.Default.BookmarkBorder,
-                    contentDescription = "В избранное",
+                    contentDescription = if (isSavedToFav) "Сохранено в избранное" else "Добавить в избранное",
                     tint = if (isSavedToFav) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }

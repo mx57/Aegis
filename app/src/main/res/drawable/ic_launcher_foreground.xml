@@ -1,57 +1,309 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Center nexus circle -->
+
+    <!-- LAYER 1: Deep Chiseled Drop Shadow (Groove in Obsidian) -->
+    <!-- Center nexus circle shadow -->
     <path
         android:fillColor="#00000000"
-        android:strokeColor="#FFC857"
-        android:strokeWidth="2.0"
-        android:pathData="M 54, 54 m -8, 0 a 8,8 0 1,0 16,0 a 8,8 0 1,0 -16,0" />
-    <path
-        android:fillColor="#FFC857"
-        android:pathData="M 54, 54 m -3, 0 a 3,3 0 1,0 6,0 a 3,3 0 1,0 -6,0" />
+        android:strokeColor="#90000000"
+        android:strokeWidth="2.8"
+        android:pathData="M 54.8, 55.2 m -8, 0 a 8,8 0 1,0 16,0 a 8,8 0 1,0 -16,0" />
 
-    <!-- 4 Main Stave Axes (Top, Bottom, Left, Right) -->
+    <!-- 4 Main Stave Axes Drop Shadows -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#90000000"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round"
+        android:pathData="M 54.8,47.2 L 54.8,25.2 M 54.8,33.2 L 44.8,23.2 M 54.8,33.2 L 64.8,23.2 M 49.8,28.2 L 59.8,28.2" />
+
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#90000000"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round"
+        android:pathData="M 54.8,63.2 L 54.8,85.2 M 54.8,77.2 L 44.8,87.2 M 54.8,77.2 L 64.8,87.2 M 49.8,82.2 L 59.8,82.2" />
+
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#90000000"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round"
+        android:pathData="M 46.8,55.2 L 24.8,55.2 M 32.8,55.2 L 22.8,45.2 M 32.8,55.2 L 22.8,65.2 M 27.8,50.2 L 27.8,60.2" />
+
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#90000000"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round"
+        android:pathData="M 62.8,55.2 L 84.8,55.2 M 76.8,55.2 L 86.8,45.2 M 76.8,55.2 L 86.8,65.2 M 81.8,50.2 L 81.8,60.2" />
+
+    <!-- Diagonal cross accents shadow -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#90000000"
+        android:strokeWidth="2.4"
+        android:strokeLineCap="round"
+        android:pathData="M 42.8,43.2 L 34.8,35.2 M 66.8,43.2 L 74.8,35.2 M 42.8,67.2 L 34.8,75.2 M 66.8,67.2 L 74.8,75.2" />
+
+
+    <!-- LAYER 2: Main Volumetric Metallic Gold Body -->
+    <!-- Center nexus outer circle -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeWidth="2.2"
+        android:pathData="M 54, 54 m -8, 0 a 8,8 0 1,0 16,0 a 8,8 0 1,0 -16,0">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="20"
+                android:startY="20"
+                android:endX="88"
+                android:endY="88"
+                android:type="linear">
+                <item android:color="#FFF5D1" android:offset="0.0" />
+                <item android:color="#FFC857" android:offset="0.25" />
+                <item android:color="#D49A2A" android:offset="0.55" />
+                <item android:color="#FFC857" android:offset="0.80" />
+                <item android:color="#FFF3BC" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Center nexus inner orb -->
+    <path android:pathData="M 54, 54 m -3.2, 0 a 3.2,3.2 0 1,0 6.4,0 a 3.2,3.2 0 1,0 -6.4,0">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="50"
+                android:startY="50"
+                android:endX="58"
+                android:endY="58"
+                android:type="linear">
+                <item android:color="#FFFDF0" android:offset="0.0" />
+                <item android:color="#FFC857" android:offset="0.4" />
+                <item android:color="#B88018" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 4 Main Stave Axes (Top, Bottom, Left, Right) with Volumetric Metallic Gold Gradient -->
     <!-- Top stem + trident Algiz prongs -->
     <path
         android:fillColor="#00000000"
-        android:strokeColor="#FFC857"
         android:strokeWidth="2.5"
         android:strokeLineCap="round"
-        android:pathData="M 54,46 L 54,24 M 54,32 L 44,22 M 54,32 L 64,22 M 49,27 L 59,27" />
+        android:pathData="M 54,46 L 54,24 M 54,32 L 44,22 M 54,32 L 64,22 M 49,27 L 59,27">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="20"
+                android:startY="20"
+                android:endX="88"
+                android:endY="88"
+                android:type="linear">
+                <item android:color="#FFF5D1" android:offset="0.0" />
+                <item android:color="#FFC857" android:offset="0.25" />
+                <item android:color="#D49A2A" android:offset="0.55" />
+                <item android:color="#FFC857" android:offset="0.80" />
+                <item android:color="#FFF3BC" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
 
     <!-- Bottom stem + trident Algiz prongs -->
     <path
         android:fillColor="#00000000"
-        android:strokeColor="#FFC857"
         android:strokeWidth="2.5"
         android:strokeLineCap="round"
-        android:pathData="M 54,62 L 54,84 M 54,76 L 44,86 M 54,76 L 64,86 M 49,81 L 59,81" />
+        android:pathData="M 54,62 L 54,84 M 54,76 L 44,86 M 54,76 L 64,86 M 49,81 L 59,81">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="20"
+                android:startY="20"
+                android:endX="88"
+                android:endY="88"
+                android:type="linear">
+                <item android:color="#FFF5D1" android:offset="0.0" />
+                <item android:color="#FFC857" android:offset="0.25" />
+                <item android:color="#D49A2A" android:offset="0.55" />
+                <item android:color="#FFC857" android:offset="0.80" />
+                <item android:color="#FFF3BC" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
 
     <!-- Left stem + trident Algiz prongs -->
     <path
         android:fillColor="#00000000"
-        android:strokeColor="#FFC857"
         android:strokeWidth="2.5"
         android:strokeLineCap="round"
-        android:pathData="M 46,54 L 24,54 M 32,54 L 22,44 M 32,54 L 22,64 M 27,49 L 27,59" />
+        android:pathData="M 46,54 L 24,54 M 32,54 L 22,44 M 32,54 L 22,64 M 27,49 L 27,59">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="20"
+                android:startY="20"
+                android:endX="88"
+                android:endY="88"
+                android:type="linear">
+                <item android:color="#FFF5D1" android:offset="0.0" />
+                <item android:color="#FFC857" android:offset="0.25" />
+                <item android:color="#D49A2A" android:offset="0.55" />
+                <item android:color="#FFC857" android:offset="0.80" />
+                <item android:color="#FFF3BC" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
 
     <!-- Right stem + trident Algiz prongs -->
     <path
         android:fillColor="#00000000"
-        android:strokeColor="#FFC857"
         android:strokeWidth="2.5"
         android:strokeLineCap="round"
-        android:pathData="M 62,54 L 84,54 M 76,54 L 86,44 M 76,54 L 86,64 M 81,49 L 81,59" />
+        android:pathData="M 62,54 L 84,54 M 76,54 L 86,44 M 76,54 L 86,64 M 81,49 L 81,59">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="20"
+                android:startY="20"
+                android:endX="88"
+                android:endY="88"
+                android:type="linear">
+                <item android:color="#FFF5D1" android:offset="0.0" />
+                <item android:color="#FFC857" android:offset="0.25" />
+                <item android:color="#D49A2A" android:offset="0.55" />
+                <item android:color="#FFC857" android:offset="0.80" />
+                <item android:color="#FFF3BC" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
 
     <!-- Diagonal cross accents -->
     <path
         android:fillColor="#00000000"
-        android:strokeColor="#E0B040"
         android:strokeWidth="1.8"
         android:strokeLineCap="round"
-        android:pathData="M 42,42 L 34,34 M 66,42 L 74,34 M 42,66 L 34,74 M 66,66 L 74,74" />
+        android:pathData="M 42,42 L 34,34 M 66,42 L 74,34 M 42,66 L 34,74 M 66,66 L 74,74">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="20"
+                android:startY="20"
+                android:endX="88"
+                android:endY="88"
+                android:type="linear">
+                <item android:color="#FFF5D1" android:offset="0.0" />
+                <item android:color="#E0B040" android:offset="0.5" />
+                <item android:color="#FFF3BC" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+
+    <!-- LAYER 3: Specular Highlight Core Bevel Edges -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#D0FFFFFF"
+        android:strokeWidth="0.75"
+        android:strokeLineCap="round"
+        android:pathData="M 53.7,45.6 L 53.7,23.6 M 53.7,31.6 L 43.7,21.6 M 53.7,31.6 L 63.7,21.6 M 48.7,26.6 L 58.7,26.6" />
+
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#D0FFFFFF"
+        android:strokeWidth="0.75"
+        android:strokeLineCap="round"
+        android:pathData="M 53.7,61.6 L 53.7,83.6 M 53.7,75.6 L 43.7,85.6 M 53.7,75.6 L 63.7,85.6 M 48.7,80.6 L 58.7,80.6" />
+
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#D0FFFFFF"
+        android:strokeWidth="0.75"
+        android:strokeLineCap="round"
+        android:pathData="M 45.7,53.6 L 23.7,53.6 M 31.7,53.6 L 21.7,43.6 M 31.7,53.6 L 21.7,63.6 M 26.7,48.6 L 26.7,58.6" />
+
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#D0FFFFFF"
+        android:strokeWidth="0.75"
+        android:strokeLineCap="round"
+        android:pathData="M 61.7,53.6 L 83.7,53.6 M 75.7,53.6 L 85.7,43.6 M 75.7,53.6 L 85.7,63.6 M 80.7,48.6 L 80.7,58.6" />
+
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#B0FFFFFF"
+        android:strokeWidth="0.6"
+        android:strokeLineCap="round"
+        android:pathData="M 41.7,41.6 L 33.7,33.6 M 65.7,41.6 L 73.7,33.6 M 41.7,65.6 L 33.7,73.6 M 65.7,65.6 L 73.7,73.6" />
+
+
+    <!-- LAYER 4: Forged Terminal Diamond Caps on Outer Tips -->
+    <!-- Top diamond cap -->
+    <path android:pathData="M 54,18 L 57.2,22 L 54,25.8 L 50.8,22 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="50.8"
+                android:startY="18"
+                android:endX="57.2"
+                android:endY="25.8"
+                android:type="linear">
+                <item android:color="#FFFDF0" android:offset="0.0" />
+                <item android:color="#FFC857" android:offset="0.5" />
+                <item android:color="#B88018" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Bottom diamond cap -->
+    <path android:pathData="M 54,82.2 L 57.2,86 L 54,89.8 L 50.8,86 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="50.8"
+                android:startY="82.2"
+                android:endX="57.2"
+                android:endY="89.8"
+                android:type="linear">
+                <item android:color="#FFFDF0" android:offset="0.0" />
+                <item android:color="#FFC857" android:offset="0.5" />
+                <item android:color="#B88018" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Left diamond cap -->
+    <path android:pathData="M 18.2,54 L 22,57.2 L 25.8,54 L 22,50.8 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="18.2"
+                android:startY="50.8"
+                android:endX="25.8"
+                android:endY="57.2"
+                android:type="linear">
+                <item android:color="#FFFDF0" android:offset="0.0" />
+                <item android:color="#FFC857" android:offset="0.5" />
+                <item android:color="#B88018" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Right diamond cap -->
+    <path android:pathData="M 82.2,54 L 86,57.2 L 89.8,54 L 86,50.8 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="82.2"
+                android:startY="50.8"
+                android:endX="89.8"
+                android:endY="57.2"
+                android:type="linear">
+                <item android:color="#FFFDF0" android:offset="0.0" />
+                <item android:color="#FFC857" android:offset="0.5" />
+                <item android:color="#B88018" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Central nexus orb specular glint catchlight -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M 53.2, 53.2 m -0.9, 0 a 0.9,0.9 0 1,0 1.8,0 a 0.9,0.9 0 1,0 -1.8,0" />
 </vector>
