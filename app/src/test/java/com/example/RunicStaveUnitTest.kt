@@ -111,6 +111,30 @@ class RunicStaveUnitTest {
     }
 
     @Test
+    fun solar12RayLayout_generates12SpokesAndRendersValidSvg() {
+        val stave = StaveComposer.compose(testRunes, StaveLayoutType.SOLAR_12_RAY, seed = 2026L)
+        assertTrue("SOLAR_12_RAY layout should generate strokes", stave.strokes.isNotEmpty())
+
+        val stemStrokes = stave.strokes.filter { it.isStem }
+        assertTrue("Should have at least 12 main stem rays", stemStrokes.size >= 12)
+
+        val config = SketchConfig(
+            style = SketchStyle.SACRED_GOLD,
+            theme = com.example.engine.CanvasTheme.GOLDEN_EMBER,
+            hasRayBurst = true
+        )
+        val svg = SvgStaveRenderer.renderSvg(stave, config)
+        assertTrue("SVG should start with <svg", svg.startsWith("<svg"))
+        assertTrue("SVG should close with </svg>", svg.trim().endsWith("</svg>"))
+    }
+
+    @Test
+    fun solar12RayLayout_withEmptyRunes_returnsEmptyStaveWithoutException() {
+        val stave = StaveComposer.compose(emptyList(), StaveLayoutType.SOLAR_12_RAY, seed = 1234L)
+        assertTrue(stave.strokes.isEmpty())
+    }
+
+    @Test
     fun svgGeneration_includesOrnamentsAndStyles() {
         val stave = StaveComposer.compose(testRunes, StaveLayoutType.AEGISHJALMUR, seed = 42L)
         val config = SketchConfig(

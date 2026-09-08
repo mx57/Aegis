@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -455,19 +457,14 @@ fun NameStaveScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Layout Type Selector (Geometric Balance 4-button grid)
-        val layouts = listOf(
-            StaveLayoutType.BINDRUNE,
-            StaveLayoutType.ROW,
-            StaveLayoutType.CIRCLE,
-            StaveLayoutType.MIRROR
-        )
+        // Layout Type Selector (Scrollable Row with all geometric styles)
+        val layouts = StaveLayoutType.values().toList()
 
-        Row(
+        LazyRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            layouts.forEach { layout ->
+            items(layouts) { layout ->
                 val isSelected = selectedLayout == layout
                 Card(
                     onClick = { selectedLayout = layout },
@@ -485,8 +482,7 @@ fun NameStaveScreen(
                 ) {
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 12.dp, horizontal = 4.dp),
+                            .padding(vertical = 10.dp, horizontal = 14.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
