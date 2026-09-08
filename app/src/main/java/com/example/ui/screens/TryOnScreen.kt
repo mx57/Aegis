@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -29,8 +30,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.InvertColors
 import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -51,6 +54,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,6 +65,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -71,9 +76,11 @@ import com.example.engine.SketchConfig
 import com.example.engine.SketchStyle
 import com.example.engine.StaveComposer
 import com.example.engine.StaveLayoutType
+import com.example.engine.TryOnRenderer
 import com.example.ui.components.BodySilhouetteCanvas
 import com.example.ui.components.BodyZone
 import com.example.ui.components.RunicCanvas
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -108,6 +115,9 @@ fun TryOnScreen(
     // Tattoo visual tuning
     var opacity by remember { mutableFloatStateOf(0.85f) }
     var isBlackInk by remember { mutableStateOf(true) }
+
+    val scope = rememberCoroutineScope()
+    var isSaving by remember { mutableStateOf(false) }
 
     // Zero-permission Android Photo Picker for user's own photo
     val photoPickerLauncher = rememberLauncherForActivityResult(
@@ -361,6 +371,86 @@ fun TryOnScreen(
                             Text(if (isBlackInk) "Золото" else "Чёрный")
                         }
                     }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Export & Share Actions Bar
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Button(
+                    onClick = {
+                        if (!isSaving) {
+                            isSaving = true
+                            scope.launch {
+                                val bitmap = TryOnRenderer.renderTryOnToBitmap(
+                                    context = context,
+                                    userPhotoUri = userPhotoUri,
+                                    selectedZone = selectedZone,
+                                    stave = composedStave,
+                                    config = config,
+                                    offset = offset,
+                                    scale = scale,
+                                    rotation = rotation,
+                                    opacity = opacity,
+                                    isBlackInk = isBlackInk
+                                )
+                                val success = TryOnRenderer.saveTryOnToGallery(context, bitmap)
+                                isSaving = false
+                                Toast.makeText(
+                                    context,
+                                    if (success) "Примерка сохранена в галерею!" else "Не удалось сохранить фото",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                    },
+                    enabled = !isSaving,
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("save_tryon_button")
+                ) {
+                    Icon(Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Сохранить фото")
+                }
+
+                OutlinedButton(
+                    onClick = {
+                        if (!isSaving) {
+                            isSaving = true
+                            scope.launch {
+                                val bitmap = TryOnRenderer.renderTryOnToBitmap(
+                                    context = context,
+                                    userPhotoUri = userPhotoUri,
+                                    selectedZone = selectedZone,
+                                    stave = composedStave,
+                                    config = config,
+                                    offset = offset,
+                                    scale = scale,
+                                    rotation = rotation,
+                                    opacity = opacity,
+                                    isBlackInk = isBlackInk
+                                )
+                                TryOnRenderer.shareTryOnPhoto(context, bitmap)
+                                isSaving = false
+                            }
+                        }
+                    },
+                    enabled = !isSaving,
+                    shape = RoundedCornerShape(16.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("share_tryon_button")
+                ) {
+                    Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Поделиться")
                 }
             }
 
