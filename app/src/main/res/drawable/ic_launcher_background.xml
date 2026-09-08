@@ -5,29 +5,64 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path
-        android:pathData="M0,0h108v108h-108z">
+
+    <!-- Deep obsidian radial background vignette -->
+    <path android:pathData="M0,0h108v108h-108z">
         <aapt:attr name="android:fillColor">
             <gradient
-                android:startX="0"
-                android:startY="0"
+                android:startX="54"
+                android:startY="54"
                 android:endX="108"
                 android:endY="108"
-                android:type="linear">
-                <item android:color="#1A1F2C" android:offset="0.0" />
-                <item android:color="#0D111A" android:offset="1.0" />
+                android:type="radial"
+                android:gradientRadius="72">
+                <item android:color="#161B26" android:offset="0.0" />
+                <item android:color="#0B0E15" android:offset="0.65" />
+                <item android:color="#040508" android:offset="1.0" />
             </gradient>
         </aapt:attr>
     </path>
-    <!-- Subtle Nordic background sacred rings -->
+
+    <!-- Sacred celestial astrolabe background concentric orbits -->
     <path
         android:fillColor="#00000000"
-        android:strokeColor="#1AF5A623"
+        android:strokeColor="#25FFC857"
+        android:strokeWidth="0.8"
+        android:pathData="M 54, 54 m -36, 0 a 36,36 0 1,0 72,0 a 36,36 0 1,0 -72,0" />
+
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#1EFFC857"
         android:strokeWidth="1.2"
         android:pathData="M 54, 54 m -42, 0 a 42,42 0 1,0 84,0 a 42,42 0 1,0 -84,0" />
+
     <path
         android:fillColor="#00000000"
-        android:strokeColor="#10FFFFFF"
-        android:strokeWidth="0.8"
+        android:strokeColor="#18FFFFFF"
+        android:strokeWidth="0.7"
         android:pathData="M 54, 54 m -48, 0 a 48,48 0 1,0 96,0 a 48,48 0 1,0 -96,0" />
+
+    <!-- 24 Astrolabe micro-ticks around outer perimeter (15-degree intervals) -->
+    <!-- Major ticks (45-deg cardinal & intercardinal axes) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#40FFC857"
+        android:strokeWidth="1.2"
+        android:strokeLineCap="round"
+        android:pathData="M 54,6 L 54,12 M 54,96 L 54,102 M 6,54 L 12,54 M 96,54 L 102,54 M 19.9,19.9 L 24.2,24.2 M 83.8,83.8 L 88.1,88.1 M 83.8,24.2 L 88.1,19.9 M 19.9,88.1 L 24.2,83.8" />
+
+    <!-- Minor 15-degree astrolabe graduations -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#28FFC857"
+        android:strokeWidth="0.8"
+        android:strokeLineCap="round"
+        android:pathData="M 54,10 L 54,13 M 64.9,11.4 L 63.8,14.3 M 75.0,15.9 L 73.2,18.5 M 83.8,24.2 L 81.7,26.3 M 90.1,34.9 L 87.5,36.7 M 94.6,47.0 L 91.7,48.1 M 96,54 L 93,54 M 94.6,61.0 L 91.7,59.9 M 90.1,73.1 L 87.5,71.3 M 83.8,83.8 L 81.7,81.7 M 75.0,92.1 L 73.2,89.5 M 64.9,96.6 L 63.8,93.7 M 54,98 L 54,95 M 43.1,96.6 L 44.2,93.7 M 33.0,92.1 L 34.8,89.5 M 24.2,83.8 L 26.3,81.7 M 15.9,73.1 L 18.5,71.3 M 11.4,61.0 L 14.3,59.9 M 10,54 L 13,54 M 11.4,47.0 L 14.3,48.1 M 15.9,34.9 L 18.5,36.7 M 24.2,24.2 L 26.3,26.3 M 33.0,15.9 L 34.8,18.5 M 43.1,11.4 L 44.2,14.3" />
+
+    <!-- Fine cardinal celestial alignment rays -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#12FFC857"
+        android:strokeWidth="0.6"
+        android:pathData="M 54,12 L 54,96 M 12,54 L 96,54 M 24.2,24.2 L 83.8,83.8 M 83.8,24.2 L 19.9,88.1" />
 </vector>
