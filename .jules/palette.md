@@ -1,0 +1,3 @@
+## 2025-05-20 - Jetpack Compose Accessibility: Button Icons vs Compound Chips
+**Learning:** Adding explicit `contentDescription` to an `Icon` inside a `Button` or `OutlinedButton` that already has a `Text` label causes TalkBack to announce redundant text (e.g. "Share, Share, button"). Conversely, compound chip containers (like `Row` containing an icon and text) benefit from `.semantics(mergeDescendants = true) { contentDescription = "..." }` to merge child nodes into a single coherent screen reader announcement.
+**Action:** Always set `contentDescription = null` on decorative icons inside labeled buttons. For compound chip/badge containers, use `semantics(mergeDescendants = true)` with a descriptive `contentDescription`.
