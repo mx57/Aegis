@@ -6,6 +6,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -18,7 +19,8 @@ import com.example.data.model.Rune
 /**
  * High-fidelity 3D chiseled vector icon for individual runes.
  * Renders multi-layered metallic gold/engraved relief with drop shadows,
- * main stroke body, and specular highlights.
+ * main stroke body (with optional 5-stop metallic gold linear gradient),
+ * and specular highlights for maximum realism and gold-on-black aesthetic.
  */
 @Composable
 fun SingleRuneIcon(
@@ -26,7 +28,9 @@ fun SingleRuneIcon(
     modifier: Modifier = Modifier,
     size: Dp = 36.dp,
     color: Color = MaterialTheme.colorScheme.primary,
-    strokeWidthDp: Dp = 2.5.dp
+    strokeWidthDp: Dp = 2.5.dp,
+    useMetallicGradient: Boolean = false,
+    brush: Brush? = null
 ) {
     Canvas(modifier = modifier.size(size)) {
         val w = this.size.width
@@ -39,6 +43,21 @@ fun SingleRuneIcon(
         val chiselOffY = (strokeWidthPx * 0.32f).coerceAtLeast(0.9f)
         val shadowColor = Color.Black.copy(alpha = 0.42f)
         val highlightColor = Color.White.copy(alpha = 0.58f)
+
+        // 5-stop metallic gold linear gradient for realistic metallic shine
+        val activeBrush = brush ?: if (useMetallicGradient) {
+            Brush.linearGradient(
+                colors = listOf(
+                    Color(0xFFFFEEA0), // Light golden highlight
+                    Color(0xFFE5C158), // Sacred gold primary
+                    Color(0xFFC49118), // Deep gold shadow
+                    Color(0xFFFFDF7A), // Metallic glint
+                    Color(0xFFB8860B)  // Dark bronze base
+                ),
+                start = Offset(0f, 0f),
+                end = Offset(w, h)
+            )
+        } else null
 
         for (stroke in rune.strokes) {
             val pts = stroke.points
@@ -56,12 +75,20 @@ fun SingleRuneIcon(
                     radius = radius * 1.2f,
                     center = Offset(cx + chiselOffX, cy + chiselOffY)
                 )
-                // 2. Main dot body
-                drawCircle(
-                    color = color,
-                    radius = radius,
-                    center = Offset(cx, cy)
-                )
+                // 2. Main dot body with 3D metallic gradient or theme color
+                if (activeBrush != null) {
+                    drawCircle(
+                        brush = activeBrush,
+                        radius = radius,
+                        center = Offset(cx, cy)
+                    )
+                } else {
+                    drawCircle(
+                        color = color,
+                        radius = radius,
+                        center = Offset(cx, cy)
+                    )
+                }
                 // 3. Specular catchlight glint
                 drawCircle(
                     color = highlightColor,
@@ -94,16 +121,28 @@ fun SingleRuneIcon(
                     )
                 )
 
-                // 2. Main stroke body
-                drawPath(
-                    path = mainPath,
-                    color = color,
-                    style = Stroke(
-                        width = strokeWidthPx,
-                        cap = StrokeCap.Round,
-                        join = StrokeJoin.Round
+                // 2. Main stroke body with 3D metallic gradient or theme color
+                if (activeBrush != null) {
+                    drawPath(
+                        path = mainPath,
+                        brush = activeBrush,
+                        style = Stroke(
+                            width = strokeWidthPx,
+                            cap = StrokeCap.Round,
+                            join = StrokeJoin.Round
+                        )
                     )
-                )
+                } else {
+                    drawPath(
+                        path = mainPath,
+                        color = color,
+                        style = Stroke(
+                            width = strokeWidthPx,
+                            cap = StrokeCap.Round,
+                            join = StrokeJoin.Round
+                        )
+                    )
+                }
 
                 // 3. Specular highlight line (sharp metallic bevel edge)
                 val highlightPath = Path().apply {

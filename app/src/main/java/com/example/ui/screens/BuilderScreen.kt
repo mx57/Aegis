@@ -257,7 +257,8 @@ fun BuilderScreen(
                                         rune = rune,
                                         size = 20.dp,
                                         color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        strokeWidthDp = 2.dp
+                                        strokeWidthDp = 2.dp,
+                                        useMetallicGradient = true
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
@@ -316,7 +317,12 @@ fun BuilderScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    SingleRuneIcon(rune = r, size = 16.dp, color = MaterialTheme.colorScheme.primary)
+                                    SingleRuneIcon(
+                                        rune = r,
+                                        size = 16.dp,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        useMetallicGradient = true
+                                    )
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(
                                         text = r.nameRu,
@@ -639,7 +645,12 @@ fun IntentionPresetCard(
                             .background(MaterialTheme.colorScheme.surfaceVariant)
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
-                        SingleRuneIcon(rune = r, size = 16.dp, color = MaterialTheme.colorScheme.primary)
+                        SingleRuneIcon(
+                            rune = r,
+                            size = 16.dp,
+                            color = MaterialTheme.colorScheme.primary,
+                            useMetallicGradient = true
+                        )
                         Spacer(modifier = Modifier.width(3.dp))
                         Text(r.nameRu, style = MaterialTheme.typography.labelSmall)
                     }

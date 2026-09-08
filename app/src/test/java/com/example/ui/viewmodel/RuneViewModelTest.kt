@@ -1,9 +1,11 @@
 package com.example.ui.viewmodel
 
 import android.app.Application
+import androidx.lifecycle.viewModelScope
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -53,81 +55,87 @@ class RuneViewModelTest {
 
     @Test
     fun isGeminiConfigured_withNullCustomKeyAndNoSavedKey_returnsFalse() = runTest(testDispatcher) {
-        val job = backgroundScope.launch { viewModel.userSettings.collect {} }
+        val collectJob = backgroundScope.launch { viewModel.userSettings.collect {} }
         viewModel.appSettings.setGeminiApiKey("")
         viewModel.userSettings.first { it.geminiApiKey.isEmpty() }
 
         val result = viewModel.isGeminiConfigured(null)
         assertFalse(result)
-        job.cancel()
-        testDispatcher.scheduler.advanceTimeBy(6000L)
+        collectJob.cancel()
+        viewModel.viewModelScope.coroutineContext.cancelChildren()
+        testDispatcher.scheduler.advanceUntilIdle()
     }
 
     @Test
     fun isGeminiConfigured_withEmptyCustomKeyAndNoSavedKey_returnsFalse() = runTest(testDispatcher) {
-        val job = backgroundScope.launch { viewModel.userSettings.collect {} }
+        val collectJob = backgroundScope.launch { viewModel.userSettings.collect {} }
         viewModel.appSettings.setGeminiApiKey("")
         viewModel.userSettings.first { it.geminiApiKey.isEmpty() }
 
         val result = viewModel.isGeminiConfigured("")
         assertFalse(result)
-        job.cancel()
-        testDispatcher.scheduler.advanceTimeBy(6000L)
+        collectJob.cancel()
+        viewModel.viewModelScope.coroutineContext.cancelChildren()
+        testDispatcher.scheduler.advanceUntilIdle()
     }
 
     @Test
     fun isGeminiConfigured_withWhitespaceCustomKeyAndNoSavedKey_returnsFalse() = runTest(testDispatcher) {
-        val job = backgroundScope.launch { viewModel.userSettings.collect {} }
+        val collectJob = backgroundScope.launch { viewModel.userSettings.collect {} }
         viewModel.appSettings.setGeminiApiKey("")
         viewModel.userSettings.first { it.geminiApiKey.isEmpty() }
 
         val result = viewModel.isGeminiConfigured("   \t\n  ")
         assertFalse(result)
-        job.cancel()
-        testDispatcher.scheduler.advanceTimeBy(6000L)
+        collectJob.cancel()
+        viewModel.viewModelScope.coroutineContext.cancelChildren()
+        testDispatcher.scheduler.advanceUntilIdle()
     }
 
     @Test
     fun isGeminiConfigured_withSavedKeyAndNullCustomKey_returnsTrue() = runTest(testDispatcher) {
-        val job = backgroundScope.launch { viewModel.userSettings.collect {} }
+        val collectJob = backgroundScope.launch { viewModel.userSettings.collect {} }
         val savedKey = "my_persisted_gemini_key"
         viewModel.appSettings.setGeminiApiKey(savedKey)
         viewModel.userSettings.first { it.geminiApiKey == savedKey }
 
         val result = viewModel.isGeminiConfigured(null)
         assertTrue(result)
-        job.cancel()
-        testDispatcher.scheduler.advanceTimeBy(6000L)
+        collectJob.cancel()
+        viewModel.viewModelScope.coroutineContext.cancelChildren()
+        testDispatcher.scheduler.advanceUntilIdle()
     }
 
     @Test
     fun isGeminiConfigured_withSavedKeyAndEmptyCustomKey_returnsTrue() = runTest(testDispatcher) {
-        val job = backgroundScope.launch { viewModel.userSettings.collect {} }
+        val collectJob = backgroundScope.launch { viewModel.userSettings.collect {} }
         val savedKey = "my_persisted_gemini_key"
         viewModel.appSettings.setGeminiApiKey(savedKey)
         viewModel.userSettings.first { it.geminiApiKey == savedKey }
 
         val result = viewModel.isGeminiConfigured("")
         assertTrue(result)
-        job.cancel()
-        testDispatcher.scheduler.advanceTimeBy(6000L)
+        collectJob.cancel()
+        viewModel.viewModelScope.coroutineContext.cancelChildren()
+        testDispatcher.scheduler.advanceUntilIdle()
     }
 
     @Test
     fun isGeminiConfigured_withValidCustomKeyOverridingNoSavedKey_returnsTrue() = runTest(testDispatcher) {
-        val job = backgroundScope.launch { viewModel.userSettings.collect {} }
+        val collectJob = backgroundScope.launch { viewModel.userSettings.collect {} }
         viewModel.appSettings.setGeminiApiKey("")
         viewModel.userSettings.first { it.geminiApiKey.isEmpty() }
 
         val result = viewModel.isGeminiConfigured("override_custom_key")
         assertTrue(result)
-        job.cancel()
-        testDispatcher.scheduler.advanceTimeBy(6000L)
+        collectJob.cancel()
+        viewModel.viewModelScope.coroutineContext.cancelChildren()
+        testDispatcher.scheduler.advanceUntilIdle()
     }
 
     @Test
     fun isGeminiConfigured_afterClearingSavedKey_returnsFalse() = runTest(testDispatcher) {
-        val job = backgroundScope.launch { viewModel.userSettings.collect {} }
+        val collectJob = backgroundScope.launch { viewModel.userSettings.collect {} }
         val tempKey = "temp_key"
         viewModel.appSettings.setGeminiApiKey(tempKey)
         viewModel.userSettings.first { it.geminiApiKey == tempKey }
@@ -138,7 +146,8 @@ class RuneViewModelTest {
 
         val result = viewModel.isGeminiConfigured(null)
         assertFalse(result)
-        job.cancel()
-        testDispatcher.scheduler.advanceTimeBy(6000L)
+        collectJob.cancel()
+        viewModel.viewModelScope.coroutineContext.cancelChildren()
+        testDispatcher.scheduler.advanceUntilIdle()
     }
 }

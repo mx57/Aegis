@@ -251,5 +251,12 @@ class RunicStaveUnitTest {
         assertEquals(2, dotRune.strokes.size)
         assertEquals(1, dotRune.strokes[0].points.size)
         assertEquals(2, dotRune.strokes[1].points.size)
+
+        // Verify normalized coordinates for 3D metallic gradient rendering scale
+        val singlePt = dotRune.strokes[0].points[0]
+        assertTrue(singlePt.x in 0f..100f && singlePt.y in 0f..140f)
+
+        val multiPt = dotRune.strokes[1].points
+        assertTrue(multiPt.all { it.x in 0f..100f && it.y in 0f..140f })
     }
 }
