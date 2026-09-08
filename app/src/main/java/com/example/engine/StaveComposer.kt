@@ -15,6 +15,7 @@ enum class StaveLayoutType(val titleRu: String) {
     VEGVISIR("Вегвизир (Компас)"),
     AEGISHJALMUR("Шлем Ужаса"),
     CROSS_STAVE("Крестовой став"),
+    SOLAR_12_RAY("12-лучевое Солнце"),
     STELE_OBELISK("Стела-обелиск")
 }
 
@@ -52,6 +53,7 @@ object StaveComposer {
             StaveLayoutType.VEGVISIR -> composeVegvisir(runes, seed)
             StaveLayoutType.AEGISHJALMUR -> composeAegishjalmur(runes, seed)
             StaveLayoutType.CROSS_STAVE -> composeCrossStave(runes, seed)
+            StaveLayoutType.SOLAR_12_RAY -> composeSolar12Ray(runes, seed)
             StaveLayoutType.STELE_OBELISK -> composeSteleObelisk(runes, seed)
         }
 
@@ -707,6 +709,134 @@ object StaveComposer {
                         val lx = (pt.x - 50f) / 100f * rW
                         val ly = (pt.y - 70f) / 140f * rH
                         StrokePoint(rcX + lx, rcY + ly)
+                    }
+                    result.add(RenderStroke(mapped))
+                }
+            }
+        }
+
+        return result
+    }
+
+    private fun composeSolar12Ray(runes: List<Rune>, seed: Long): List<RenderStroke> {
+        val result = mutableListOf<RenderStroke>()
+        val cx = 250f
+        val cy = 250f
+
+        // 1. Central Double Solar Hub Ring & Inner Solar Cross Spokes
+        val hubInnerR = 18f
+        val hubOuterR = 30f
+
+        val innerPts = mutableListOf<StrokePoint>()
+        val outerPts = mutableListOf<StrokePoint>()
+        for (i in 0..24) {
+            val a = (2 * PI * i / 24).toFloat()
+            innerPts.add(StrokePoint(cx + hubInnerR * cos(a), cy + hubInnerR * sin(a)))
+            outerPts.add(StrokePoint(cx + hubOuterR * cos(a), cy + hubOuterR * sin(a)))
+        }
+        result.add(RenderStroke(innerPts))
+        result.add(RenderStroke(outerPts, isHairlineGuide = true))
+
+        // Central 12-spoke solar core wheel
+        for (i in 0 until 12) {
+            val a = (-PI / 2 + 2 * PI * i / 12).toFloat()
+            result.add(
+                RenderStroke(
+                    listOf(
+                        StrokePoint(cx + hubInnerR * cos(a), cy + hubInnerR * sin(a)),
+                        StrokePoint(cx + hubOuterR * cos(a), cy + hubOuterR * sin(a))
+                    )
+                )
+            )
+        }
+
+        // 2. Concentric Hairline Guide Orbits Connecting the 12 Rays
+        val webRadius1 = 88f
+        val webRadius2 = 142f
+        val webPts1 = mutableListOf<StrokePoint>()
+        val webPts2 = mutableListOf<StrokePoint>()
+        for (i in 0..24) {
+            val a = (2 * PI * i / 24).toFloat()
+            webPts1.add(StrokePoint(cx + webRadius1 * cos(a), cy + webRadius1 * sin(a)))
+            webPts2.add(StrokePoint(cx + webRadius2 * cos(a), cy + webRadius2 * sin(a)))
+        }
+        result.add(RenderStroke(webPts1, isHairlineGuide = true))
+        result.add(RenderStroke(webPts2, isHairlineGuide = true))
+
+        // 3. 12 Radiating Rays with protective notches and terminal crowns
+        val rayCount = 12
+        for (i in 0 until rayCount) {
+            val angle = (-PI / 2 + 2 * PI * i / rayCount).toFloat()
+            val cosA = cos(angle)
+            val sinA = sin(angle)
+            val perpX = -sinA
+            val perpY = cosA
+
+            val rStart = hubOuterR
+            val rEnd = 192f
+
+            // Main Ray Spine Line
+            result.add(
+                RenderStroke(
+                    listOf(
+                        StrokePoint(cx + rStart * cosA, cy + rStart * sinA),
+                        StrokePoint(cx + rEnd * cosA, cy + rEnd * sinA)
+                    ),
+                    isStem = true
+                )
+            )
+
+            // Protective chevron crossbars / notches along each ray
+            val notchDists = listOf(62f, 115f, 165f)
+            for (dist in notchDists) {
+                val span = 11f
+                result.add(
+                    RenderStroke(
+                        listOf(
+                            StrokePoint(cx + dist * cosA - perpX * span, cy + dist * sinA - perpY * span),
+                            StrokePoint(cx + (dist + 5f) * cosA, cy + (dist + 5f) * sinA),
+                            StrokePoint(cx + dist * cosA + perpX * span, cy + dist * sinA + perpY * span)
+                        )
+                    )
+                )
+            }
+
+            // Terminal Sun-Crescent / Trident Crown at tip of ray
+            val tipX = cx + rEnd * cosA
+            val tipY = cy + rEnd * sinA
+            val forkLen = 14f
+            val forkSpread = 12f
+            result.add(
+                RenderStroke(
+                    listOf(
+                        StrokePoint(tipX - perpX * forkSpread, tipY - perpY * forkSpread),
+                        StrokePoint(cx + (rEnd + forkLen) * cosA, cy + (rEnd + forkLen) * sinA),
+                        StrokePoint(tipX + perpX * forkSpread, tipY + perpY * forkSpread)
+                    ),
+                    isOuterPole = true
+                )
+            )
+
+            // 4. Embed and Orient Runes Radially on Rays
+            if (runes.isNotEmpty()) {
+                val rune = runes[i % runes.size]
+                val runeDist = 118f
+                val runeCenterX = cx + runeDist * cosA
+                val runeCenterY = cy + runeDist * sinA
+
+                val rotAngle = angle + (PI / 2).toFloat()
+                val cosRot = cos(rotAngle)
+                val sinRot = sin(rotAngle)
+                val rW = 32f
+                val rH = 44f
+
+                for (stroke in rune.strokes) {
+                    val mapped = stroke.points.map { pt ->
+                        val lx = (pt.x - 50f) / 100f * rW
+                        val ly = (pt.y - 70f) / 140f * rH
+                        val rx = lx * cosRot - ly * sinRot
+                        val ry = lx * sinRot + ly * cosRot
+                        StrokePoint(runeCenterX + rx, runeCenterY + ry)
                     }
                     result.add(RenderStroke(mapped))
                 }
