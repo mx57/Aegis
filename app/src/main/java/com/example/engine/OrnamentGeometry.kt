@@ -630,7 +630,7 @@ object OrnamentGeometry {
                     val vInner = mutableListOf<StrokePoint>()
 
                     for (v in 0 until 3) {
-                        val angle = (-PI / 2 + 2 * PI * v / 3 + idx * PI / 6).toFloat()
+                        val angle = (-PI / 2 + 2 * PI * v / 3).toFloat()
                         vOuter.add(StrokePoint(tcX + rOuter * cos(angle), tcY + rOuter * sin(angle)))
                         vInner.add(StrokePoint(tcX + rInner * cos(angle), tcY + rInner * sin(angle)))
                     }
