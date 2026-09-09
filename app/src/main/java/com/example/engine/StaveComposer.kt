@@ -16,7 +16,8 @@ enum class StaveLayoutType(val titleRu: String) {
     AEGISHJALMUR("Шлем Ужаса"),
     CROSS_STAVE("Крестовой став"),
     SOLAR_12_RAY("12-лучевое Солнце"),
-    STELE_OBELISK("Стела-обелиск")
+    STELE_OBELISK("Стела-обелиск"),
+    GALDRABOK_ASYMMETRIC("Гальдрастав (Гальдрабук)")
 }
 
 data class RenderStroke(
@@ -55,6 +56,7 @@ object StaveComposer {
             StaveLayoutType.CROSS_STAVE -> composeCrossStave(runes, seed)
             StaveLayoutType.SOLAR_12_RAY -> composeSolar12Ray(runes, seed)
             StaveLayoutType.STELE_OBELISK -> composeSteleObelisk(runes, seed)
+            StaveLayoutType.GALDRABOK_ASYMMETRIC -> composeGaldrabokAsymmetric(runes, seed)
         }
 
         return ComposedStave(
@@ -957,6 +959,172 @@ object StaveComposer {
                 result.add(RenderStroke(pts, isStem = stroke.points.size == 2 && stroke.points[0].x == stroke.points[1].x))
             }
         }
+        return result
+    }
+
+    private fun composeGaldrabokAsymmetric(runes: List<Rune>, seed: Long): List<RenderStroke> {
+        val result = mutableListOf<RenderStroke>()
+        val cx = 250f
+        val cy = 250f
+        val variation = (Math.abs(seed) % 3).toInt()
+
+        when (variation) {
+            1 -> {
+                // Variation 1: Óttastafur (Sigil of Dread and Shield) - Dual offset staggered spines with lightning bridge
+                val stem1X = 180f
+                val stem2X = 320f
+                val top1Y = 70f
+                val bot1Y = 410f
+                val top2Y = 95f
+                val bot2Y = 435f
+
+                // Staggered vertical spines
+                result.add(RenderStroke(listOf(StrokePoint(stem1X, top1Y), StrokePoint(stem1X, bot1Y)), isStem = true))
+                result.add(RenderStroke(listOf(StrokePoint(stem2X, top2Y), StrokePoint(stem2X, bot2Y)), isStem = true))
+
+                // Asymmetric crossbars and lightning connecting bridge
+                result.add(RenderStroke(listOf(StrokePoint(stem1X - 35f, 130f), StrokePoint(stem1X + 45f, 130f)), isStem = true))
+                result.add(RenderStroke(listOf(StrokePoint(stem1X, 220f), StrokePoint(250f, 250f), StrokePoint(stem2X, 280f)), isStem = true))
+                result.add(RenderStroke(listOf(StrokePoint(stem2X - 50f, 360f), StrokePoint(stem2X + 25f, 360f)), isStem = true))
+
+                // Asymmetric hooks and spirals
+                result.add(RenderStroke(listOf(StrokePoint(stem1X, top1Y), StrokePoint(stem1X - 22f, top1Y - 22f), StrokePoint(stem1X - 38f, top1Y - 12f))))
+                result.add(RenderStroke(listOf(StrokePoint(stem2X, bot2Y), StrokePoint(stem2X + 24f, bot2Y + 22f), StrokePoint(stem2X + 38f, bot2Y + 10f))))
+
+                // Trident finials at opposing endpoints
+                result.add(RenderStroke(listOf(StrokePoint(stem2X - 16f, top2Y + 12f), StrokePoint(stem2X, top2Y), StrokePoint(stem2X + 16f, top2Y + 12f)), isOuterPole = true))
+                result.add(RenderStroke(listOf(StrokePoint(stem1X - 16f, bot1Y - 12f), StrokePoint(stem1X, bot1Y), StrokePoint(stem1X + 16f, bot1Y - 12f)), isOuterPole = true))
+
+                // Integrate runes along asymmetric nodes
+                runes.forEachIndexed { idx, rune ->
+                    val (nx, ny, flip) = when (idx % 4) {
+                        0 -> Triple(stem1X, 170f, 1f)
+                        1 -> Triple(stem2X, 190f, -1f)
+                        2 -> Triple(stem1X, 310f, 1f)
+                        else -> Triple(stem2X, 390f, -1f)
+                    }
+                    val rW = 38f
+                    val rH = 52f
+                    for (stroke in rune.strokes) {
+                        if (isVerticalStroke(stroke)) continue
+                        val pts = stroke.points.map { pt ->
+                            val lx = ((pt.x - 50f) / 50f) * (rW * 0.55f) * flip
+                            val ly = ((pt.y - 70f) / 70f) * (rH * 0.50f)
+                            StrokePoint(nx + lx, ny + ly)
+                        }
+                        result.add(RenderStroke(pts))
+                    }
+                }
+            }
+
+            2 -> {
+                // Variation 2: Kaupastafur / Traveler Galdrastafur - Asymmetric 3-arm solar fork with eye ring
+                val mainX = 230f
+                val topY = 65f
+                val botY = 435f
+
+                // Main off-center spine
+                result.add(RenderStroke(listOf(StrokePoint(mainX, topY), StrokePoint(mainX, botY)), isStem = true, isOuterPole = true))
+
+                // Leftward 3 asymmetric diagonal barbs
+                result.add(RenderStroke(listOf(StrokePoint(mainX, 120f), StrokePoint(mainX - 70f, 155f), StrokePoint(mainX - 70f, 185f))))
+                result.add(RenderStroke(listOf(StrokePoint(mainX, 220f), StrokePoint(mainX - 85f, 260f), StrokePoint(mainX - 100f, 250f))))
+                result.add(RenderStroke(listOf(StrokePoint(mainX, 320f), StrokePoint(mainX - 60f, 350f))))
+
+                // Rightward solar protection eye ring and diagonal spur
+                val eyeR = 26f
+                val eyeCX = mainX + 75f
+                val eyeCY = 190f
+                val eyePts = mutableListOf<StrokePoint>()
+                for (i in 0..16) {
+                    val a = (2 * PI * i / 16).toFloat()
+                    eyePts.add(StrokePoint(eyeCX + eyeR * cos(a), eyeCY + eyeR * sin(a)))
+                }
+                result.add(RenderStroke(eyePts))
+                result.add(RenderStroke(listOf(StrokePoint(mainX, 190f), StrokePoint(eyeCX - eyeR, eyeCY))))
+                result.add(RenderStroke(listOf(StrokePoint(mainX, 290f), StrokePoint(mainX + 90f, 325f), StrokePoint(mainX + 90f, 355f))))
+
+                // Runes mapped to asymmetric anchor points
+                runes.forEachIndexed { idx, rune ->
+                    val (nx, ny) = when (idx % 3) {
+                        0 -> Pair(mainX - 45f, 140f)
+                        1 -> Pair(mainX + 45f, 305f)
+                        else -> Pair(mainX - 50f, 240f)
+                    }
+                    val rW = 34f
+                    val rH = 48f
+                    for (stroke in rune.strokes) {
+                        if (isVerticalStroke(stroke)) continue
+                        val pts = stroke.points.map { pt ->
+                            val lx = ((pt.x - 50f) / 50f) * (rW * 0.55f)
+                            val ly = ((pt.y - 70f) / 70f) * (rH * 0.50f)
+                            StrokePoint(nx + lx, ny + ly)
+                        }
+                        result.add(RenderStroke(pts))
+                    }
+                }
+            }
+
+            else -> {
+                // Variation 0: Angurgapi / Classic Asymmetric Galdrabók Sigil
+                val spineTop = 60f
+                val spineBot = 440f
+
+                // Primary main spine
+                result.add(RenderStroke(listOf(StrokePoint(cx, spineTop), StrokePoint(cx, spineBot)), isStem = true))
+
+                // Upper left asymmetric spiral hook
+                val spiralPts = listOf(
+                    StrokePoint(cx, 110f),
+                    StrokePoint(cx - 40f, 90f),
+                    StrokePoint(cx - 75f, 115f),
+                    StrokePoint(cx - 60f, 150f),
+                    StrokePoint(cx - 30f, 140f)
+                )
+                result.add(RenderStroke(spiralPts))
+
+                // Upper right angled crossbar with trident tip
+                result.add(RenderStroke(listOf(StrokePoint(cx, 130f), StrokePoint(cx + 85f, 100f)), isStem = true))
+                result.add(RenderStroke(listOf(StrokePoint(cx + 70f, 92f), StrokePoint(cx + 85f, 100f), StrokePoint(cx + 80f, 118f))))
+
+                // Middle asymmetric knot and horizontal bar
+                result.add(RenderStroke(listOf(StrokePoint(cx - 85f, 250f), StrokePoint(cx + 60f, 250f)), isStem = true))
+                // Left triple notches
+                result.add(RenderStroke(listOf(StrokePoint(cx - 65f, 235f), StrokePoint(cx - 65f, 265f))))
+                result.add(RenderStroke(listOf(StrokePoint(cx - 45f, 238f), StrokePoint(cx - 45f, 262f))))
+                result.add(RenderStroke(listOf(StrokePoint(cx - 25f, 240f), StrokePoint(cx - 25f, 260f))))
+
+                // Lower right hooked tail
+                val tailPts = listOf(
+                    StrokePoint(cx, 370f),
+                    StrokePoint(cx + 65f, 395f),
+                    StrokePoint(cx + 90f, 375f),
+                    StrokePoint(cx + 80f, 350f)
+                )
+                result.add(RenderStroke(tailPts))
+
+                // Map runes along master spine tiers and offset arm
+                runes.forEachIndexed { idx, rune ->
+                    val (nx, ny, scale) = when (idx % 3) {
+                        0 -> Triple(cx, 190f, 0.9f)
+                        1 -> Triple(cx + 30f, 250f, 0.8f)
+                        else -> Triple(cx, 310f, 0.9f)
+                    }
+                    val rW = 40f * scale
+                    val rH = 55f * scale
+                    for (stroke in rune.strokes) {
+                        if (isVerticalStroke(stroke)) continue
+                        val pts = stroke.points.map { pt ->
+                            val lx = ((pt.x - 50f) / 50f) * (rW * 0.55f)
+                            val ly = ((pt.y - 70f) / 70f) * (rH * 0.50f)
+                            StrokePoint(nx + lx, ny + ly)
+                        }
+                        result.add(RenderStroke(pts))
+                    }
+                }
+            }
+        }
+
         return result
     }
 }

@@ -135,6 +135,29 @@ class RunicStaveUnitTest {
     }
 
     @Test
+    fun galdrabokAsymmetricLayout_generatesStrokesAndRendersValidSvg() {
+        for (seedVal in listOf(0L, 1L, 2L, 100L)) {
+            val stave = StaveComposer.compose(testRunes, StaveLayoutType.GALDRABOK_ASYMMETRIC, seed = seedVal)
+            assertTrue("GALDRABOK_ASYMMETRIC layout should generate strokes for seed $seedVal", stave.strokes.isNotEmpty())
+
+            val config = SketchConfig(
+                style = SketchStyle.BLACKWORK,
+                theme = com.example.engine.CanvasTheme.ANCIENT_PARCHMENT,
+                hasVolumetricShading = true
+            )
+            val svg = SvgStaveRenderer.renderSvg(stave, config)
+            assertTrue("SVG for GALDRABOK_ASYMMETRIC should start with <svg", svg.startsWith("<svg"))
+            assertTrue("SVG for GALDRABOK_ASYMMETRIC should close with </svg>", svg.trim().endsWith("</svg>"))
+        }
+    }
+
+    @Test
+    fun galdrabokAsymmetricLayout_withEmptyRunes_returnsEmptyStaveWithoutException() {
+        val stave = StaveComposer.compose(emptyList(), StaveLayoutType.GALDRABOK_ASYMMETRIC, seed = 777L)
+        assertTrue(stave.strokes.isEmpty())
+    }
+
+    @Test
     fun svgGeneration_includesOrnamentsAndStyles() {
         val stave = StaveComposer.compose(testRunes, StaveLayoutType.AEGISHJALMUR, seed = 42L)
         val config = SketchConfig(
