@@ -148,6 +148,32 @@ class OrnamentGeometryTest {
     }
 
     @Test
+    fun generateCenterEmblem_valknut_hasSymmetricalParallelTriangleVertices() {
+        val valknut = OrnamentGeometry.generateCenterEmblem(com.example.engine.CenterEmblem.VALKNUT, 3.0f)
+
+        // Triangle centers relative to (250, 250):
+        val centers = listOf(
+            Pair(250f + 0f, 250f - 12f),
+            Pair(250f - 10.4f, 250f + 6f),
+            Pair(250f + 10.4f, 250f + 6f)
+        )
+
+        // Every outer ribbon path for the 3 triangles (paths index 0, 2, 4 in valknut.paths)
+        // should have its apex (v0) directly above its triangle center (x = tcX).
+        for (i in 0 until 3) {
+            val outerPath = valknut.paths[i * 2]
+            val tcX = centers[i].first
+            val apexX = outerPath.points[0].x
+            assertEquals(
+                "Triangle $i top vertex X should be aligned with center X ($tcX) for 3-fold parallel symmetry",
+                tcX,
+                apexX,
+                delta
+            )
+        }
+    }
+
+    @Test
     fun generateCenterEmblem_triquetra_generatesArcuatePetalsAndOrnaments() {
         val triquetra = OrnamentGeometry.generateCenterEmblem(com.example.engine.CenterEmblem.TRIQUETRA, 3.0f)
 
