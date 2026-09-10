@@ -26,6 +26,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.School
@@ -36,7 +37,9 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -248,17 +251,50 @@ fun EncyclopediaScreen(
                     onValueChange = { searchQuery = it },
                     label = { Text("Поиск руны или ключевого слова") },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Очистить поиск")
+                            }
+                        }
+                    },
                     singleLine = true,
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
             }
 
-            items(filteredRunes) { rune ->
-                RuneDetailCard(
-                    rune = rune,
-                    onSelectRuneForBuilder = onSelectRuneForBuilder
-                )
+            if (filteredRunes.isEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "Ничего не найдено по запросу «$searchQuery»",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedButton(
+                                onClick = { searchQuery = "" },
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Сбросить поиск")
+                            }
+                        }
+                    }
+                }
+            } else {
+                items(filteredRunes) { rune ->
+                    RuneDetailCard(
+                        rune = rune,
+                        onSelectRuneForBuilder = onSelectRuneForBuilder
+                    )
+                }
             }
 
             item {
