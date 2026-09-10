@@ -1121,7 +1121,7 @@ private fun TattooConceptGalleryCard(
                     ) {
                         Icon(
                             imageVector = if (concept.isFavorite) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                            contentDescription = if (concept.isFavorite) "В избранном" else "В избранное",
+                            contentDescription = if (concept.isFavorite) "Убрать из избранного" else "Добавить в избранное",
                             tint = if (concept.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
