@@ -649,32 +649,36 @@ object SvgStaveRenderer {
     suspend fun renderToBitmap(
         stave: ComposedStave,
         config: SketchConfig,
-        targetSize: Int = 2048
+        targetSize: Int = 2048,
+        transparentBg: Boolean = false,
+        overrideColorInt: Int? = null
     ): Bitmap = withContext(Dispatchers.Default) {
         val bitmap = Bitmap.createBitmap(targetSize, targetSize, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         val scale = targetSize / 500f
 
         val theme = config.effectiveTheme
-        if (!config.isStencil) {
-            val gradient = RadialGradient(
-                targetSize / 2f, targetSize / 2f, targetSize * 0.72f,
-                Color.parseColor(theme.bgHex),
-                Color.parseColor(theme.bgEdgeHex),
-                Shader.TileMode.CLAMP
-            )
-            val bgPaint = Paint().apply { shader = gradient }
-            canvas.drawRect(0f, 0f, targetSize.toFloat(), targetSize.toFloat(), bgPaint)
-        } else {
-            val bgPaint = Paint().apply {
-                color = Color.WHITE
-                style = Paint.Style.FILL
+        if (!transparentBg) {
+            if (!config.isStencil) {
+                val gradient = RadialGradient(
+                    targetSize / 2f, targetSize / 2f, targetSize * 0.72f,
+                    Color.parseColor(theme.bgHex),
+                    Color.parseColor(theme.bgEdgeHex),
+                    Shader.TileMode.CLAMP
+                )
+                val bgPaint = Paint().apply { shader = gradient }
+                canvas.drawRect(0f, 0f, targetSize.toFloat(), targetSize.toFloat(), bgPaint)
+            } else {
+                val bgPaint = Paint().apply {
+                    color = Color.WHITE
+                    style = Paint.Style.FILL
+                }
+                canvas.drawRect(0f, 0f, targetSize.toFloat(), targetSize.toFloat(), bgPaint)
             }
-            canvas.drawRect(0f, 0f, targetSize.toFloat(), targetSize.toFloat(), bgPaint)
         }
 
         val prng = Random(config.seed)
-        val strokeColorInt = if (config.isStencil) Color.BLACK else when (config.theme) {
+        val strokeColorInt = overrideColorInt ?: if (config.isStencil) Color.BLACK else when (config.theme) {
             CanvasTheme.DARK_SLATE -> when (config.style) {
                 SketchStyle.SACRED_GOLD -> Color.parseColor("#E5C158")
                 SketchStyle.EMERALD_BRONZE -> Color.parseColor("#CD9B51")
@@ -720,7 +724,7 @@ object SvgStaveRenderer {
         val shadowColorInt = if (config.isStencil) Color.TRANSPARENT else Color.parseColor(theme.shadowHex)
         val accentColorInt = if (config.isStencil) Color.BLACK else Color.parseColor(theme.accentHex)
 
-        val metallicShader = if (!config.isStencil) {
+        val metallicShader = if (!config.isStencil && overrideColorInt == null) {
             LinearGradient(
                 0f, 0f, targetSize.toFloat(), targetSize.toFloat(),
                 intArrayOf(highlightColorInt, strokeColorInt, accentColorInt, strokeColorInt, highlightColorInt),

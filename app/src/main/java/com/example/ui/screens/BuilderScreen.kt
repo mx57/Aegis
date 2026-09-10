@@ -62,6 +62,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.data.catalog.IntentionPreset
@@ -568,7 +572,7 @@ fun BuilderScreen(
             ) {
                 Icon(
                     imageVector = if (isSavedToFav) Icons.Default.Check else Icons.Default.BookmarkBorder,
-                    contentDescription = "В избранное",
+                    contentDescription = if (isSavedToFav) "Сохранено в избранное" else "Добавить в избранное",
                     tint = if (isSavedToFav) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -597,6 +601,10 @@ fun IntentionPresetCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .semantics {
+                role = Role.RadioButton
+                selected = isSelected
+            }
             .clickable { onSelect() },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
