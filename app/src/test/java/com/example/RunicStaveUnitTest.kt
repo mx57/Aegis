@@ -253,6 +253,19 @@ class RunicStaveUnitTest {
     }
 
     @Test
+    fun svgGeneration_customFrameText_rendersInRunering() {
+        val stave = StaveComposer.compose(testRunes, StaveLayoutType.BINDRUNE, seed = 1234L)
+        val customTextFormula = "ᚨᛚᚢ ᚨᚢᛃᚨ ᛚᚨᚢᚲᚨᛞ"
+        val config = SketchConfig(
+            style = SketchStyle.SACRED_GOLD,
+            hasRunering = true,
+            frameText = customTextFormula
+        )
+        val svg = SvgStaveRenderer.renderSvg(stave, config)
+        assertTrue("SVG should contain custom frame text characters", svg.contains("ᚨ") && svg.contains("ᛚ") && svg.contains("ᚢ"))
+    }
+
+    @Test
     fun singleRuneIcon_strokeDataValidation_handlesSingleAndMultiPointStrokes() {
         val dotRune = Rune(
             id = "dot_rune",

@@ -44,13 +44,18 @@ class RuneViewModelTest {
     @After
     fun tearDown() {
         viewModel.viewModelScope.coroutineContext.cancelChildren()
+        testDispatcher.scheduler.advanceTimeBy(6000L)
+        testDispatcher.scheduler.advanceUntilIdle()
         Dispatchers.resetMain()
     }
 
     @Test
-    fun isGeminiConfigured_withValidCustomKey_returnsTrue() {
+    fun isGeminiConfigured_withValidCustomKey_returnsTrue() = runTest(testDispatcher) {
         val result = viewModel.isGeminiConfigured("custom_valid_api_key_123")
         assertTrue(result)
+        viewModel.viewModelScope.coroutineContext.cancelChildren()
+        testDispatcher.scheduler.advanceTimeBy(6000L)
+        testDispatcher.scheduler.advanceUntilIdle()
     }
 
     @Test
@@ -63,6 +68,7 @@ class RuneViewModelTest {
         assertFalse(result)
         collectJob.cancel()
         viewModel.viewModelScope.coroutineContext.cancelChildren()
+        testDispatcher.scheduler.advanceTimeBy(6000L)
         testDispatcher.scheduler.advanceUntilIdle()
     }
 
@@ -76,6 +82,7 @@ class RuneViewModelTest {
         assertFalse(result)
         collectJob.cancel()
         viewModel.viewModelScope.coroutineContext.cancelChildren()
+        testDispatcher.scheduler.advanceTimeBy(6000L)
         testDispatcher.scheduler.advanceUntilIdle()
     }
 
@@ -89,6 +96,7 @@ class RuneViewModelTest {
         assertFalse(result)
         collectJob.cancel()
         viewModel.viewModelScope.coroutineContext.cancelChildren()
+        testDispatcher.scheduler.advanceTimeBy(6000L)
         testDispatcher.scheduler.advanceUntilIdle()
     }
 
@@ -103,6 +111,7 @@ class RuneViewModelTest {
         assertTrue(result)
         collectJob.cancel()
         viewModel.viewModelScope.coroutineContext.cancelChildren()
+        testDispatcher.scheduler.advanceTimeBy(6000L)
         testDispatcher.scheduler.advanceUntilIdle()
     }
 
@@ -117,6 +126,7 @@ class RuneViewModelTest {
         assertTrue(result)
         collectJob.cancel()
         viewModel.viewModelScope.coroutineContext.cancelChildren()
+        testDispatcher.scheduler.advanceTimeBy(6000L)
         testDispatcher.scheduler.advanceUntilIdle()
     }
 
@@ -130,6 +140,7 @@ class RuneViewModelTest {
         assertTrue(result)
         collectJob.cancel()
         viewModel.viewModelScope.coroutineContext.cancelChildren()
+        testDispatcher.scheduler.advanceTimeBy(6000L)
         testDispatcher.scheduler.advanceUntilIdle()
     }
 
@@ -148,6 +159,7 @@ class RuneViewModelTest {
         assertFalse(result)
         collectJob.cancel()
         viewModel.viewModelScope.coroutineContext.cancelChildren()
+        testDispatcher.scheduler.advanceTimeBy(6000L)
         testDispatcher.scheduler.advanceUntilIdle()
     }
 }
