@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Brush
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.HistoryEdu
@@ -33,6 +34,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -240,6 +242,13 @@ fun LibraryScreen(
                 onValueChange = { searchQuery = it },
                 label = { Text("Поиск формулы или эпохи") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(Icons.Default.Clear, contentDescription = "Очистить поиск")
+                        }
+                    }
+                },
                 singleLine = true,
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth()
@@ -263,13 +272,42 @@ fun LibraryScreen(
             }
         }
 
-        items(filteredTemplates) { template ->
-            HistoricalTemplateCard(
-                template = template,
-                allRunes = allRunes,
-                onNavigateToSketch = onNavigateToSketch,
-                onNavigateToTryOn = onNavigateToTryOn
-            )
+        if (filteredTemplates.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = if (searchQuery.isNotBlank()) "Ничего не найдено по запросу «$searchQuery»" else "Нет ставов в категории «$selectedCategory»",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        OutlinedButton(
+                            onClick = {
+                                searchQuery = ""
+                                selectedCategory = "Все"
+                            },
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Сбросить фильтры")
+                        }
+                    }
+                }
+            }
+        } else {
+            items(filteredTemplates) { template ->
+                HistoricalTemplateCard(
+                    template = template,
+                    allRunes = allRunes,
+                    onNavigateToSketch = onNavigateToSketch,
+                    onNavigateToTryOn = onNavigateToTryOn
+                )
+            }
         }
 
         item {
