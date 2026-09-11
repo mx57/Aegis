@@ -282,4 +282,19 @@ class RunicStaveUnitTest {
         val multiPt = dotRune.strokes[1].points
         assertTrue(multiPt.all { it.x in 0f..100f && it.y in 0f..140f })
     }
+
+    @Test
+    fun svgGeneration_watercolorSplatter_rendersWashAndSplatterParticles() {
+        val stave = StaveComposer.compose(testRunes, StaveLayoutType.BINDRUNE, seed = 3030L)
+        val config = SketchConfig(
+            style = SketchStyle.WATERCOLOR_SPLATTER,
+            theme = com.example.engine.CanvasTheme.AURORA_NIGHT,
+            hasGlowEffect = true
+        )
+        val svg = SvgStaveRenderer.renderSvg(stave, config)
+        assertTrue("SVG should start with <svg", svg.startsWith("<svg"))
+        assertTrue("SVG should contain circles for watercolor background blobs", svg.contains("""r="145"""") || svg.contains("""r="115""""))
+        assertTrue("SVG should contain circle elements for ink splatter particles", svg.contains("<circle"))
+        assertTrue("SVG should end with </svg>", svg.trim().endsWith("</svg>"))
+    }
 }

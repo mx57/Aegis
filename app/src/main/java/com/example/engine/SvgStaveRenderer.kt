@@ -37,7 +37,8 @@ enum class SketchStyle(val titleRu: String, val descriptionRu: String) {
     AEGISHJALMUR("Шлем Ужаса", "Исландские гальдраставы, тройные вилы и защитные кресты"),
     DOTWORK("Сакральный Дотворк", "Сакральная геометрия, звездные точки и растушевка"),
     BLACKWORK("Блэкворк (Классик)", "Массивные контрастные линии, ромбы и стреловидные наконечники"),
-    STRICT("Строгий манускрипт", "Чистая геометрия, археологическая строгость линий")
+    STRICT("Строгий манускрипт", "Чистая геометрия, археологическая строгость линий"),
+    WATERCOLOR_SPLATTER("Акварельный гранж", "Живописные акварельные потёки, брызги туши и художественная растушёвка")
 }
 
 enum class FrameStyle(val titleRu: String) {
@@ -167,6 +168,7 @@ object SvgStaveRenderer {
                 SketchStyle.AEGISHJALMUR -> "#61AFEF"
                 SketchStyle.DOTWORK -> "#D8DEE9"
                 SketchStyle.BLACKWORK -> "#ECEFF4"
+                SketchStyle.WATERCOLOR_SPLATTER -> "#E2E8F0"
                 else -> theme.strokeHex
             }
             CanvasTheme.GRAPHITE_SKETCH -> theme.strokeHex
@@ -192,6 +194,7 @@ object SvgStaveRenderer {
             SketchStyle.SACRED_GOLD -> config.lineWidth * 0.95f
             SketchStyle.VALKYRIE_SILVER -> config.lineWidth * 0.90f
             SketchStyle.STRICT -> config.lineWidth * 0.85f
+            SketchStyle.WATERCOLOR_SPLATTER -> config.lineWidth * 1.10f
             else -> config.lineWidth
         }
 
@@ -234,6 +237,14 @@ object SvgStaveRenderer {
             sb.append("""  <rect width="100%" height="100%" fill="url(#bgVignette)"/>""").append("\n")
         } else {
             sb.append("""  <rect width="100%" height="100%" fill="$bgColor"/>""").append("\n")
+        }
+
+        // Watercolor wash background blobs (for Watercolor Splatter style)
+        if (config.style == SketchStyle.WATERCOLOR_SPLATTER && !config.isStencil) {
+            val washOpacity = "0.09"
+            sb.append("""  <circle cx="250" cy="250" r="145" fill="$strokeColor" opacity="$washOpacity" filter="url(#sacredGlow)"/>""").append("\n")
+            sb.append("""  <circle cx="225" cy="235" r="115" fill="${theme.accentHex}" opacity="0.08" filter="url(#sacredGlow)"/>""").append("\n")
+            sb.append("""  <circle cx="275" cy="265" r="100" fill="${theme.glowHex}" opacity="0.07" filter="url(#sacredGlow)"/>""").append("\n")
         }
 
         // Sacred Celestial Geometry background (for Sacred Gold style)
@@ -322,6 +333,9 @@ object SvgStaveRenderer {
                 SketchStyle.WOODCARVE -> {
                     // Double-carved stone incision with chiseled facets
                     renderCarvedStrokeSvg(sb, pts, strokeColor, strokeW)
+                }
+                SketchStyle.WATERCOLOR_SPLATTER -> {
+                    renderWatercolorStrokeSvg(sb, pts, strokeColor, strokeW, theme, prng)
                 }
                 else -> {
                     if (config.hasVolumetricShading && !config.isStencil) {
@@ -580,6 +594,32 @@ object SvgStaveRenderer {
         }
     }
 
+    private fun renderWatercolorStrokeSvg(sb: StringBuilder, pts: List<StrokePoint>, color: String, sw: Float, theme: CanvasTheme, prng: Random) {
+        val pathD = StringBuilder()
+        pathD.append("M ${pts[0].x.format()} ${pts[0].y.format()} ")
+        for (i in 1 until pts.size) {
+            pathD.append("L ${pts[i].x.format()} ${pts[i].y.format()} ")
+        }
+
+        // 1. Soft watercolor wash underlayer path
+        sb.append("""  <path d="$pathD" fill="none" stroke="${theme.accentHex}" stroke-width="${(sw * 2.2f).format()}" opacity="0.25" stroke-linecap="round" stroke-linejoin="round"/>""").append("\n")
+
+        // 2. Core watercolor stroke path
+        sb.append("""  <path d="$pathD" fill="none" stroke="$color" stroke-width="${sw.format()}" opacity="0.85" stroke-linecap="round" stroke-linejoin="round"/>""").append("\n")
+
+        // 3. Fine ink splatter particles along stroke points
+        for (pt in pts) {
+            val count = prng.nextInt(4) + 2
+            for (k in 0 until count) {
+                val dx = (prng.nextFloat() - 0.5f) * 24.0f
+                val dy = (prng.nextFloat() - 0.5f) * 24.0f
+                val r = (prng.nextFloat() * 1.8f + 0.7f).format()
+                val alpha = (prng.nextFloat() * 0.4f + 0.45f).format()
+                sb.append("""  <circle cx="${(pt.x + dx).format()}" cy="${(pt.y + dy).format()}" r="$r" fill="$color" opacity="$alpha"/>""").append("\n")
+            }
+        }
+    }
+
     private fun renderCarvedStrokeSvg(sb: StringBuilder, pts: List<StrokePoint>, color: String, sw: Float) {
         val pathD = StringBuilder()
         pathD.append("M ${pts[0].x.format()} ${pts[0].y.format()} ")
@@ -692,6 +732,7 @@ object SvgStaveRenderer {
                 SketchStyle.AEGISHJALMUR -> Color.parseColor("#61AFEF")
                 SketchStyle.DOTWORK -> Color.parseColor("#D8DEE9")
                 SketchStyle.BLACKWORK -> Color.parseColor("#ECEFF4")
+                SketchStyle.WATERCOLOR_SPLATTER -> Color.parseColor("#E2E8F0")
                 else -> Color.parseColor(theme.strokeHex)
             }
             CanvasTheme.GRAPHITE_SKETCH -> Color.parseColor(theme.strokeHex)
@@ -717,6 +758,7 @@ object SvgStaveRenderer {
             SketchStyle.SACRED_GOLD -> config.lineWidth * 0.95f
             SketchStyle.VALKYRIE_SILVER -> config.lineWidth * 0.90f
             SketchStyle.STRICT -> config.lineWidth * 0.85f
+            SketchStyle.WATERCOLOR_SPLATTER -> config.lineWidth * 1.10f
             else -> config.lineWidth
         } * scale
 
@@ -943,6 +985,25 @@ object SvgStaveRenderer {
             }
         }
 
+        // Watercolor wash background blobs (Watercolor Splatter style)
+        if (config.style == SketchStyle.WATERCOLOR_SPLATTER && !config.isStencil) {
+            val washPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = strokeColorInt
+                style = Paint.Style.FILL
+                alpha = 22
+            }
+            val accentWashPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = accentColorInt
+                style = Paint.Style.FILL
+                alpha = 20
+            }
+            val cx = 250f * scale
+            val cy = 250f * scale
+            canvas.drawCircle(cx, cy, 145f * scale, washPaint)
+            canvas.drawCircle(cx - 25f * scale, cy - 15f * scale, 115f * scale, accentWashPaint)
+            canvas.drawCircle(cx + 25f * scale, cy + 15f * scale, 100f * scale, washPaint)
+        }
+
         // Celestial Astrolabe background (Sacred Gold)
         if (config.style == SketchStyle.SACRED_GOLD && !config.isStencil) {
             val cx = 250f * scale
@@ -1148,6 +1209,45 @@ object SvgStaveRenderer {
                             val satPaint = Paint(fillPaint).apply { alpha = 190 }
                             canvas.drawCircle(jx, jy, 1.1f * scale, satPaint)
                         }
+                    }
+                }
+            } else if (config.style == SketchStyle.WATERCOLOR_SPLATTER) {
+                val path = Path().apply {
+                    moveTo(pts[0].x * scale, pts[0].y * scale)
+                    for (i in 1 until pts.size) {
+                        lineTo(pts[i].x * scale, pts[i].y * scale)
+                    }
+                }
+
+                // 1. Soft watercolor wash underlayer path
+                val washPathPaint = Paint(linePaint).apply {
+                    color = accentColorInt
+                    strokeWidth = effectiveStrokeWidth * 2.2f
+                    alpha = 60
+                }
+                canvas.drawPath(path, washPathPaint)
+
+                // 2. Core stroke path
+                val mainPathPaint = Paint(linePaint).apply {
+                    color = strokeColorInt
+                    strokeWidth = effectiveStrokeWidth
+                    alpha = 215
+                }
+                canvas.drawPath(path, mainPathPaint)
+
+                // 3. Ink splatter particles
+                val splatterPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = strokeColorInt
+                    style = Paint.Style.FILL
+                }
+                for (pt in pts) {
+                    val count = prng.nextInt(4) + 2
+                    for (k in 0 until count) {
+                        val dx = (prng.nextFloat() - 0.5f) * 24.0f * scale
+                        val dy = (prng.nextFloat() - 0.5f) * 24.0f * scale
+                        val r = (prng.nextFloat() * 1.8f + 0.7f) * scale
+                        splatterPaint.alpha = (prng.nextFloat() * 100 + 115).toInt()
+                        canvas.drawCircle(pt.x * scale + dx, pt.y * scale + dy, r, splatterPaint)
                     }
                 }
             } else {
