@@ -808,7 +808,8 @@ fun RunicCanvas(
                 )
             }
 
-            val totalRunes = ELDER_FUTHARK_RUNES.size
+            val ringChars = if (config.frameText.isNotBlank()) config.frameText.map { it.toString() } else ELDER_FUTHARK_RUNES
+            val totalRunes = ringChars.size
             val visibleRunes = if (currentProgress >= 1f) totalRunes else (runeringProgress * totalRunes).toInt().coerceIn(0, totalRunes)
 
             drawIntoCanvas { composeCanvas ->
@@ -857,7 +858,7 @@ fun RunicCanvas(
 
                 for (rIdx in 0 until visibleRunes) {
                     val deg = rIdx * (360f / totalRunes)
-                    val rune = ELDER_FUTHARK_RUNES[rIdx]
+                    val rune = ringChars[rIdx]
                     if (shadowTextPaint != null) {
                         composeCanvas.nativeCanvas.save()
                         composeCanvas.nativeCanvas.rotate(deg, cx, cy)

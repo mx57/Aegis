@@ -137,7 +137,8 @@ data class SketchConfig(
     val hasVolumetricShading: Boolean = true,
     val hasTextureGrain: Boolean = true,
     val runeChiselDepth: Float = 1.2f,
-    val elementScale: Float = 1.0f // 0.4f..1.8f: Масштаб внутренних элементов эскиза без нарушения композиции
+    val elementScale: Float = 1.0f, // 0.4f..1.8f: Масштаб внутренних элементов эскиза без нарушения композиции
+    val frameText: String = "" // Пользовательский текст или руническая формула на поясе рамы по кругу
 ) {
     val effectiveTheme: CanvasTheme
         get() = if (isStencil) CanvasTheme.STENCIL else theme
@@ -451,11 +452,12 @@ object SvgStaveRenderer {
             sb.append("""  <circle cx="249.6" cy="249.5" r="$rOuter" fill="none" stroke="${theme.highlightHex}" stroke-width="${(baseWidth * 0.22f).coerceAtLeast(0.5f).format()}" opacity="0.75"/>""").append("\n")
         }
 
-        // 3. The 24 Elder Futhark runes in circular relief
-        val totalRunes = ELDER_FUTHARK_RUNES.size
+        // 3. Circular text/runes on the frame ring
+        val ringChars = if (config.frameText.isNotBlank()) config.frameText.map { it.toString() } else ELDER_FUTHARK_RUNES
+        val totalRunes = ringChars.size
         for (i in 0 until totalRunes) {
             val deg = i * (360f / totalRunes)
-            val rune = ELDER_FUTHARK_RUNES[i]
+            val rune = ringChars[i]
             if (config.hasVolumetricShading && !config.isStencil) {
                 sb.append("""  <text x="250" y="${(250 - rText + 5.5f).format()}" transform="rotate(${deg.format()}, 250, 250) translate(1.0, 1.4)" text-anchor="middle" font-size="14" font-family="serif" font-weight="bold" fill="${theme.shadowHex}" opacity="0.70">$rune</text>""").append("\n")
             }
@@ -1129,10 +1131,11 @@ object SvgStaveRenderer {
                 alpha = 200
             }
 
-            val totalRunes = ELDER_FUTHARK_RUNES.size
+            val ringChars = if (config.frameText.isNotBlank()) config.frameText.map { it.toString() } else ELDER_FUTHARK_RUNES
+            val totalRunes = ringChars.size
             for (i in 0 until totalRunes) {
                 val deg = i * (360f / totalRunes)
-                val rune = ELDER_FUTHARK_RUNES[i]
+                val rune = ringChars[i]
                 canvas.save()
                 canvas.rotate(deg, cx, cy)
                 if (isVolumetric) {
