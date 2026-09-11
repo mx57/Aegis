@@ -184,6 +184,24 @@ class OrnamentGeometryTest {
     }
 
     @Test
+    fun generateCenterEmblem_aegishjalmurCore_generatesChiseledTridentHubAndOrnaments() {
+        val aegisCore = OrnamentGeometry.generateCenterEmblem(com.example.engine.CenterEmblem.AEGISHJALMUR_CORE, 3.0f)
+
+        // Aegishjalmur Core should contain solar guard circles, 8 chiseled radial rays with double crossbars & trident crowns
+        assertTrue("Aegishjalmur Core should generate solar guard circles and forged node studs", aegisCore.circles.size >= 20)
+        // 8 rays x (2 stem segments + 2 crossbars + 2 trident prongs) = 48 lines
+        assertTrue("Aegishjalmur Core should generate 8 rays with double crossbars and trident crowns", aegisCore.lines.size >= 40)
+
+        // Check that drop shadow circle is present with alpha 0.22f
+        val dropShadowCircle = aegisCore.circles.find { it.alpha < 0.3f && !it.isFilled }
+        assertTrue("Aegishjalmur Core should generate ambient drop shadow ring", dropShadowCircle != null)
+
+        // Check central solar orb and catchlight
+        val filledHubCircles = aegisCore.circles.filter { it.isFilled }
+        assertTrue("Aegishjalmur Core should generate central solar orb and forged node studs", filledHubCircles.size >= 25)
+    }
+
+    @Test
     fun scaleOrnaments_coercesScaleFactorBoundaries() {
         val circle = CircleGeom(cx = 250f, cy = 250f, radius = 100f)
         val ornaments = GeneratedOrnaments(circles = listOf(circle))

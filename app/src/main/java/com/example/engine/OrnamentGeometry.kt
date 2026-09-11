@@ -799,17 +799,84 @@ object OrnamentGeometry {
             }
 
             CenterEmblem.AEGISHJALMUR_CORE -> {
-                // Central 8-spoke sacred hub of the Helm of Awe
-                circles.add(CircleGeom(cx, cy, 14f, isFilled = false, widthFactor = 1.4f))
-                circles.add(CircleGeom(cx, cy, 6f, isFilled = false, widthFactor = 0.8f))
-                circles.add(CircleGeom(cx, cy, 2.2f, isFilled = true))
+                // Sacred 8-spoke Helm of Awe (Aegishjalmur) Central Core:
+                // Multi-layered solar hub with ambient drop shadow, dual guard rings,
+                // 8 chiseled radial rays with double protective Algiz crossbars,
+                // 3-prong trident crowns at the ray tips with forged nodes, and intermediate planetary studs.
 
+                // 1. Ambient Drop Shadow underneath central solar hub
+                circles.add(CircleGeom(cx + 1.2f, cy + 1.6f, 16f, isFilled = false, widthFactor = 1.5f, alpha = 0.22f))
+
+                // 2. Central Concentric Guard Rings & Solar Core Orb
+                circles.add(CircleGeom(cx, cy, 16f, isFilled = false, widthFactor = 1.35f))
+                circles.add(CircleGeom(cx, cy, 8f, isFilled = false, widthFactor = 0.85f, alpha = 0.70f))
+                circles.add(CircleGeom(cx, cy, 3.2f, isFilled = true))
+                circles.add(CircleGeom(cx - 0.6f, cy - 0.7f, 0.9f, isFilled = true)) // Specular catchlight
+
+                // 3. 8 Radial Rays with Transverse Crossbars and Trident Crowns
                 for (i in 0 until 8) {
                     val a = (2 * PI * i / 8).toFloat()
                     val cosA = cos(a)
                     val sinA = sin(a)
-                    lines.add(LineSegmentGeom(cx + 14f * cosA, cy + 14f * sinA, cx + 24f * cosA, cy + 24f * sinA, widthFactor = 1.2f))
-                    circles.add(CircleGeom(cx + 25f * cosA, cy + 25f * sinA, 2.0f, isFilled = true))
+                    val perpX = -sinA
+                    val perpY = cosA
+
+                    val rStart = 16f
+                    val rCross1 = 23f
+                    val rCross2 = 30f
+                    val rCrownBase = 35f
+                    val rTip = 42f
+
+                    // Primary Chiseled Stem Line
+                    val pStart = StrokePoint(cx + rStart * cosA, cy + rStart * sinA)
+                    val pCrownBase = StrokePoint(cx + rCrownBase * cosA, cy + rCrownBase * sinA)
+                    val pTip = StrokePoint(cx + rTip * cosA, cy + rTip * sinA)
+
+                    lines.add(LineSegmentGeom(pStart.x, pStart.y, pCrownBase.x, pCrownBase.y, widthFactor = 1.40f))
+                    lines.add(LineSegmentGeom(pCrownBase.x, pCrownBase.y, pTip.x, pTip.y, widthFactor = 1.30f))
+
+                    // Inner Protective Crossbar (Algiz notch 1)
+                    val c1X = cx + rCross1 * cosA
+                    val c1Y = cy + rCross1 * sinA
+                    lines.add(
+                        LineSegmentGeom(
+                            c1X - perpX * 5.0f, c1Y - perpY * 5.0f,
+                            c1X + perpX * 5.0f, c1Y + perpY * 5.0f,
+                            widthFactor = 1.15f
+                        )
+                    )
+
+                    // Outer Protective Crossbar (Algiz notch 2)
+                    val c2X = cx + rCross2 * cosA
+                    val c2Y = cy + rCross2 * sinA
+                    lines.add(
+                        LineSegmentGeom(
+                            c2X - perpX * 3.5f, c2Y - perpY * 3.5f,
+                            c2X + perpX * 3.5f, c2Y + perpY * 3.5f,
+                            widthFactor = 1.10f
+                        )
+                    )
+
+                    // Trident Crown (Algiz 3-prong fork at tip)
+                    val forkLen = 6.5f
+                    val forkSpread = 5.5f
+                    val leftProng = StrokePoint(pCrownBase.x + cosA * forkLen + perpX * forkSpread, pCrownBase.y + sinA * forkLen + perpY * forkSpread)
+                    val rightProng = StrokePoint(pCrownBase.x + cosA * forkLen - perpX * forkSpread, pCrownBase.y + sinA * forkLen - perpY * forkSpread)
+
+                    lines.add(LineSegmentGeom(pCrownBase.x, pCrownBase.y, leftProng.x, leftProng.y, widthFactor = 1.15f))
+                    lines.add(LineSegmentGeom(pCrownBase.x, pCrownBase.y, rightProng.x, rightProng.y, widthFactor = 1.15f))
+
+                    // Forged Node Studs at Trident Tips
+                    circles.add(CircleGeom(pTip.x, pTip.y, 2.0f, isFilled = true))
+                    circles.add(CircleGeom(leftProng.x, leftProng.y, 1.5f, isFilled = true))
+                    circles.add(CircleGeom(rightProng.x, rightProng.y, 1.5f, isFilled = true))
+                }
+
+                // 4. Intermediate Sacred Inter-Ray Planetary Nodes
+                for (i in 0 until 8) {
+                    val midA = (2 * PI * (i + 0.5f) / 8).toFloat()
+                    val midR = 12f
+                    circles.add(CircleGeom(cx + midR * cos(midA), cy + midR * sin(midA), 1.8f, isFilled = true))
                 }
             }
 
