@@ -190,6 +190,7 @@ fun SketchScreen(
     var hasTextureGrain by remember { mutableStateOf(true) }
     var runeChiselDepth by remember { mutableFloatStateOf(1.0f) }
     var elementScale by remember { mutableFloatStateOf(1.0f) }
+    var frameText by remember { mutableStateOf("") }
     var isStencil by remember { mutableStateOf(false) }
     var seed by remember { mutableLongStateOf(4242L) }
     var animTriggerKey by remember { mutableIntStateOf(0) }
@@ -274,7 +275,7 @@ fun SketchScreen(
     val config = remember(
         selectedStyle, selectedTheme, lineWidth, hasFrameCircle, frameStyle, finialType, centerEmblem,
         cornerStyle, hasSymmetryAccents, hasBranchNotches, hasRayBurst, hasRunering, hasGlowEffect,
-        wobbleAmount, seed, isStencil, hasVolumetricShading, hasTextureGrain, runeChiselDepth, elementScale
+        wobbleAmount, seed, isStencil, hasVolumetricShading, hasTextureGrain, runeChiselDepth, elementScale, frameText
     ) {
         SketchConfig(
             style = selectedStyle,
@@ -296,7 +297,8 @@ fun SketchScreen(
             hasVolumetricShading = hasVolumetricShading,
             hasTextureGrain = hasTextureGrain,
             runeChiselDepth = runeChiselDepth,
-            elementScale = elementScale
+            elementScale = elementScale,
+            frameText = frameText
         )
     }
 
@@ -1579,7 +1581,7 @@ fun SketchScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("Кольцо Старшего Футарка (24 руны)", style = MaterialTheme.typography.bodySmall)
+                                Text("Кольцо рамы / Текст по кругу", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
                                 Switch(
                                     checked = hasRunering,
                                     onCheckedChange = {
@@ -1587,6 +1589,66 @@ fun SketchScreen(
                                         animTriggerKey++
                                     }
                                 )
+                            }
+
+                            if (hasRunering) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Текст на поясе рамы (по кругу):",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                OutlinedTextField(
+                                    value = frameText,
+                                    onValueChange = {
+                                        frameText = it
+                                        animTriggerKey++
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .testTag("frame_text_input"),
+                                    placeholder = { Text("По умолчанию: 24 руны Футарка") },
+                                    singleLine = true,
+                                    trailingIcon = {
+                                        if (frameText.isNotEmpty()) {
+                                            IconButton(onClick = { frameText = ""; animTriggerKey++ }) {
+                                                Icon(Icons.Default.Close, contentDescription = "Очистить текст")
+                                            }
+                                        }
+                                    }
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "Быстрые сакральные формулы:",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    listOf(
+                                        "⚡ ALU (Защита)" to "ᚨᛚᚢ",
+                                        "✨ AUJA (Удача)" to "ᚨᚢᛃᚨ",
+                                        "👑 LAUKAR (Сила)" to "ᛚᚨᚢᚲᚨᛞ",
+                                        "☀️ SUNNA (Солнце)" to "ᛋᚢᚾᚾᚨ",
+                                        "🛡️ OTHALA (Род)" to "ᛟᚦᚨᛚᚨ",
+                                        "ᚠᚢᚦᚨᚱᚲ (Футарк)" to ""
+                                    ).forEach { (label, presetFormula) ->
+                                        FilterChip(
+                                            selected = frameText == presetFormula,
+                                            onClick = {
+                                                frameText = presetFormula
+                                                animTriggerKey++
+                                            },
+                                            label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+                                            shape = RoundedCornerShape(8.dp)
+                                        )
+                                    }
+                                }
                             }
 
                             Row(
