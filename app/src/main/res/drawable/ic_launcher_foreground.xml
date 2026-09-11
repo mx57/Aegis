@@ -53,7 +53,7 @@
 
 
     <!-- LAYER 2: Main Volumetric Metallic Gold Body -->
-    <!-- Center nexus outer circle -->
+    <!-- Center nexus outer circle (Outer Guard Ring) -->
     <path
         android:fillColor="#00000000"
         android:strokeWidth="2.2"
@@ -74,7 +74,27 @@
         </aapt:attr>
     </path>
 
-    <!-- Center nexus inner orb -->
+    <!-- Center nexus inner filigree micro-orbit (High-precision 3D Concentric Ring) -->
+    <!-- Adds metallic depth and structural unity between 4 main axes and central orb -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeWidth="0.8"
+        android:pathData="M 54, 54 m -5.5, 0 a 5.5,5.5 0 1,0 11,0 a 5.5,5.5 0 1,0 -11,0">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="48"
+                android:startY="48"
+                android:endX="60"
+                android:endY="60"
+                android:type="linear">
+                <item android:color="#FFFDF0" android:offset="0.0" />
+                <item android:color="#FFC857" android:offset="0.5" />
+                <item android:color="#D49A2A" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Center nexus inner orb (Volumetric Sphere Core) -->
     <path android:pathData="M 54, 54 m -3.2, 0 a 3.2,3.2 0 1,0 6.4,0 a 3.2,3.2 0 1,0 -6.4,0">
         <aapt:attr name="android:fillColor">
             <gradient
