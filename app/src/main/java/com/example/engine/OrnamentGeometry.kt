@@ -1393,7 +1393,11 @@ object OrnamentGeometry {
         val step = (2 * PI / loops).toFloat()
         val ribbonWidth = 6.5f
 
-        // Interlaced Celtic Braid with dual-edge ribbon and dark cross-hatched recesses
+        // Interlaced Celtic Braid with 3D multi-layer volumetric relief:
+        // 1. Ambient drop shadow underlays under both interwoven wave strands (creates background separation)
+        // 2. Dual outer and inner forged boundary rails for each strand
+        // 3. Central longitudinal ridge lines (specular bevel highlight) catching metallic golden reflection
+        // 4. Dark cross-hatched recess voids and apex node studs
         for (i in 0 until loops) {
             val a1 = i * step
             val a2 = (i + 1) * step
@@ -1413,8 +1417,23 @@ object OrnamentGeometry {
             val pMidB = StrokePoint(cx + (rOut + ribbonWidth / 2f) * cos(aMid), cy + (rOut + ribbonWidth / 2f) * sin(aMid))
             val p2B = StrokePoint(cx + (rIn + ribbonWidth / 2f) * cos(a2), cy + (rIn + ribbonWidth / 2f) * sin(a2))
 
+            // Center spine point for Strand 1
+            val p1C = StrokePoint(cx + rIn * cos(a1), cy + rIn * sin(a1))
+            val pMidC = StrokePoint(cx + rOut * cos(aMid), cy + rOut * sin(aMid))
+            val p2C = StrokePoint(cx + rIn * cos(a2), cy + rIn * sin(a2))
+
+            // 1a. Ambient Drop Shadow under Ribbon Strand 1
+            val shadowPath1 = listOf(
+                StrokePoint(p1A.x + 2.2f, p1A.y + 2.8f),
+                StrokePoint(pMidA.x + 2.2f, pMidA.y + 2.8f),
+                StrokePoint(p2A.x + 2.2f, p2A.y + 2.8f)
+            )
+            paths.add(PathGeom(shadowPath1, isClosed = false, widthFactor = 1.35f, alpha = 0.22f))
+
+            // 1b. Boundary Rails & Central Bevel Ridge Line for Strand 1
             paths.add(PathGeom(listOf(p1A, pMidA, p2A), widthFactor = 0.85f))
             paths.add(PathGeom(listOf(p1B, pMidB, p2B), widthFactor = 0.85f))
+            paths.add(PathGeom(listOf(p1C, pMidC, p2C), widthFactor = 0.45f, alpha = 0.65f)) // Specular center ridge
 
             // Ribbon Strand 2 (Intersecting counter wave)
             val c1A = StrokePoint(cx + (rOut - ribbonWidth / 2f) * cos(a1), cy + (rOut - ribbonWidth / 2f) * sin(a1))
@@ -1425,8 +1444,23 @@ object OrnamentGeometry {
             val cMidB = StrokePoint(cx + (rIn - ribbonWidth / 2f) * cos(aMid), cy + (rIn - ribbonWidth / 2f) * sin(aMid))
             val c2B = StrokePoint(cx + (rOut + ribbonWidth / 2f) * cos(a2), cy + (rOut + ribbonWidth / 2f) * sin(a2))
 
+            // Center spine point for Strand 2
+            val c1C = StrokePoint(cx + rOut * cos(a1), cy + rOut * sin(a1))
+            val cMidC = StrokePoint(cx + rIn * cos(aMid), cy + rIn * sin(aMid))
+            val c2C = StrokePoint(cx + rOut * cos(a2), cy + rOut * sin(a2))
+
+            // 2a. Ambient Drop Shadow under Ribbon Strand 2
+            val shadowPath2 = listOf(
+                StrokePoint(c1A.x + 2.2f, c1A.y + 2.8f),
+                StrokePoint(cMidA.x + 2.2f, cMidA.y + 2.8f),
+                StrokePoint(c2A.x + 2.2f, c2A.y + 2.8f)
+            )
+            paths.add(PathGeom(shadowPath2, isClosed = false, widthFactor = 1.35f, alpha = 0.22f))
+
+            // 2b. Boundary Rails & Central Bevel Ridge Line for Strand 2
             paths.add(PathGeom(listOf(c1A, cMidA, c2A), widthFactor = 0.85f))
             paths.add(PathGeom(listOf(c1B, cMidB, c2B), widthFactor = 0.85f))
+            paths.add(PathGeom(listOf(c1C, cMidC, c2C), widthFactor = 0.45f, alpha = 0.65f)) // Specular center ridge
 
             // Dark Recess Cross-Hatching in the voids between ribbons (creates rich depth as in photo)
             val voidCenter = StrokePoint(cx + rMid * cos(aMid), cy + rMid * sin(aMid))
