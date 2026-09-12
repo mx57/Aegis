@@ -35,10 +35,12 @@ class RuneViewModelTest {
     private lateinit var viewModel: RuneViewModel
 
     @Before
-    fun setUp() {
+    fun setUp() = runTest(testDispatcher) {
         Dispatchers.setMain(testDispatcher)
         application = ApplicationProvider.getApplicationContext()
         viewModel = RuneViewModel(application)
+        viewModel.appSettings.setGeminiApiKey("")
+        testDispatcher.scheduler.advanceUntilIdle()
     }
 
     @After
