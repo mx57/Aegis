@@ -10,11 +10,8 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
-import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertFalse
@@ -44,7 +41,7 @@ class RuneViewModelTest {
     @After
     fun tearDown() {
         viewModel.viewModelScope.coroutineContext.cancelChildren()
-        testDispatcher.scheduler.advanceTimeBy(6000L)
+        testDispatcher.scheduler.advanceTimeBy(10000L)
         testDispatcher.scheduler.advanceUntilIdle()
         Dispatchers.resetMain()
     }
