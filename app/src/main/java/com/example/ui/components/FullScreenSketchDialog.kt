@@ -70,7 +70,8 @@ fun FullScreenSketchDialog(
     onDismiss: () -> Unit,
     onReplayAnimation: () -> Unit,
     onExportPng: (() -> Unit)? = null,
-    onExportSvg: (() -> Unit)? = null
+    onExportSvg: (() -> Unit)? = null,
+    onExportPdf: (() -> Unit)? = null
 ) {
     Dialog(
         onDismissRequest = onDismiss,
@@ -296,6 +297,18 @@ fun FullScreenSketchDialog(
                             Icon(Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(15.dp))
                             Spacer(modifier = Modifier.width(5.dp))
                             Text("SVG вектор", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+
+                    if (onExportPdf != null) {
+                        OutlinedButton(
+                            onClick = onExportPdf,
+                            shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                        ) {
+                            Icon(Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(15.dp))
+                            Spacer(modifier = Modifier.width(5.dp))
+                            Text("PDF A4", style = MaterialTheme.typography.labelMedium)
                         }
                     }
 

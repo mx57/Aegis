@@ -45,6 +45,7 @@ import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Straighten
@@ -117,6 +118,7 @@ import com.example.engine.SketchStyle
 import com.example.engine.StaveComposer
 import com.example.engine.StaveLayoutType
 import com.example.engine.SvgStaveRenderer
+import com.example.engine.export.PdfStaveExporter
 import com.example.ui.components.FullScreenArtworkDialog
 import com.example.ui.components.FullScreenSketchDialog
 import com.example.ui.components.RunicCanvas
@@ -351,6 +353,41 @@ fun SketchScreen(
         }
     }
 
+    fun exportPdf() {
+        if (isExporting) return
+        isExporting = true
+        coroutineScope.launch {
+            try {
+                val staveTitle = if (runes.isNotEmpty()) "${selectedLayout.titleRu} (${runes.joinToString(" • ") { it.nameRu }})" else selectedLayout.titleRu
+                val result = PdfStaveExporter.generateA4Pdf(
+                    context = context,
+                    stave = composedStave,
+                    config = config,
+                    runes = runes,
+                    title = staveTitle,
+                    layoutTitleRu = selectedLayout.titleRu,
+                    styleTitleRu = selectedStyle.titleRu
+                )
+
+                result.onSuccess { file ->
+                    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "application/pdf"
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    context.startActivity(Intent.createChooser(shareIntent, "Поделиться PDF для печати (A4)"))
+                }.onFailure { ex ->
+                    Toast.makeText(context, "Ошибка PDF: ${ex.message}", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Ошибка PDF: ${e.message}", Toast.LENGTH_SHORT).show()
+            } finally {
+                isExporting = false
+            }
+        }
+    }
+
     if (isFullScreenOpen) {
         FullScreenSketchDialog(
             stave = composedStave,
@@ -362,7 +399,8 @@ fun SketchScreen(
             onDismiss = { isFullScreenOpen = false },
             onReplayAnimation = { animTriggerKey++ },
             onExportPng = { exportPng(targetResolution) },
-            onExportSvg = { exportSvg() }
+            onExportSvg = { exportSvg() },
+            onExportPdf = { exportPdf() }
         )
     }
 
@@ -1719,15 +1757,15 @@ fun SketchScreen(
                                 Button(
                                     onClick = { exportPng(targetResolution) },
                                     shape = RoundedCornerShape(12.dp),
-                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 6.dp),
                                     modifier = Modifier.weight(1f),
                                     enabled = !isExporting
                                 ) {
                                     if (isExporting) {
                                         CircularProgressIndicator(modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.onPrimary)
                                     } else {
-                                        Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(15.dp))
-                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(14.dp))
+                                        Spacer(modifier = Modifier.width(3.dp))
                                         Text("PNG (${targetResolution})", style = MaterialTheme.typography.labelMedium)
                                     }
                                 }
@@ -1735,13 +1773,26 @@ fun SketchScreen(
                                 OutlinedButton(
                                     onClick = { exportSvg() },
                                     shape = RoundedCornerShape(12.dp),
-                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 6.dp),
                                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    Icon(Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(15.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(14.dp))
+                                    Spacer(modifier = Modifier.width(3.dp))
                                     Text("SVG вектор", style = MaterialTheme.typography.labelMedium)
+                                }
+
+                                OutlinedButton(
+                                    onClick = { exportPdf() },
+                                    shape = RoundedCornerShape(12.dp),
+                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                                    modifier = Modifier.weight(1f),
+                                    enabled = !isExporting
+                                ) {
+                                    Icon(Icons.Default.PictureAsPdf, contentDescription = null, modifier = Modifier.size(14.dp))
+                                    Spacer(modifier = Modifier.width(3.dp))
+                                    Text("PDF (A4)", style = MaterialTheme.typography.labelMedium)
                                 }
                             }
 
@@ -1849,6 +1900,18 @@ fun SketchScreen(
                         Icon(Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("SVG", style = MaterialTheme.typography.labelSmall)
+                    }
+
+                    OutlinedButton(
+                        onClick = { exportPdf() },
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        modifier = Modifier.weight(0.9f),
+                        enabled = !isExporting
+                    ) {
+                        Icon(Icons.Default.PictureAsPdf, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("PDF", style = MaterialTheme.typography.labelSmall)
                     }
                 }
             }
