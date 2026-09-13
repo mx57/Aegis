@@ -30,6 +30,9 @@ class LauncherIconDrawableTest {
 
             assertTrue("Bitmap width should be 108", bitmap.width == 108)
             assertTrue("Bitmap height should be 108", bitmap.height == 108)
+
+            // Confirm drawable drawing execution without throwing exceptions
+            d.draw(canvas)
         }
     }
 
