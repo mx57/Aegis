@@ -765,6 +765,33 @@ fun RunicCanvas(
             val rText = 231f * scale
             val ringAlpha = 0.65f * runeringProgress
 
+            // 72 astrolabe micro-ticks graduations along perimeter
+            val visibleTicks = if (currentProgress >= 1f) 72 else (runeringProgress * 72).toInt().coerceIn(0, 72)
+            for (i in 0 until visibleTicks) {
+                val a = (2 * PI * i / 72).toFloat()
+                val cosA = cos(a)
+                val sinA = sin(a)
+                val isMajor = i % 6 == 0
+                val tR1 = (if (isMajor) 241f else 244.5f) * scale
+                val tR2 = 248.5f * scale
+                val tSw = (if (isMajor) effectiveStrokeWidth * 0.40f else effectiveStrokeWidth * 0.25f).coerceAtLeast(0.7f)
+                val tAlpha = (if (isMajor) 0.80f else 0.45f) * runeringProgress
+                drawLine(
+                    color = strokeColor.copy(alpha = tAlpha),
+                    start = Offset(cx + tR1 * cosA, cy + tR1 * sinA),
+                    end = Offset(cx + tR2 * cosA, cy + tR2 * sinA),
+                    strokeWidth = tSw,
+                    cap = StrokeCap.Round
+                )
+                if (isMajor) {
+                    drawCircle(
+                        color = strokeColor.copy(alpha = 0.85f * runeringProgress),
+                        radius = 1.2f * scale,
+                        center = Offset(cx + 250.5f * scale * cosA, cy + 250.5f * scale * sinA)
+                    )
+                }
+            }
+
             if (isVolumetric) {
                 drawCircle(
                     color = shadowColor.copy(alpha = 0.40f * runeringProgress),

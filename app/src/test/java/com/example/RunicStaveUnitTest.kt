@@ -14,7 +14,12 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [36])
 class RunicStaveUnitTest {
 
     private lateinit var testRunes: List<Rune>
@@ -263,6 +268,24 @@ class RunicStaveUnitTest {
         )
         val svg = SvgStaveRenderer.renderSvg(stave, config)
         assertTrue("SVG should contain custom frame text characters", svg.contains("ᚨ") && svg.contains("ᛚ") && svg.contains("ᚢ"))
+    }
+
+    @Test
+    fun testFrameTextCustomInscriptionInSvgAndBitmap() = kotlinx.coroutines.runBlocking {
+        val stave = StaveComposer.compose(testRunes, StaveLayoutType.SOLAR_12_RAY, seed = 9999L)
+        val customInscription = "ALU ᚨᛚᚢ"
+        val config = SketchConfig(
+            style = SketchStyle.ORNAMENTAL,
+            hasRunering = true,
+            frameText = customInscription
+        )
+        val svg = SvgStaveRenderer.renderSvg(stave, config)
+        assertTrue("SVG should contain custom text ALU", svg.contains("A") && svg.contains("L") && svg.contains("U"))
+        assertTrue("SVG should contain rune characters ᚨ ᛚ ᚢ", svg.contains("ᚨ") && svg.contains("ᛚ") && svg.contains("ᚢ"))
+
+        val bitmap = SvgStaveRenderer.renderToBitmap(stave, config, targetSize = 512)
+        assertEquals(512, bitmap.width)
+        assertEquals(512, bitmap.height)
     }
 
     @Test
