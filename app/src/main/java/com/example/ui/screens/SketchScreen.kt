@@ -195,6 +195,7 @@ fun SketchScreen(
     var seed by remember { mutableLongStateOf(4242L) }
     var animTriggerKey by remember { mutableIntStateOf(0) }
     var targetResolution by remember { mutableIntStateOf(2048) }
+    var printSizeCm by remember { mutableFloatStateOf(12.0f) }
     var isExporting by remember { mutableStateOf(false) }
     var isFullScreenOpen by remember { mutableStateOf(false) }
     var activeTab by remember { mutableIntStateOf(0) }
@@ -327,6 +328,28 @@ fun SketchScreen(
                 context.startActivity(Intent.createChooser(shareIntent, "Поделиться эскизом PNG"))
             } catch (e: Exception) {
                 Toast.makeText(context, "Ошибка экспорта: ${e.message}", Toast.LENGTH_SHORT).show()
+            } finally {
+                isExporting = false
+            }
+        }
+    }
+
+    fun exportPdf() {
+        if (isExporting) return
+        isExporting = true
+        coroutineScope.launch {
+            try {
+                val pdfFile = com.example.engine.PdfStaveExporter.generateA4Pdf(
+                    context = context,
+                    stave = composedStave,
+                    config = config,
+                    runes = runes,
+                    layoutTitle = selectedLayout.titleRu,
+                    targetSizeCm = printSizeCm
+                )
+                com.example.engine.PdfStaveExporter.sharePdf(context, pdfFile)
+            } catch (e: Exception) {
+                Toast.makeText(context, "Ошибка PDF: ${e.message}", Toast.LENGTH_SHORT).show()
             } finally {
                 isExporting = false
             }
@@ -1743,6 +1766,50 @@ fun SketchScreen(
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text("SVG вектор", style = MaterialTheme.typography.labelMedium)
                                 }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            Text(
+                                text = "Печать A4 PDF (масштаб 1:1 для трансфера):",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                listOf(8.0f to "8 см", 10.0f to "10 см", 12.0f to "12 см", 15.0f to "15 см").forEach { (sizeVal, label) ->
+                                    FilterChip(
+                                        selected = Math.abs(printSizeCm - sizeVal) < 0.1f,
+                                        onClick = { printSizeCm = sizeVal },
+                                        shape = RoundedCornerShape(12.dp),
+                                        label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            OutlinedButton(
+                                onClick = { exportPdf() },
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("export_pdf_button"),
+                                enabled = !isExporting
+                            ) {
+                                Icon(Icons.Default.FileDownload, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("PDF A4 (${String.format(java.util.Locale.US, "%.0f", printSizeCm)} см 1:1 Печать)", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                             }
 
                             Spacer(modifier = Modifier.height(8.dp))
