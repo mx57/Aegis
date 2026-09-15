@@ -757,17 +757,103 @@ object OrnamentGeometry {
             }
 
             CenterEmblem.SOLAR_CROSS -> {
-                // Solar Cross / Sun wheel
-                val r = 18f
-                circles.add(CircleGeom(cx, cy, r, isFilled = false, widthFactor = 1.4f))
-                lines.add(LineSegmentGeom(cx - r - 8f, cy, cx + r + 8f, cy, widthFactor = 1.4f))
-                lines.add(LineSegmentGeom(cx, cy - r - 8f, cx, cy + r + 8f, widthFactor = 1.4f))
-                // 4 solar quadrant dots
-                val dotDist = 9f
-                circles.add(CircleGeom(cx - dotDist, cy - dotDist, 1.8f, isFilled = true))
-                circles.add(CircleGeom(cx + dotDist, cy - dotDist, 1.8f, isFilled = true))
-                circles.add(CircleGeom(cx - dotDist, cy + dotDist, 1.8f, isFilled = true))
-                circles.add(CircleGeom(cx + dotDist, cy + dotDist, 1.8f, isFilled = true))
+                // Sacred 3D Solar Cross / Sun Wheel Astrolabe
+                // Multi-layered geometry with ambient drop shadow, double concentric guard rings,
+                // 12 solar astrolabe tick marks, central solar core orb with catchlight,
+                // 4 chiseled cardinal beams with forged diamond terminals,
+                // and 4 diagonal solar flare rays with quadrant studs.
+
+                val rOuter = 20f
+                val rInner = 12f
+                val rBeamExt = 28f
+
+                // 1. Ambient Drop Shadow underneath outer ring and cardinal beams
+                circles.add(CircleGeom(cx + 1.2f, cy + 1.6f, rOuter, isFilled = false, widthFactor = 1.4f, alpha = 0.22f))
+                circles.add(CircleGeom(cx + 1.2f, cy + 1.6f, rInner, isFilled = false, widthFactor = 0.8f, alpha = 0.22f))
+                lines.add(LineSegmentGeom(cx - rBeamExt + 1.2f, cy + 1.6f, cx + rBeamExt + 1.2f, cy + 1.6f, widthFactor = 1.4f, alpha = 0.22f))
+                lines.add(LineSegmentGeom(cx + 1.2f, cy - rBeamExt + 1.6f, cx + 1.2f, cy + rBeamExt + 1.6f, widthFactor = 1.4f, alpha = 0.22f))
+
+                // 2. Outer Guard Ring & Concentric Inner Astrolabe Halo Ring
+                circles.add(CircleGeom(cx, cy, rOuter, isFilled = false, widthFactor = 1.4f))
+                circles.add(CircleGeom(cx, cy, rInner, isFilled = false, widthFactor = 0.8f, alpha = 0.85f))
+
+                // 12 Solar Astrolabe Tick Marks between inner and outer rings
+                for (i in 0 until 12) {
+                    val angle = (2 * PI * i / 12).toFloat()
+                    val cosA = cos(angle)
+                    val sinA = sin(angle)
+                    lines.add(
+                        LineSegmentGeom(
+                            cx + rInner * cosA, cy + rInner * sinA,
+                            cx + rOuter * cosA, cy + rOuter * sinA,
+                            widthFactor = if (i % 3 == 0) 1.2f else 0.65f,
+                            alpha = if (i % 3 == 0) 0.95f else 0.75f
+                        )
+                    )
+                }
+
+                // 3. Central Solar Core Orb with Specular Catchlight
+                circles.add(CircleGeom(cx, cy, 3.2f, isFilled = true))
+                circles.add(CircleGeom(cx, cy, 6.5f, isFilled = false, widthFactor = 0.85f, alpha = 0.70f))
+                circles.add(CircleGeom(cx - 0.6f, cy - 0.7f, 0.9f, isFilled = true)) // Specular catchlight
+
+                // 4. 4 Chiseled Cardinal Beams (North, South, East, West) with Forged Diamond Caps
+                val cardinalAngles = listOf(-PI / 2, 0.0, PI / 2, PI)
+                for (rad in cardinalAngles) {
+                    val angle = rad.toFloat()
+                    val cosA = cos(angle)
+                    val sinA = sin(angle)
+                    val perpX = -sinA
+                    val perpY = cosA
+
+                    val pStart = StrokePoint(cx + 6.5f * cosA, cy + 6.5f * sinA)
+                    val pEnd = StrokePoint(cx + rBeamExt * cosA, cy + rBeamExt * sinA)
+
+                    // Primary Chiseled Stem Line
+                    lines.add(LineSegmentGeom(pStart.x, pStart.y, pEnd.x, pEnd.y, widthFactor = 1.4f))
+
+                    // Parallel Bevel Highlight Line
+                    lines.add(
+                        LineSegmentGeom(
+                            pStart.x - perpX * 0.7f, pStart.y - perpY * 0.7f,
+                            pEnd.x - perpX * 0.7f, pEnd.y - perpY * 0.7f,
+                            widthFactor = 0.65f,
+                            alpha = 0.60f
+                        )
+                    )
+
+                    // Forged Diamond Terminal Cap on Tip
+                    val capTip = StrokePoint(cx + (rBeamExt + 6f) * cosA, cy + (rBeamExt + 6f) * sinA)
+                    val capBase = StrokePoint(cx + rBeamExt * cosA, cy + rBeamExt * sinA)
+                    val capLeft = StrokePoint(capBase.x + perpX * 3.2f, capBase.y + perpY * 3.2f)
+                    val capRight = StrokePoint(capBase.x - perpX * 3.2f, capBase.y - perpY * 3.2f)
+                    val capInner = StrokePoint(cx + (rBeamExt - 2.5f) * cosA, cy + (rBeamExt - 2.5f) * sinA)
+
+                    polygons.add(PolygonGeom(listOf(capInner, capLeft, capTip, capRight), isFilled = true))
+                }
+
+                // 5. 4 Diagonal Solar Flare Rays & Quadrant Studs
+                for (i in 0 until 4) {
+                    val angle = (PI / 4 + i * PI / 2).toFloat()
+                    val cosA = cos(angle)
+                    val sinA = sin(angle)
+
+                    // Diagonal Ray Line from inner to outer ring
+                    lines.add(
+                        LineSegmentGeom(
+                            cx + rInner * cosA, cy + rInner * sinA,
+                            cx + rOuter * cosA, cy + rOuter * sinA,
+                            widthFactor = 1.1f
+                        )
+                    )
+
+                    // Quadrant Solar Studs
+                    val studDist = 7.5f
+                    val studX = cx + studDist * cosA
+                    val studY = cy + studDist * sinA
+                    circles.add(CircleGeom(studX, studY, 1.8f, isFilled = true))
+                    circles.add(CircleGeom(studX, studY, 3.8f, isFilled = false, widthFactor = 0.6f, alpha = 0.7f))
+                }
             }
 
             CenterEmblem.INGUZ_DIAMOND -> {
