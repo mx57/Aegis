@@ -1,3 +1,7 @@
 ## 2025-05-18 - [Accessibility for State-Changing Icon Buttons and Custom Selectors]
 **Learning:** Icon buttons with toggled states (such as favorite buttons) must provide dynamic `contentDescription` text reflective of the state ("Сохранено в избранное" vs. "Добавить в избранное") for TalkBack screen readers. Additionally, custom selectable cards in grid/row layout options need explicit `Role.RadioButton` and `selected` properties in `semantics` modifier so screen readers announce them properly as interactive options.
 **Action:** Always check toggle IconButton `contentDescription` for state awareness and apply `Modifier.semantics { role = Role.RadioButton; selected = isSelected }` to non-standard radio-like interactive Card components.
+
+## 2025-05-19 - [Accessibility for Expandable Accordion Cards]
+**Learning:** Expandable `Card` containers that toggle detailed content need explicit `stateDescription` in their `semantics` modifier ("Развёрнуто" vs. "Свёрнуто") so TalkBack screen readers announce the state change when clicked. In addition, the expand/collapse indicator `Icon` should provide action-oriented `contentDescription` text ("Свернуть подробности" vs. "Развернуть подробности") instead of `null`.
+**Action:** When creating expandable cards or accordions, add `Modifier.semantics { stateDescription = if (expanded) "Развёрнуто" else "Свёрнуто" }` on the container and dynamic action description on the toggle icon.
