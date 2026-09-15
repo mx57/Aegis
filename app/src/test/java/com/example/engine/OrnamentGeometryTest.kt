@@ -202,6 +202,24 @@ class OrnamentGeometryTest {
     }
 
     @Test
+    fun generateCenterEmblem_solarCross_generatesMultiLayeredSolarWheelAndOrnaments() {
+        val solarCross = OrnamentGeometry.generateCenterEmblem(com.example.engine.CenterEmblem.SOLAR_CROSS, 3.0f)
+
+        // Solar Cross should generate guard rings, astrolabe ticks, central solar orb, catchlight, cardinal beams, diamond caps, and flare studs
+        assertTrue("Solar Cross should generate guard circles, solar orb, catchlight and studs", solarCross.circles.size >= 10)
+        assertTrue("Solar Cross should generate astrolabe ticks, cardinal beams, bevels and shadow lines", solarCross.lines.size >= 20)
+        assertTrue("Solar Cross should generate 4 forged diamond terminal caps", solarCross.polygons.size >= 4)
+
+        // Check that ambient drop shadow circles/lines are present
+        val dropShadowCircles = solarCross.circles.filter { it.alpha < 0.3f && !it.isFilled }
+        assertTrue("Solar Cross should generate ambient drop shadow guard rings", dropShadowCircles.isNotEmpty())
+
+        // Check central solar core orb and catchlight
+        val filledCircles = solarCross.circles.filter { it.isFilled }
+        assertTrue("Solar Cross should generate central solar orb, catchlight and quadrant studs", filledCircles.size >= 6)
+    }
+
+    @Test
     fun scaleOrnaments_coercesScaleFactorBoundaries() {
         val circle = CircleGeom(cx = 250f, cy = 250f, radius = 100f)
         val ornaments = GeneratedOrnaments(circles = listOf(circle))
