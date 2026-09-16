@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Key
@@ -195,6 +196,7 @@ fun SketchScreen(
     var seed by remember { mutableLongStateOf(4242L) }
     var animTriggerKey by remember { mutableIntStateOf(0) }
     var targetResolution by remember { mutableIntStateOf(2048) }
+    var targetDiameterMm by remember { mutableFloatStateOf(100f) }
     var isExporting by remember { mutableStateOf(false) }
     var isFullScreenOpen by remember { mutableStateOf(false) }
     var activeTab by remember { mutableIntStateOf(0) }
@@ -327,6 +329,39 @@ fun SketchScreen(
                 context.startActivity(Intent.createChooser(shareIntent, "Поделиться эскизом PNG"))
             } catch (e: Exception) {
                 Toast.makeText(context, "Ошибка экспорта: ${e.message}", Toast.LENGTH_SHORT).show()
+            } finally {
+                isExporting = false
+            }
+        }
+    }
+
+    fun exportPdf() {
+        if (isExporting) return
+        isExporting = true
+        coroutineScope.launch {
+            try {
+                val staveTitle = if (runes.isNotEmpty()) "${selectedLayout.titleRu} (${runes.joinToString(" • ") { it.nameRu }})" else selectedLayout.titleRu
+                val file = SvgStaveRenderer.renderA4PdfForPrinting(
+                    context = context,
+                    stave = composedStave,
+                    config = config,
+                    targetDiameterMm = targetDiameterMm,
+                    title = staveTitle,
+                    runes = runes
+                )
+                if (file != null && file.exists()) {
+                    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "application/pdf"
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    context.startActivity(Intent.createChooser(shareIntent, "Печать A4 PDF (1:1 Масштаб)"))
+                } else {
+                    Toast.makeText(context, "Не удалось сформировать PDF для печати", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Ошибка PDF: ${e.message}", Toast.LENGTH_SHORT).show()
             } finally {
                 isExporting = false
             }
@@ -1688,6 +1723,56 @@ fun SketchScreen(
 
                         4 -> {
                             // 📤 Export & Try-on
+                            Text(
+                                text = "Печать на листе A4 (1:1 Реальный масштаб):",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Физический диаметр става для перевода на кожу:",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                listOf(60f to "6 см", 80f to "8 см", 100f to "10 см", 120f to "12 см", 150f to "15 см").forEach { (diamMm, label) ->
+                                    FilterChip(
+                                        selected = Math.abs(targetDiameterMm - diamMm) < 0.5f,
+                                        onClick = { targetDiameterMm = diamMm },
+                                        shape = RoundedCornerShape(10.dp),
+                                        label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            Button(
+                                onClick = { exportPdf() },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFF0F766E)
+                                ),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("export_a4_pdf_button"),
+                                enabled = !isExporting
+                            ) {
+                                Icon(Icons.Default.Description, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Экспорт A4 PDF (1:1 Печать Ø ${(targetDiameterMm / 10f).toInt()} см)", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
+                            Spacer(modifier = Modifier.height(8.dp))
+
                             Text(
                                 text = "Разрешение PNG:",
                                 style = MaterialTheme.typography.titleSmall,

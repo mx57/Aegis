@@ -1379,5 +1379,226 @@ object SvgStaveRenderer {
         file
     }
 
+    /**
+     * Generates an A4 PDF document (595x842 pt) formatted at true 1:1 millimetric scale
+     * with calibration ruler, alignment crosshairs, diameter callouts, and active rune list.
+     */
+    suspend fun renderA4PdfForPrinting(
+        context: Context,
+        stave: ComposedStave,
+        config: SketchConfig,
+        targetDiameterMm: Float = 100f,
+        title: String = "",
+        runes: List<com.example.data.model.Rune> = emptyList()
+    ): File? = withContext(Dispatchers.IO) {
+        try {
+            val pdfDocument = android.graphics.pdf.PdfDocument()
+            val pageWidth = 595 // A4 width in pt (210 mm)
+            val pageHeight = 842 // A4 height in pt (297 mm)
+            val pageInfo = android.graphics.pdf.PdfDocument.PageInfo.Builder(pageWidth, pageHeight, 1).create()
+            val page = pdfDocument.startPage(pageInfo)
+            val canvas = page.canvas
+
+            // Standard PDF painting
+            val whiteBgPaint = Paint().apply {
+                color = Color.WHITE
+                style = Paint.Style.FILL
+            }
+            canvas.drawRect(0f, 0f, pageWidth.toFloat(), pageHeight.toFloat(), whiteBgPaint)
+
+            val primaryTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.parseColor("#1E293B")
+                textSize = 16f
+                typeface = Typeface.create(Typeface.SERIF, Typeface.BOLD)
+            }
+
+            val subtitleTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.parseColor("#475569")
+                textSize = 10f
+                typeface = Typeface.SANS_SERIF
+            }
+
+            val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.parseColor("#334155")
+                style = Paint.Style.STROKE
+                strokeWidth = 1f
+            }
+
+            val accentPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.parseColor("#0F766E")
+                style = Paint.Style.STROKE
+                strokeWidth = 1.2f
+            }
+
+            // 1. Header Section
+            canvas.drawText("РУНИЧЕСКИЙ СТАВ — ТРАФАРЕТ ДЛЯ ПЕЧАТИ (1:1)", 36f, 48f, primaryTextPaint)
+
+            val displayTitle = if (title.isNotBlank()) title else "Мастер-эскиз става"
+            val infoStr = "Название: $displayTitle  |  Стиль: ${config.style.titleRu}  |  Формат A4 (1:1)"
+            canvas.drawText(infoStr, 36f, 66f, subtitleTextPaint)
+
+            val dateStr = "Дата генерации: ${java.text.SimpleDateFormat("dd.MM.yyyy HH:mm", java.util.Locale.getDefault()).format(java.util.Date())}"
+            canvas.drawText(dateStr, 36f, 78f, subtitleTextPaint)
+
+            canvas.drawLine(36f, 88f, (pageWidth - 36).toFloat(), 88f, linePaint)
+
+            // 2. Center Stave Rendering in 1:1 physical size
+            // 1 mm = 2.8346457 pt in PDF
+            val mmToPt = 2.8346457f
+            val diameterPt = targetDiameterMm * mmToPt
+            val radiusPt = diameterPt / 2f
+
+            val centerX = pageWidth / 2f
+            val centerY = 100f + radiusPt + 40f // Leave space for header
+
+            // Render stave as Bitmap at high resolution and scale onto PDF canvas
+            val renderPx = (targetDiameterMm * 10f).toInt().coerceIn(600, 2048)
+            val stencilConfig = config.copy(isStencil = true)
+            val staveBitmap = renderToBitmap(stave, stencilConfig, targetSize = renderPx, transparentBg = true, overrideColorInt = Color.BLACK)
+
+            val srcRect = android.graphics.Rect(0, 0, staveBitmap.width, staveBitmap.height)
+            val destRect = android.graphics.RectF(
+                centerX - radiusPt,
+                centerY - radiusPt,
+                centerX + radiusPt,
+                centerY + radiusPt
+            )
+            canvas.drawBitmap(staveBitmap, srcRect, destRect, Paint(Paint.FILTER_BITMAP_FLAG))
+
+            // 3. Alignment Crosshairs (Target Marks at 4 directions)
+            val crossLength = 16f
+            val crossGap = radiusPt + 8f
+
+            // Top cross
+            canvas.drawLine(centerX, centerY - crossGap - crossLength, centerX, centerY - crossGap, linePaint)
+            canvas.drawLine(centerX - crossLength / 2f, centerY - crossGap - crossLength / 2f, centerX + crossLength / 2f, centerY - crossGap - crossLength / 2f, linePaint)
+
+            // Bottom cross
+            canvas.drawLine(centerX, centerY + crossGap, centerX, centerY + crossGap + crossLength, linePaint)
+            canvas.drawLine(centerX - crossLength / 2f, centerY + crossGap + crossLength / 2f, centerX + crossLength / 2f, centerY + crossGap + crossLength / 2f, linePaint)
+
+            // Left cross
+            canvas.drawLine(centerX - crossGap - crossLength, centerY, centerX - crossGap, centerY, linePaint)
+            canvas.drawLine(centerX - crossGap - crossLength / 2f, centerY - crossLength / 2f, centerX - crossGap - crossLength / 2f, centerY + crossLength / 2f, linePaint)
+
+            // Right cross
+            canvas.drawLine(centerX + crossGap, centerY, centerX + crossGap + crossLength, centerY, linePaint)
+            canvas.drawLine(centerX + crossGap + crossLength / 2f, centerY - crossLength / 2f, centerX + crossGap + crossLength / 2f, centerY + crossLength / 2f, linePaint)
+
+            // Outer Bounding Diameter Marking Ring
+            val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.parseColor("#94A3B8")
+                style = Paint.Style.STROKE
+                strokeWidth = 0.6f
+                pathEffect = android.graphics.DashPathEffect(floatArrayOf(4f, 4f), 0f)
+            }
+            canvas.drawCircle(centerX, centerY, radiusPt, ringPaint)
+
+            // Dimension Arrow Callout
+            val dimY = centerY + radiusPt + 28f
+            val dimX1 = centerX - radiusPt
+            val dimX2 = centerX + radiusPt
+            canvas.drawLine(dimX1, dimY, dimX2, dimY, accentPaint)
+            // Arrowheads
+            canvas.drawLine(dimX1, dimY, dimX1 + 6f, dimY - 3f, accentPaint)
+            canvas.drawLine(dimX1, dimY, dimX1 + 6f, dimY + 3f, accentPaint)
+            canvas.drawLine(dimX2, dimY, dimX2 - 6f, dimY - 3f, accentPaint)
+            canvas.drawLine(dimX2, dimY, dimX2 - 6f, dimY + 3f, accentPaint)
+
+            val dimTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.parseColor("#0F766E")
+                textSize = 9f
+                typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
+                textAlign = Paint.Align.CENTER
+            }
+            val sizeLabel = "Ø ${String.format(java.util.Locale.US, "%.1f", targetDiameterMm)} мм (${String.format(java.util.Locale.US, "%.1f", targetDiameterMm / 10f)} см) — Масштаб 1:1"
+            canvas.drawText(sizeLabel, centerX, dimY - 4f, dimTextPaint)
+
+            // 4. Calibration Control Ruler (100 mm = 10 cm Bar) at Page Bottom
+            val rulerY = 740f
+            val rulerMmWidth = 100f // 10 cm scale
+            val rulerPtWidth = rulerMmWidth * mmToPt
+            val rulerStartX = (pageWidth - rulerPtWidth) / 2f
+            val rulerEndX = rulerStartX + rulerPtWidth
+
+            val rulerLinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.parseColor("#0F172A")
+                style = Paint.Style.STROKE
+                strokeWidth = 1.2f
+            }
+
+            canvas.drawLine(rulerStartX, rulerY, rulerEndX, rulerY, rulerLinePaint)
+
+            // Tick marks
+            for (i in 0..10) {
+                val tx = rulerStartX + (i * 10f * mmToPt)
+                val tickH = if (i == 0 || i == 5 || i == 10) 10f else 6f
+                canvas.drawLine(tx, rulerY - tickH, tx, rulerY, rulerLinePaint)
+
+                if (i % 2 == 0) {
+                    val tickTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        color = Color.parseColor("#334155")
+                        textSize = 8f
+                        textAlign = Paint.Align.CENTER
+                    }
+                    canvas.drawText("${i}cm", tx, rulerY - tickH - 3f, tickTextPaint)
+                }
+            }
+
+            val rulerLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.parseColor("#1E293B")
+                textSize = 8.5f
+                typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
+                textAlign = Paint.Align.CENTER
+            }
+            canvas.drawText("Контрольная шкала 100 мм (10 см). Проверьте линейкой после печати (печать без подгонки / Actual Size).", centerX, rulerY + 14f, rulerLabelPaint)
+
+            // 5. Active Runes / Interpretation Legend Box
+            if (runes.isNotEmpty()) {
+                val boxY = rulerY + 28f
+                val boxHeight = 42f
+                val boxRect = android.graphics.RectF(36f, boxY, (pageWidth - 36).toFloat(), boxY + boxHeight)
+                val boxBgPaint = Paint().apply {
+                    color = Color.parseColor("#F8FAFC")
+                    style = Paint.Style.FILL
+                }
+                val boxBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = Color.parseColor("#CBD5E1")
+                    style = Paint.Style.STROKE
+                    strokeWidth = 0.8f
+                }
+                canvas.drawRoundRect(boxRect, 6f, 6f, boxBgPaint)
+                canvas.drawRoundRect(boxRect, 6f, 6f, boxBorderPaint)
+
+                val legendTitlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = Color.parseColor("#0F766E")
+                    textSize = 8.5f
+                    typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
+                }
+                canvas.drawText("Состав става и активированные руны:", 46f, boxY + 14f, legendTitlePaint)
+
+                val runeLegendStr = runes.joinToString("  •  ") { "${it.unicode} ${it.nameRu} (${it.phonetic})" }
+                val legendBodyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = Color.parseColor("#334155")
+                    textSize = 8f
+                }
+                canvas.drawText(runeLegendStr, 46f, boxY + 30f, legendBodyPaint)
+            }
+
+            pdfDocument.finishPage(page)
+
+            val exportsDir = File(context.cacheDir, "exports").apply { if (!exists()) mkdirs() }
+            val pdfFile = File(exportsDir, "runic_stave_a4.pdf")
+            FileOutputStream(pdfFile).use { out ->
+                pdfDocument.writeTo(out)
+            }
+            pdfDocument.close()
+            pdfFile
+        } catch (e: Throwable) {
+            // Graceful fallback for headless JVM / Robolectric tests where Skia/Pdf native renderer bindings might not be present
+            null
+        }
+    }
+
     private fun Float.format(): String = String.format(java.util.Locale.US, "%.1f", this)
 }
