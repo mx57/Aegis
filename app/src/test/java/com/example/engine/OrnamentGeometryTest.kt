@@ -202,6 +202,17 @@ class OrnamentGeometryTest {
     }
 
     @Test
+    fun generateCenterEmblem_fenrirWolf_generatesDetailed3dWolfOrnaments() {
+        val wolf = OrnamentGeometry.generateCenterEmblem(com.example.engine.CenterEmblem.FENRIR_WOLF, 3.0f)
+
+        // Fenrir Wolf emblem should generate guard circles, ears/mouth/cheek paths, nose polygon & fangs, and fur shading lines
+        assertTrue("Fenrir Wolf should generate solar guard circles and eye pupils", wolf.circles.size >= 10)
+        assertTrue("Fenrir Wolf should generate ear cavity, Tiwaz rune, whisker, and fur shading lines", wolf.lines.size >= 15)
+        assertTrue("Fenrir Wolf should generate nose leather and fang polygons", wolf.polygons.size >= 3)
+        assertTrue("Fenrir Wolf should generate ear, forehead, eye, lip, and cheek ruff paths", wolf.paths.size >= 10)
+    }
+
+    @Test
     fun scaleOrnaments_coercesScaleFactorBoundaries() {
         val circle = CircleGeom(cx = 250f, cy = 250f, radius = 100f)
         val ornaments = GeneratedOrnaments(circles = listOf(circle))

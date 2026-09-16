@@ -541,6 +541,10 @@ object OrnamentGeometry {
                 generateRunicStele(cx, cy, strokeWidth)
             }
 
+            CenterEmblem.FENRIR_WOLF -> {
+                generateFenrirWolf(cx, cy, strokeWidth)
+            }
+
             else -> {
                 val lines = mutableListOf<LineSegmentGeom>()
                 val circles = mutableListOf<CircleGeom>()
@@ -551,7 +555,8 @@ object OrnamentGeometry {
                     CenterEmblem.NONE,
                     CenterEmblem.BEASTS_OF_ODIN,
                     CenterEmblem.FACETED_STAR,
-                    CenterEmblem.RUNIC_STELE -> {}
+                    CenterEmblem.RUNIC_STELE,
+                    CenterEmblem.FENRIR_WOLF -> {}
 
             CenterEmblem.YGGDRASIL_TREE -> {
                 // World Tree Yggdrasil: Roots (3 Norns wells), Trunk, Branching Crown, and 9 Worlds Orbs
@@ -1994,6 +1999,193 @@ object OrnamentGeometry {
         circles.addAll(raven.circles)
         polygons.addAll(raven.polygons)
         paths.addAll(raven.paths)
+
+        return GeneratedOrnaments(lines, circles, polygons, paths)
+    }
+
+    fun generateFenrirWolf(cx: Float = CENTER_X, cy: Float = CENTER_Y, strokeWidth: Float = 3f): GeneratedOrnaments {
+        val lines = mutableListOf<LineSegmentGeom>()
+        val circles = mutableListOf<CircleGeom>()
+        val polygons = mutableListOf<PolygonGeom>()
+        val paths = mutableListOf<PathGeom>()
+
+        // 1. Celestial Solar Guard Orbits & Nodes
+        circles.add(CircleGeom(cx, cy, 52f, isFilled = false, widthFactor = 0.85f, alpha = 0.70f))
+        circles.add(CircleGeom(cx, cy, 40f, isFilled = false, widthFactor = 0.55f, alpha = 0.55f))
+        for (i in 0 until 8) {
+            val a = (2 * PI * i / 8).toFloat()
+            val sx = cx + 52f * cos(a)
+            val sy = cy + 52f * sin(a)
+            circles.add(CircleGeom(sx, sy, 2.0f, isFilled = true))
+            circles.add(CircleGeom(sx, sy, 4.0f, isFilled = false, widthFactor = 0.45f, alpha = 0.60f))
+        }
+
+        // 2. Upright Wolf Ears with Facet Ridges & Inner Fur Tufts
+        // Left Ear Outer Outline
+        val leftEar = listOf(
+            StrokePoint(cx - 18f, cy - 32f),
+            StrokePoint(cx - 34f, cy - 78f), // Tip
+            StrokePoint(cx - 42f, cy - 36f)
+        )
+        paths.add(PathGeom(leftEar, isClosed = false, widthFactor = 1.45f))
+        // Left Ear Cavity & Shading
+        lines.add(LineSegmentGeom(cx - 24f, cy - 34f, cx - 34f, cy - 78f, widthFactor = 0.90f))
+        for (h in 1..4) {
+            val t = h / 5f
+            lines.add(LineSegmentGeom(cx - 24f - t * 10f, cy - 36f - t * 38f, cx - 18f - t * 14f, cy - 32f - t * 42f, widthFactor = 0.55f, alpha = 0.70f))
+        }
+
+        // Right Ear Outer Outline
+        val rightEar = listOf(
+            StrokePoint(cx + 18f, cy - 32f),
+            StrokePoint(cx + 34f, cy - 78f), // Tip
+            StrokePoint(cx + 42f, cy - 36f)
+        )
+        paths.add(PathGeom(rightEar, isClosed = false, widthFactor = 1.45f))
+        // Right Ear Cavity & Shading
+        lines.add(LineSegmentGeom(cx + 24f, cy - 34f, cx + 34f, cy - 78f, widthFactor = 0.90f))
+        for (h in 1..4) {
+            val t = h / 5f
+            lines.add(LineSegmentGeom(cx + 24f + t * 10f, cy - 36f - t * 38f, cx + 18f + t * 14f, cy - 32f - t * 42f, widthFactor = 0.55f, alpha = 0.70f))
+        }
+
+        // 3. Forehead, Brow Ridge & Sacred Tiwaz Rune Brand
+        val foreheadContour = listOf(
+            StrokePoint(cx - 42f, cy - 36f),
+            StrokePoint(cx - 28f, cy - 40f),
+            StrokePoint(cx, cy - 43f),
+            StrokePoint(cx + 28f, cy - 40f),
+            StrokePoint(cx + 42f, cy - 36f)
+        )
+        paths.add(PathGeom(foreheadContour, isClosed = false, widthFactor = 1.35f))
+
+        // Sacred Tiwaz Rune ᛏ Inscribed on Forehead
+        lines.add(LineSegmentGeom(cx, cy - 38f, cx, cy - 16f, widthFactor = 1.30f))
+        lines.add(LineSegmentGeom(cx, cy - 38f, cx - 10f, cy - 28f, widthFactor = 1.15f))
+        lines.add(LineSegmentGeom(cx, cy - 38f, cx + 10f, cy - 28f, widthFactor = 1.15f))
+
+        // 4. Piercing Almond Eyes & Brow Ridges
+        // Left Eye
+        val leftEyeTop = listOf(StrokePoint(cx - 28f, cy - 12f), StrokePoint(cx - 18f, cy - 16f), StrokePoint(cx - 8f, cy - 12f))
+        val leftEyeBot = listOf(StrokePoint(cx - 28f, cy - 12f), StrokePoint(cx - 18f, cy - 8f), StrokePoint(cx - 8f, cy - 12f))
+        paths.add(PathGeom(leftEyeTop, widthFactor = 1.30f))
+        paths.add(PathGeom(leftEyeBot, widthFactor = 1.10f))
+        circles.add(CircleGeom(cx - 18f, cy - 12f, 3.2f, isFilled = true))
+        circles.add(CircleGeom(cx - 16.8f, cy - 13.5f, 0.9f, isFilled = true)) // Specular Catchlight
+
+        // Right Eye
+        val rightEyeTop = listOf(StrokePoint(cx + 8f, cy - 12f), StrokePoint(cx + 18f, cy - 16f), StrokePoint(cx + 28f, cy - 12f))
+        val rightEyeBot = listOf(StrokePoint(cx + 8f, cy - 12f), StrokePoint(cx + 18f, cy - 8f), StrokePoint(cx + 28f, cy - 12f))
+        paths.add(PathGeom(rightEyeTop, widthFactor = 1.30f))
+        paths.add(PathGeom(rightEyeBot, widthFactor = 1.10f))
+        circles.add(CircleGeom(cx + 18f, cy - 12f, 3.2f, isFilled = true))
+        circles.add(CircleGeom(cx + 19.2f, cy - 13.5f, 0.9f, isFilled = true)) // Specular Catchlight
+
+        // Brow ridges above eyes
+        lines.add(LineSegmentGeom(cx - 32f, cy - 20f, cx - 6f, cy - 17f, widthFactor = 0.90f, alpha = 0.85f))
+        lines.add(LineSegmentGeom(cx + 6f, cy - 17f, cx + 32f, cy - 20f, widthFactor = 0.90f, alpha = 0.85f))
+
+        // 5. Snout Bridge, Nose Leather, Fangs & Jaws
+        // Muzzle bridge lines tapering down
+        lines.add(LineSegmentGeom(cx - 8f, cy - 12f, cx - 11f, cy + 18f, widthFactor = 1.25f))
+        lines.add(LineSegmentGeom(cx + 8f, cy - 12f, cx + 11f, cy + 18f, widthFactor = 1.25f))
+        lines.add(LineSegmentGeom(cx, cy - 12f, cx, cy + 18f, widthFactor = 0.70f, alpha = 0.65f)) // Nose center ridge
+
+        // Anatomical Nose Leather
+        val nosePoly = listOf(
+            StrokePoint(cx - 11f, cy + 18f),
+            StrokePoint(cx + 11f, cy + 18f),
+            StrokePoint(cx + 8f, cy + 28f),
+            StrokePoint(cx, cy + 31f),
+            StrokePoint(cx - 8f, cy + 28f)
+        )
+        polygons.add(PolygonGeom(nosePoly, isFilled = true))
+        circles.add(CircleGeom(cx - 2.5f, cy + 21f, 1.0f, isFilled = true)) // Specular glint on nose tip
+
+        // Upper Lip & commissure
+        val upperLip = listOf(
+            StrokePoint(cx - 22f, cy + 38f),
+            StrokePoint(cx - 12f, cy + 33f),
+            StrokePoint(cx, cy + 31f),
+            StrokePoint(cx + 12f, cy + 33f),
+            StrokePoint(cx + 22f, cy + 38f)
+        )
+        paths.add(PathGeom(upperLip, widthFactor = 1.35f))
+
+        // Fangs (Left and Right)
+        polygons.add(PolygonGeom(listOf(StrokePoint(cx - 14f, cy + 33f), StrokePoint(cx - 10f, cy + 44f), StrokePoint(cx - 7f, cy + 32f)), isFilled = true))
+        polygons.add(PolygonGeom(listOf(StrokePoint(cx + 7f, cy + 32f), StrokePoint(cx + 10f, cy + 44f), StrokePoint(cx + 14f, cy + 33f)), isFilled = true))
+
+        // Lower Jaw & Chin
+        val lowerJaw = listOf(
+            StrokePoint(cx - 18f, cy + 40f),
+            StrokePoint(cx - 10f, cy + 48f),
+            StrokePoint(cx, cy + 51f),
+            StrokePoint(cx + 10f, cy + 48f),
+            StrokePoint(cx + 18f, cy + 40f)
+        )
+        paths.add(PathGeom(lowerJaw, widthFactor = 1.25f))
+
+        // Whisker pad follicles & whiskers
+        val whiskerDots = listOf(
+            Pair(cx - 18f, cy + 24f), Pair(cx - 14f, cy + 26f), Pair(cx - 10f, cy + 28f),
+            Pair(cx + 18f, cy + 24f), Pair(cx + 14f, cy + 26f), Pair(cx + 10f, cy + 28f)
+        )
+        for ((wx, wy) in whiskerDots) {
+            circles.add(CircleGeom(wx, wy, 0.9f, isFilled = true))
+        }
+        val whiskers = listOf(
+            listOf(StrokePoint(cx - 18f, cy + 24f), StrokePoint(cx - 34f, cy + 27f), StrokePoint(cx - 50f, cy + 32f)),
+            listOf(StrokePoint(cx - 14f, cy + 26f), StrokePoint(cx - 32f, cy + 32f), StrokePoint(cx - 48f, cy + 40f)),
+            listOf(StrokePoint(cx + 18f, cy + 24f), StrokePoint(cx + 34f, cy + 27f), StrokePoint(cx + 50f, cy + 32f)),
+            listOf(StrokePoint(cx + 10f, cy + 28f), StrokePoint(cx + 32f, cy + 32f), StrokePoint(cx + 48f, cy + 40f))
+        )
+        for (w in whiskers) {
+            paths.add(PathGeom(w, isClosed = false, widthFactor = 0.55f, alpha = 0.80f))
+        }
+
+        // 6. Volumetric Cheek Ruff Locks & Neck Hackles
+        val cheekRuff = listOf(
+            // Left cheek ruff
+            listOf(StrokePoint(cx - 28f, cy - 8f), StrokePoint(cx - 48f, cy + 8f), StrokePoint(cx - 38f, cy + 18f)),
+            listOf(StrokePoint(cx - 38f, cy + 18f), StrokePoint(cx - 58f, cy + 36f), StrokePoint(cx - 42f, cy + 42f)),
+            listOf(StrokePoint(cx - 42f, cy + 42f), StrokePoint(cx - 62f, cy + 62f), StrokePoint(cx - 35f, cy + 68f)),
+            // Right cheek ruff
+            listOf(StrokePoint(cx + 28f, cy - 8f), StrokePoint(cx + 48f, cy + 8f), StrokePoint(cx + 38f, cy + 18f)),
+            listOf(StrokePoint(cx + 38f, cy + 18f), StrokePoint(cx + 58f, cy + 36f), StrokePoint(cx + 42f, cy + 42f)),
+            listOf(StrokePoint(cx + 42f, cy + 42f), StrokePoint(cx + 62f, cy + 62f), StrokePoint(cx + 35f, cy + 68f))
+        )
+        for (lock in cheekRuff) {
+            paths.add(PathGeom(lock, isClosed = false, widthFactor = 1.30f))
+        }
+
+        // Chest / Throat Mane Hackles
+        val throatMane = listOf(
+            listOf(StrokePoint(cx - 22f, cy + 50f), StrokePoint(cx - 28f, cy + 78f), StrokePoint(cx - 12f, cy + 70f)),
+            listOf(StrokePoint(cx - 12f, cy + 70f), StrokePoint(cx, cy + 88f), StrokePoint(cx + 12f, cy + 70f)),
+            listOf(StrokePoint(cx + 12f, cy + 70f), StrokePoint(cx + 28f, cy + 78f), StrokePoint(cx + 22f, cy + 50f))
+        )
+        for (tm in throatMane) {
+            paths.add(PathGeom(tm, isClosed = false, widthFactor = 1.35f))
+        }
+
+        // 7. Directional Fur Cross-Hatching for 3D Shading
+        val furHatchings = listOf(
+            // Forehead shading
+            Pair(StrokePoint(cx - 20f, cy - 28f), StrokePoint(cx - 12f, cy - 18f)),
+            Pair(StrokePoint(cx + 20f, cy - 28f), StrokePoint(cx + 12f, cy - 18f)),
+            // Cheek shading
+            Pair(StrokePoint(cx - 24f, cy + 2f), StrokePoint(cx - 36f, cy + 14f)),
+            Pair(StrokePoint(cx - 28f, cy + 16f), StrokePoint(cx - 42f, cy + 30f)),
+            Pair(StrokePoint(cx + 24f, cy + 2f), StrokePoint(cx + 36f, cy + 14f)),
+            Pair(StrokePoint(cx + 28f, cy + 16f), StrokePoint(cx + 42f, cy + 30f)),
+            // Muzzle shading
+            Pair(StrokePoint(cx - 6f, cy + 2f), StrokePoint(cx - 4f, cy + 12f)),
+            Pair(StrokePoint(cx + 6f, cy + 2f), StrokePoint(cx + 4f, cy + 12f))
+        )
+        for ((p1, p2) in furHatchings) {
+            lines.add(LineSegmentGeom(p1.x, p1.y, p2.x, p2.y, widthFactor = 0.60f, alpha = 0.68f))
+        }
 
         return GeneratedOrnaments(lines, circles, polygons, paths)
     }
