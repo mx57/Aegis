@@ -263,6 +263,15 @@ class RunicStaveUnitTest {
         )
         val svg = SvgStaveRenderer.renderSvg(stave, config)
         assertTrue("SVG should contain custom frame text characters", svg.contains("ᚨ") && svg.contains("ᛚ") && svg.contains("ᚢ"))
+        assertTrue("SVG should convert spaces in frameText to bullet separator", svg.contains(">•<"))
+    }
+
+    @Test
+    fun frameText_transliteration_convertsCyrillicToRunes() {
+        val translit = RuneTransliteration.transliterate("ОДИН ВАЛЬХАЛЛА", testRunes)
+        val runeString = translit.runes.joinToString("") { it.unicode }
+        assertTrue("Transliterated runes should not be empty", runeString.isNotEmpty())
+        assertTrue("Transliterated string should contain Othala or Ansuz rune", runeString.contains("ᛟ") || runeString.contains("ᚨ"))
     }
 
     @Test

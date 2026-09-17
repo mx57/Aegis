@@ -91,9 +91,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
+import com.example.data.translit.RuneTransliteration
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -158,6 +161,7 @@ fun SketchScreen(
     onNavigateToVectorizer: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val coroutineScope = rememberCoroutineScope()
     val clipboardManager = LocalClipboardManager.current
 
@@ -1097,6 +1101,7 @@ fun SketchScreen(
                         ) {
                             IconButton(
                                 onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     val rng = Random()
                                     seed = rng.nextLong()
                                     animTriggerKey++
@@ -1120,7 +1125,10 @@ fun SketchScreen(
                             }
 
                             IconButton(
-                                onClick = { animTriggerKey++ },
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    animTriggerKey++
+                                },
                                 modifier = Modifier
                                     .size(32.dp)
                                     .testTag("replay_rune_animation_button")
@@ -1773,7 +1781,7 @@ fun SketchScreen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .testTag("frame_text_input"),
-                                    placeholder = { Text("По умолчанию: 24 руны Футарка") },
+                                    placeholder = { Text("Введите имя или слово (напр. ОДИН)") },
                                     singleLine = true,
                                     trailingIcon = {
                                         if (frameText.isNotEmpty()) {
@@ -1783,6 +1791,35 @@ fun SketchScreen(
                                         }
                                     }
                                 )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            if (frameText.isNotBlank()) {
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                val translitRes = RuneTransliteration.transliterate(frameText, allRunes)
+                                                val runeStr = translitRes.runes.joinToString("") { it.unicode }
+                                                if (runeStr.isNotEmpty()) {
+                                                    frameText = runeStr
+                                                    animTriggerKey++
+                                                    Toast.makeText(context, "Переведено в руны: $runeStr", Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
+                                        },
+                                        enabled = frameText.isNotBlank(),
+                                        shape = RoundedCornerShape(8.dp),
+                                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                        modifier = Modifier.testTag("transliterate_frame_text_button")
+                                    ) {
+                                        Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(14.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Перевести в руны ᚠ", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                                    }
+                                }
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
                                     text = "Быстрые сакральные формулы:",
