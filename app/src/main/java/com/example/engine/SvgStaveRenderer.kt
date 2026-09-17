@@ -453,7 +453,7 @@ object SvgStaveRenderer {
         }
 
         // 3. Circular text/runes on the frame ring
-        val ringChars = if (config.frameText.isNotBlank()) config.frameText.map { it.toString() } else ELDER_FUTHARK_RUNES
+        val ringChars = if (config.frameText.isNotBlank()) config.frameText.map { if (it == ' ' || it == '-' || it == '_') "•" else it.toString() } else ELDER_FUTHARK_RUNES
         val totalRunes = ringChars.size
         for (i in 0 until totalRunes) {
             val deg = i * (360f / totalRunes)
@@ -1131,7 +1131,7 @@ object SvgStaveRenderer {
                 alpha = 200
             }
 
-            val ringChars = if (config.frameText.isNotBlank()) config.frameText.map { it.toString() } else ELDER_FUTHARK_RUNES
+            val ringChars = if (config.frameText.isNotBlank()) config.frameText.map { if (it == ' ' || it == '-' || it == '_') "•" else it.toString() } else ELDER_FUTHARK_RUNES
             val totalRunes = ringChars.size
             for (i in 0 until totalRunes) {
                 val deg = i * (360f / totalRunes)

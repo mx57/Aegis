@@ -808,7 +808,7 @@ fun RunicCanvas(
                 )
             }
 
-            val ringChars = if (config.frameText.isNotBlank()) config.frameText.map { it.toString() } else ELDER_FUTHARK_RUNES
+            val ringChars = if (config.frameText.isNotBlank()) config.frameText.map { if (it == ' ' || it == '-' || it == '_') "•" else it.toString() } else ELDER_FUTHARK_RUNES
             val totalRunes = ringChars.size
             val visibleRunes = if (currentProgress >= 1f) totalRunes else (runeringProgress * totalRunes).toInt().coerceIn(0, totalRunes)
 
