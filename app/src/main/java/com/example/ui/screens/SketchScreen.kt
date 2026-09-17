@@ -113,10 +113,12 @@ import com.example.engine.CornerStyle
 import com.example.engine.FinialType
 import com.example.engine.FrameStyle
 import com.example.engine.SketchConfig
+import com.example.engine.PdfExporter
 import com.example.engine.SketchStyle
 import com.example.engine.StaveComposer
 import com.example.engine.StaveLayoutType
 import com.example.engine.SvgStaveRenderer
+import com.example.engine.TattooPrintSize
 import com.example.ui.components.FullScreenArtworkDialog
 import com.example.ui.components.FullScreenSketchDialog
 import com.example.ui.components.RunicCanvas
@@ -198,6 +200,11 @@ fun SketchScreen(
     var isExporting by remember { mutableStateOf(false) }
     var isFullScreenOpen by remember { mutableStateOf(false) }
     var activeTab by remember { mutableIntStateOf(0) }
+
+    // Printable A4 1:1 Scale PDF Export State
+    var showPdfExportDialog by remember { mutableStateOf(false) }
+    var selectedPrintSize by remember { mutableStateOf(TattooPrintSize.SIZE_10CM) }
+    var isPdfStencilMode by remember { mutableStateOf(true) }
 
     // Gemini Photorealistic Artwork Generation State
     var showGeminiDialog by remember { mutableStateOf(false) }
@@ -327,6 +334,35 @@ fun SketchScreen(
                 context.startActivity(Intent.createChooser(shareIntent, "Поделиться эскизом PNG"))
             } catch (e: Exception) {
                 Toast.makeText(context, "Ошибка экспорта: ${e.message}", Toast.LENGTH_SHORT).show()
+            } finally {
+                isExporting = false
+            }
+        }
+    }
+
+    fun exportPdf(printSizeMm: Int, isStencil: Boolean) {
+        if (isExporting) return
+        isExporting = true
+        coroutineScope.launch {
+            try {
+                val file = PdfExporter.generateA4Pdf(
+                    context = context,
+                    stave = composedStave,
+                    config = config,
+                    runes = runes,
+                    layoutTitleRu = selectedLayout.titleRu,
+                    printSizeMm = printSizeMm,
+                    isStencilMode = isStencil
+                )
+                val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "application/pdf"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(shareIntent, "Печать A4 PDF 1:1"))
+            } catch (e: Exception) {
+                Toast.makeText(context, "Ошибка PDF: ${e.message}", Toast.LENGTH_SHORT).show()
             } finally {
                 isExporting = false
             }
@@ -513,6 +549,134 @@ fun SketchScreen(
             },
             dismissButton = {
                 OutlinedButton(onClick = { showApiKeyDialog = false }) {
+                    Text("Отмена")
+                }
+            }
+        )
+    }
+
+    if (showPdfExportDialog) {
+        AlertDialog(
+            onDismissRequest = { showPdfExportDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.FileDownload,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            text = "Печать A4 PDF в формате 1:1",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "С разметкой размеров и линейкой калибровки",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            },
+            text = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Выберите физический размер эскиза для термопереноса и печати:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    TattooPrintSize.values().forEach { printSize ->
+                        val isSelected = selectedPrintSize == printSize
+                        Card(
+                            onClick = { selectedPrintSize = printSize },
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(
+                                if (isSelected) 2.dp else 1.dp,
+                                if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                            ),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 3.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = printSize.labelRu,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                                )
+                                if (isSelected) {
+                                    Icon(
+                                        Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Трафаретный режим (Ч/Б Stencil)",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "Чистые ч/б контуры для трансферной бумаги и термопринтера",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = isPdfStencilMode,
+                            onCheckedChange = { isPdfStencilMode = it }
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showPdfExportDialog = false
+                        exportPdf(selectedPrintSize.sizeMm, isPdfStencilMode)
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Icon(Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Сформировать A4 PDF", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showPdfExportDialog = false }) {
                     Text("Отмена")
                 }
             }
@@ -1743,6 +1907,24 @@ fun SketchScreen(
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text("SVG вектор", style = MaterialTheme.typography.labelMedium)
                                 }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Button(
+                                onClick = { showPdfExportDialog = true },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.tertiary
+                                ),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("export_pdf_button")
+                            ) {
+                                Icon(Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Экспорт в PDF (A4 1:1 печать с линейкой)", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                             }
 
                             Spacer(modifier = Modifier.height(8.dp))
