@@ -354,6 +354,10 @@ fun BuilderScreen(
                 val isSelected = selectedLayout == layout
                 Card(
                     onClick = { selectedLayout = layout },
+                    modifier = Modifier.semantics {
+                        role = Role.RadioButton
+                        selected = isSelected
+                    },
                     shape = RoundedCornerShape(16.dp),
                     border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                     colors = CardDefaults.cardColors(
