@@ -29,6 +29,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.engine.StaveInterpretationData
@@ -104,7 +106,12 @@ fun InterpretationCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { expandedRitual = !expandedRitual }
+                    .semantics {
+                        stateDescription = if (expandedRitual) "Развёрнуто" else "Свёрнуто"
+                    }
+                    .clickable(
+                        onClickLabel = if (expandedRitual) "Свернуть инструкцию" else "Развернуть инструкцию"
+                    ) { expandedRitual = !expandedRitual }
                     .padding(vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
@@ -126,7 +133,7 @@ fun InterpretationCard(
                 }
                 Icon(
                     imageVector = if (expandedRitual) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = if (expandedRitual) "Свернуть" else "Развернуть",
+                    contentDescription = if (expandedRitual) "Свернуть инструкцию" else "Развернуть инструкцию",
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
