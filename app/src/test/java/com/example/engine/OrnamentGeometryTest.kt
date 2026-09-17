@@ -184,6 +184,26 @@ class OrnamentGeometryTest {
     }
 
     @Test
+    fun generateFrame_celticMedallion_generates3DVolumetricReliefStrands() {
+        val medallion = OrnamentGeometry.generateFrame(com.example.engine.FrameStyle.CELTIC_MEDALLION, 3.0f)
+
+        // 16 loops x (2 shadow paths + 4 boundary/center paths) = 96 paths total
+        assertTrue("Celtic Medallion should generate multi-layer 3D volumetric ribbon paths", medallion.paths.size >= 96)
+
+        // Verify presence of drop shadow paths with alpha = 0.22f and widthFactor = 1.35f
+        val shadowPaths = medallion.paths.filter { Math.abs(it.alpha - 0.22f) < 0.01f && Math.abs(it.widthFactor - 1.35f) < 0.01f }
+        assertEquals("Celtic Medallion should generate 32 drop shadow underlays (2 per loop)", 32, shadowPaths.size)
+
+        // Verify presence of specular center ridge lines with alpha = 0.65f and widthFactor = 0.45f
+        val ridgePaths = medallion.paths.filter { Math.abs(it.alpha - 0.65f) < 0.01f && Math.abs(it.widthFactor - 0.45f) < 0.01f }
+        assertEquals("Celtic Medallion should generate 32 specular center ridge paths (2 per loop)", 32, ridgePaths.size)
+
+        // Verify presence of background guard rings, dark recess cross-hatching and apex studs
+        assertTrue("Celtic Medallion should generate guard circles and apex studs", medallion.circles.size >= 50)
+        assertTrue("Celtic Medallion should generate dark recess cross-hatching lines", medallion.lines.size >= 64)
+    }
+
+    @Test
     fun generateCenterEmblem_aegishjalmurCore_generatesChiseledTridentHubAndOrnaments() {
         val aegisCore = OrnamentGeometry.generateCenterEmblem(com.example.engine.CenterEmblem.AEGISHJALMUR_CORE, 3.0f)
 
