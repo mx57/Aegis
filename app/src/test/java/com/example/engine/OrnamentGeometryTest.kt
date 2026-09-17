@@ -184,6 +184,47 @@ class OrnamentGeometryTest {
     }
 
     @Test
+    fun generateFrame_solarCircle_generates3DDropShadowUnderlays() {
+        val solarCircle = OrnamentGeometry.generateFrame(com.example.engine.FrameStyle.SOLAR_CIRCLE, 3.0f)
+
+        // Verify presence of 3D ambient drop shadow underlays with alpha = 0.22f
+        val shadowCircles = solarCircle.circles.filter { Math.abs(it.alpha - 0.22f) < 0.01f }
+        assertEquals("Solar Circle should generate 2 ambient drop shadow underlays", 2, shadowCircles.size)
+        assertTrue("Solar Circle should generate main guard circles and solar rays", solarCircle.circles.size >= 5)
+        assertTrue("Solar Circle should generate solar rays and cardinal pointer arrowheads", solarCircle.lines.isNotEmpty() && solarCircle.polygons.isNotEmpty())
+    }
+
+    @Test
+    fun generateCenterEmblem_solarCross_generates3DDropShadowsAndFiligreeRing() {
+        val solarCross = OrnamentGeometry.generateCenterEmblem(com.example.engine.CenterEmblem.SOLAR_CROSS, 3.0f)
+
+        // Verify presence of 3D drop shadow circle with alpha = 0.22f
+        val shadowCircle = solarCross.circles.find { Math.abs(it.alpha - 0.22f) < 0.01f }
+        assertTrue("Solar Cross should generate ambient drop shadow circle", shadowCircle != null)
+
+        // Verify presence of drop shadow lines
+        val shadowLines = solarCross.lines.filter { Math.abs(it.alpha - 0.22f) < 0.01f }
+        assertEquals("Solar Cross should generate 2 ambient drop shadow lines", 2, shadowLines.size)
+
+        // Verify presence of inner filigree guard ring (alpha = 0.65f, radius = 9.9f)
+        val filigreeRing = solarCross.circles.find { Math.abs(it.alpha - 0.65f) < 0.01f && Math.abs(it.radius - 9.9f) < 0.1f }
+        assertTrue("Solar Cross should generate inner filigree guard ring", filigreeRing != null)
+    }
+
+    @Test
+    fun generateCenterEmblem_inguzDiamond_generates3DDropShadowAndSpecularCatchlight() {
+        val inguz = OrnamentGeometry.generateCenterEmblem(com.example.engine.CenterEmblem.INGUZ_DIAMOND, 3.0f)
+
+        // Verify presence of drop shadow rhombus polygon (alpha = 0.22f)
+        val shadowPoly = inguz.polygons.find { Math.abs(it.alpha - 0.22f) < 0.01f }
+        assertTrue("Inguz Diamond should generate ambient drop shadow polygon underlay", shadowPoly != null)
+
+        // Verify presence of specular catchlight dot
+        val catchlight = inguz.circles.find { it.radius < 1.0f && it.isFilled }
+        assertTrue("Inguz Diamond should generate specular catchlight glint dot", catchlight != null)
+    }
+
+    @Test
     fun generateFrame_celticMedallion_generates3DVolumetricReliefStrands() {
         val medallion = OrnamentGeometry.generateFrame(com.example.engine.FrameStyle.CELTIC_MEDALLION, 3.0f)
 

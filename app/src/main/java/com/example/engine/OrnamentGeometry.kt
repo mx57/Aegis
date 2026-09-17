@@ -78,6 +78,11 @@ object OrnamentGeometry {
                 val r1 = 232f
                 val r2 = 216f
                 val r3 = 200f
+                // 1. Ambient drop shadow underlays for 3D volumetric depth
+                circles.add(CircleGeom(cx + 2.0f, cy + 2.5f, r1, widthFactor = 1.5f, alpha = 0.22f))
+                circles.add(CircleGeom(cx + 2.0f, cy + 2.5f, r2, widthFactor = 1.1f, alpha = 0.22f))
+
+                // 2. Main Volumetric Concentric Guard Rings
                 circles.add(CircleGeom(cx, cy, r1, widthFactor = 1.2f))
                 circles.add(CircleGeom(cx, cy, r2, widthFactor = 0.8f))
                 circles.add(CircleGeom(cx, cy, r3, widthFactor = 0.6f, alpha = 0.6f))
@@ -757,12 +762,20 @@ object OrnamentGeometry {
             }
 
             CenterEmblem.SOLAR_CROSS -> {
-                // Solar Cross / Sun wheel
+                // Solar Cross / Sun wheel with 3D drop shadow and filigree inner ring
                 val r = 18f
+                // 1. Ambient Drop Shadow underlays
+                circles.add(CircleGeom(cx + 1.2f, cy + 1.6f, r, isFilled = false, widthFactor = 1.6f, alpha = 0.22f))
+                lines.add(LineSegmentGeom(cx - r - 8f + 1.2f, cy + 1.6f, cx + r + 8f + 1.2f, cy + 1.6f, widthFactor = 1.6f, alpha = 0.22f))
+                lines.add(LineSegmentGeom(cx + 1.2f, cy - r - 8f + 1.6f, cx + 1.2f, cy + r + 8f + 1.6f, widthFactor = 1.6f, alpha = 0.22f))
+
+                // 2. Main Volumetric Geometry with Inner Concentric Guard Ring
                 circles.add(CircleGeom(cx, cy, r, isFilled = false, widthFactor = 1.4f))
+                circles.add(CircleGeom(cx, cy, r * 0.55f, isFilled = false, widthFactor = 0.75f, alpha = 0.65f)) // Inner filigree ring
                 lines.add(LineSegmentGeom(cx - r - 8f, cy, cx + r + 8f, cy, widthFactor = 1.4f))
                 lines.add(LineSegmentGeom(cx, cy - r - 8f, cx, cy + r + 8f, widthFactor = 1.4f))
-                // 4 solar quadrant dots
+
+                // 3. 4 solar quadrant dots
                 val dotDist = 9f
                 circles.add(CircleGeom(cx - dotDist, cy - dotDist, 1.8f, isFilled = true))
                 circles.add(CircleGeom(cx + dotDist, cy - dotDist, 1.8f, isFilled = true))
@@ -774,6 +787,19 @@ object OrnamentGeometry {
                 // Inguz Rhombus + center dot & cross-ticks
                 val hw = 22f
                 val hh = 28f
+                val shadowOffX = 1.2f
+                val shadowOffY = 1.6f
+
+                // 1. Drop shadow underlay
+                val shadowRhombus = listOf(
+                    StrokePoint(cx + shadowOffX, cy - hh + shadowOffY),
+                    StrokePoint(cx + hw + shadowOffX, cy + shadowOffY),
+                    StrokePoint(cx + shadowOffX, cy + hh + shadowOffY),
+                    StrokePoint(cx - hw + shadowOffX, cy + shadowOffY)
+                )
+                polygons.add(PolygonGeom(shadowRhombus, isFilled = false, widthFactor = 1.6f, alpha = 0.22f))
+
+                // 2. Main Outer & Inner Bevelled Rhombus
                 val outerRhombus = listOf(
                     StrokePoint(cx, cy - hh),
                     StrokePoint(cx + hw, cy),
@@ -788,7 +814,7 @@ object OrnamentGeometry {
                     StrokePoint(cx, cy + hh * 0.6f),
                     StrokePoint(cx - hw * 0.6f, cy)
                 )
-                paths.add(PathGeom(innerRhombus, isClosed = true, widthFactor = 0.8f))
+                paths.add(PathGeom(innerRhombus, isClosed = true, widthFactor = 0.8f, alpha = 0.75f))
 
                 // Cardinal tick accents
                 lines.add(LineSegmentGeom(cx, cy - hh, cx, cy - hh - 8f, widthFactor = 1.2f))
@@ -796,6 +822,7 @@ object OrnamentGeometry {
                 lines.add(LineSegmentGeom(cx - hw, cy, cx - hw - 8f, cy, widthFactor = 1.2f))
                 lines.add(LineSegmentGeom(cx + hw, cy, cx + hw + 8f, cy, widthFactor = 1.2f))
                 circles.add(CircleGeom(cx, cy, 2.5f, isFilled = true))
+                circles.add(CircleGeom(cx - 0.5f, cy - 0.5f, 0.8f, isFilled = true)) // Specular catchlight
             }
 
             CenterEmblem.AEGISHJALMUR_CORE -> {
