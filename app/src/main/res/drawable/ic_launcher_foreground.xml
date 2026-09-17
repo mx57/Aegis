@@ -221,6 +221,13 @@
 
 
     <!-- LAYER 3: Specular Highlight Core Bevel Edges -->
+    <!-- Center nexus outer guard ring specular highlight bevel -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#D0FFFFFF"
+        android:strokeWidth="0.65"
+        android:pathData="M 53.6, 53.6 m -8, 0 a 8,8 0 1,0 16,0 a 8,8 0 1,0 -16,0" />
+
     <path
         android:fillColor="#00000000"
         android:strokeColor="#D0FFFFFF"
