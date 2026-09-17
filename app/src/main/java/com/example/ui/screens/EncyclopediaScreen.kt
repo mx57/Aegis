@@ -54,6 +54,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.data.model.Rune
@@ -315,7 +317,12 @@ fun RuneDetailCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { expanded = !expanded },
+            .semantics {
+                stateDescription = if (expanded) "Развёрнуто" else "Свёрнуто"
+            }
+            .clickable(
+                onClickLabel = if (expanded) "Свернуть подробности" else "Развернуть подробности"
+            ) { expanded = !expanded },
         shape = RoundedCornerShape(24.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -367,7 +374,7 @@ fun RuneDetailCard(
 
                 Icon(
                     imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = null,
+                    contentDescription = if (expanded) "Свернуть подробности" else "Развернуть подробности",
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
