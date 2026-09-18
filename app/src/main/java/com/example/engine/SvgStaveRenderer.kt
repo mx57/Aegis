@@ -284,7 +284,8 @@ object SvgStaveRenderer {
         }
 
         // 1.1 Outer Elder Futhark Rune Ring
-        if (config.hasRunering && !config.isStencil) {
+        val hasRuneringActive = config.hasRunering || (config.hasFrameCircle && config.frameText.isNotBlank())
+        if (hasRuneringActive && !config.isStencil) {
             renderFutharkRuneringSvg(sb, strokeColor, effectiveStrokeWidth, theme, config)
         }
 
@@ -453,7 +454,7 @@ object SvgStaveRenderer {
         }
 
         // 3. Circular text/runes on the frame ring
-        val ringChars = if (config.frameText.isNotBlank()) config.frameText.map { it.toString() } else ELDER_FUTHARK_RUNES
+        val ringChars = getCircularFrameChars(config.frameText)
         val totalRunes = ringChars.size
         for (i in 0 until totalRunes) {
             val deg = i * (360f / totalRunes)
@@ -1054,7 +1055,8 @@ object SvgStaveRenderer {
         }
 
         // 1.1 Outer Elder Futhark Rune Ring & Astrolabe micro-ticks
-        if (config.hasRunering && !config.isStencil) {
+        val hasRuneringActive = config.hasRunering || (config.hasFrameCircle && config.frameText.isNotBlank())
+        if (hasRuneringActive && !config.isStencil) {
             val cx = 250f * scale
             val cy = 250f * scale
             val rInner = 218f * scale
@@ -1131,7 +1133,7 @@ object SvgStaveRenderer {
                 alpha = 200
             }
 
-            val ringChars = if (config.frameText.isNotBlank()) config.frameText.map { it.toString() } else ELDER_FUTHARK_RUNES
+            val ringChars = getCircularFrameChars(config.frameText)
             val totalRunes = ringChars.size
             for (i in 0 until totalRunes) {
                 val deg = i * (360f / totalRunes)
@@ -1377,6 +1379,33 @@ object SvgStaveRenderer {
         val file = File(cacheDir, fileName)
         file.writeText(svgContent)
         file
+    }
+
+    /**
+     * Formats custom frame text for circular rendering along the frame belt.
+     * Short text formulas (e.g. "СИЛА" or "ЗАЩИТА") are automatically repeated with
+     * sacred separator dots (•) to form a continuous astrolabe inscription ring.
+     */
+    fun getCircularFrameChars(frameText: String): List<String> {
+        val trimmed = frameText.trim()
+        if (trimmed.isBlank()) return ELDER_FUTHARK_RUNES
+
+        val charList = trimmed.map { it.toString() }
+        if (charList.isEmpty()) return ELDER_FUTHARK_RUNES
+
+        if (charList.size >= 20) {
+            return charList
+        }
+
+        val phraseWithSep = charList + listOf(" ", "•", " ")
+        val minTargetChars = 24
+        val repetitions = (minTargetChars / phraseWithSep.size).coerceAtLeast(1)
+
+        val result = mutableListOf<String>()
+        repeat(repetitions) {
+            result.addAll(phraseWithSep)
+        }
+        return if (result.size >= 12) result else charList
     }
 
     private fun Float.format(): String = String.format(java.util.Locale.US, "%.1f", this)
