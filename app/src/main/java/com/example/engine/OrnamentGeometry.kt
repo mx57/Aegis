@@ -123,10 +123,17 @@ object OrnamentGeometry {
             FrameStyle.NORDIC_BRAID -> {
                 val rOut = 236f
                 val rIn = 212f
+
+                // Outer and inner background guard rings
                 circles.add(CircleGeom(cx, cy, rOut, widthFactor = 0.9f))
                 circles.add(CircleGeom(cx, cy, rIn, widthFactor = 0.9f))
+                circles.add(CircleGeom(cx, cy, rOut + 3f, widthFactor = 0.45f, alpha = 0.50f))
+                circles.add(CircleGeom(cx, cy, rIn - 3f, widthFactor = 0.45f, alpha = 0.50f))
 
-                // Interwoven double-chain Viking braid
+                // Interwoven double-chain Viking braid with 3D volumetric relief:
+                // 1) Ambient drop shadow underlay under both waves
+                // 2) Dual boundary rails and central specular highlight ridge
+                // 3) Recess cross-hatching and 3D node studs
                 val count = 36
                 val rMid = (rOut + rIn) / 2f
                 val amp = (rOut - rIn) / 2.5f
@@ -145,13 +152,41 @@ object OrnamentGeometry {
                     wave1.add(StrokePoint(cx + curR1 * cos(angle), cy + curR1 * sin(angle)))
                     wave2.add(StrokePoint(cx + curR2 * cos(angle), cy + curR2 * sin(angle)))
                 }
+
+                // 1. Ambient Drop Shadows under interwoven wave strands
+                val shadow1 = wave1.map { StrokePoint(it.x + 2.2f, it.y + 2.8f) }
+                val shadow2 = wave2.map { StrokePoint(it.x + 2.2f, it.y + 2.8f) }
+                paths.add(PathGeom(shadow1, isClosed = false, widthFactor = 1.35f, alpha = 0.22f))
+                paths.add(PathGeom(shadow2, isClosed = false, widthFactor = 1.35f, alpha = 0.22f))
+
+                // 2. Main Wave Rails
                 paths.add(PathGeom(wave1, widthFactor = 0.9f))
                 paths.add(PathGeom(wave2, widthFactor = 0.9f))
 
-                // Crossing braid node studs
+                // 3. Central Specular Highlight Ridge Lines along wave centers
+                paths.add(PathGeom(wave1, widthFactor = 0.45f, alpha = 0.65f))
+                paths.add(PathGeom(wave2, widthFactor = 0.45f, alpha = 0.65f))
+
+                // 4. Volumetric Cross-Hatching & 3D Studs at Crossing Braid Nodes
                 for (i in 0 until 18) {
                     val angle = (2 * PI * i / 18).toFloat()
-                    circles.add(CircleGeom(cx + rMid * cos(angle), cy + rMid * sin(angle), 1.8f, isFilled = true))
+                    val nodeX = cx + rMid * cos(angle)
+                    val nodeY = cy + rMid * sin(angle)
+
+                    // Directional shadow shading lines across the node intersection
+                    val perpA = angle + PI.toFloat() / 2f
+                    for (h in 1..3) {
+                        val off = (h - 2f) * 2.8f
+                        val hx1 = nodeX + off * cos(angle) - 3.5f * cos(perpA)
+                        val hy1 = nodeY + off * sin(angle) - 3.5f * sin(perpA)
+                        val hx2 = nodeX + off * cos(angle) + 3.5f * cos(perpA)
+                        val hy2 = nodeY + off * sin(angle) + 3.5f * sin(perpA)
+                        lines.add(LineSegmentGeom(hx1, hy1, hx2, hy2, widthFactor = 0.45f, alpha = 0.60f))
+                    }
+
+                    // 3D Forged Node Studs with Outer Guard Ring
+                    circles.add(CircleGeom(nodeX, nodeY, 2.2f, isFilled = true, alpha = 0.90f))
+                    circles.add(CircleGeom(nodeX, nodeY, 4.2f, isFilled = false, widthFactor = 0.55f))
                 }
             }
 

@@ -204,6 +204,28 @@ class OrnamentGeometryTest {
     }
 
     @Test
+    fun generateFrame_nordicBraid_generates3DVolumetricReliefStrands() {
+        val nordicBraid = OrnamentGeometry.generateFrame(com.example.engine.FrameStyle.NORDIC_BRAID, 3.0f)
+
+        // Nordic braid should generate 6 paths total: 2 shadow paths, 2 main wave paths, 2 specular highlight paths
+        assertEquals("Nordic Braid should generate 6 wave paths for 3D volumetric structure", 6, nordicBraid.paths.size)
+
+        // Verify presence of drop shadow wave underlays with alpha = 0.22f and widthFactor = 1.35f
+        val shadowPaths = nordicBraid.paths.filter { Math.abs(it.alpha - 0.22f) < 0.01f && Math.abs(it.widthFactor - 1.35f) < 0.01f }
+        assertEquals("Nordic Braid should generate 2 drop shadow wave paths", 2, shadowPaths.size)
+
+        // Verify presence of specular highlight ridge lines with alpha = 0.65f and widthFactor = 0.45f
+        val ridgePaths = nordicBraid.paths.filter { Math.abs(it.alpha - 0.65f) < 0.01f && Math.abs(it.widthFactor - 0.45f) < 0.01f }
+        assertEquals("Nordic Braid should generate 2 specular highlight ridge paths", 2, ridgePaths.size)
+
+        // Verify presence of background guard rings and 3D node studs with outer guard rings (4 guard circles + 18 filled studs + 18 outer rings = 40)
+        assertEquals("Nordic Braid should generate 40 circles for guard rings and 3D node studs", 40, nordicBraid.circles.size)
+
+        // Verify presence of directional node shading lines (18 nodes x 3 shading lines = 54 lines)
+        assertEquals("Nordic Braid should generate 54 directional node shading lines", 54, nordicBraid.lines.size)
+    }
+
+    @Test
     fun generateCenterEmblem_aegishjalmurCore_generatesChiseledTridentHubAndOrnaments() {
         val aegisCore = OrnamentGeometry.generateCenterEmblem(com.example.engine.CenterEmblem.AEGISHJALMUR_CORE, 3.0f)
 
