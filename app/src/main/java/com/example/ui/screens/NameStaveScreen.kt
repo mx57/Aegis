@@ -114,6 +114,7 @@ fun NameStaveScreen(
     val userSettings by viewModel.userSettings.collectAsState()
 
     val sketchConfig = remember(
+        inputText,
         userSettings.defaultStyle,
         userSettings.nameStaveShowFrame,
         userSettings.nameStaveShowRuneRing,
@@ -143,6 +144,7 @@ fun NameStaveScreen(
             hasSymmetryAccents = userSettings.nameStaveShowCornerAccents,
             hasGlowEffect = userSettings.nameStaveShowGlow,
             hasVolumetricShading = userSettings.nameStaveShowGlow,
+            frameText = inputText,
             seed = 1001L
         )
     }
