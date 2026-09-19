@@ -227,7 +227,7 @@ fun NameStaveScreen(
                         ) {
                             Icon(
                                 Icons.Default.Casino,
-                                contentDescription = "Сгенерировать случайное слово",
+                                contentDescription = null,
                                 modifier = Modifier.size(18.dp)
                             )
                             Text(
