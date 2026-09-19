@@ -266,6 +266,19 @@ class RunicStaveUnitTest {
     }
 
     @Test
+    fun svgGeneration_customCyrillicNameText_rendersInRunering() {
+        val stave = StaveComposer.compose(testRunes, StaveLayoutType.BINDRUNE, seed = 4321L)
+        val cyrillicName = "СИЛА"
+        val config = SketchConfig(
+            style = SketchStyle.NORDIC_TATTOO,
+            hasRunering = true,
+            frameText = cyrillicName
+        )
+        val svg = SvgStaveRenderer.renderSvg(stave, config)
+        assertTrue("SVG should contain custom Cyrillic frame text characters", svg.contains("С") && svg.contains("И") && svg.contains("Л") && svg.contains("А"))
+    }
+
+    @Test
     fun singleRuneIcon_strokeDataValidation_handlesSingleAndMultiPointStrokes() {
         val dotRune = Rune(
             id = "dot_rune",

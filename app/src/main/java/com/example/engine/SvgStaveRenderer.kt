@@ -457,7 +457,15 @@ object SvgStaveRenderer {
         val totalRunes = ringChars.size
         for (i in 0 until totalRunes) {
             val deg = i * (360f / totalRunes)
-            val rune = ringChars[i]
+            val rawRune = ringChars[i]
+            val rune = when (rawRune) {
+                "&" -> "&amp;"
+                "<" -> "&lt;"
+                ">" -> "&gt;"
+                "\"" -> "&quot;"
+                "'" -> "&apos;"
+                else -> rawRune
+            }
             if (config.hasVolumetricShading && !config.isStencil) {
                 sb.append("""  <text x="250" y="${(250 - rText + 5.5f).format()}" transform="rotate(${deg.format()}, 250, 250) translate(1.0, 1.4)" text-anchor="middle" font-size="14" font-family="serif" font-weight="bold" fill="${theme.shadowHex}" opacity="0.70">$rune</text>""").append("\n")
             }
