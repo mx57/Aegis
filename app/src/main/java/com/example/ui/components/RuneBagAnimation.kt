@@ -243,8 +243,15 @@ private fun DrawScope.drawSacredPouch(glowAlpha: Float, isShaking: Boolean) {
     val embCy = cy + 22f
     val goldColor = Color(0xFFE5C158).copy(alpha = glowAlpha)
     val goldShine = Color(0xFFFFF2A8)
+    val shadowColor = Color.Black.copy(alpha = 0.45f)
 
-    // Concentric sacred ring
+    // Concentric sacred ring with 3D drop shadow
+    drawCircle(
+        color = shadowColor,
+        radius = 28f,
+        center = Offset(cx + 1.2f, embCy + 1.5f),
+        style = Stroke(width = 2.0f)
+    )
     drawCircle(
         color = goldColor,
         radius = 28f,
@@ -258,21 +265,38 @@ private fun DrawScope.drawSacredPouch(glowAlpha: Float, isShaking: Boolean) {
         style = Stroke(width = 0.8f, pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(5f, 4f)))
     )
 
-    // Sacred Triquetra Knot
+    // Sacred Triquetra Knot with 3D drop shadow & specular highlights
     val rKnot = 18f
     for (i in 0 until 3) {
         val angle = (i * 120.0 - 90.0) * PI / 180.0
         val kx = cx + (rKnot * 0.6f * cos(angle)).toFloat()
         val ky = embCy + (rKnot * 0.6f * sin(angle)).toFloat()
+        // Drop shadow
+        drawCircle(
+            color = shadowColor,
+            radius = rKnot * 0.75f,
+            center = Offset(kx + 1.0f, ky + 1.2f),
+            style = Stroke(width = 1.8f)
+        )
+        // Main metallic gold strand
         drawCircle(
             color = goldColor,
             radius = rKnot * 0.75f,
             center = Offset(kx, ky),
             style = Stroke(width = 1.4f)
         )
+        // Specular highlight
+        drawCircle(
+            color = goldShine.copy(alpha = 0.7f),
+            radius = rKnot * 0.75f,
+            center = Offset(kx - 0.5f, ky - 0.5f),
+            style = Stroke(width = 0.6f)
+        )
     }
     // Center bind eye
+    drawCircle(color = shadowColor, radius = 4f, center = Offset(cx + 1f, embCy + 1f))
     drawCircle(color = goldShine, radius = 3.2f, center = Offset(cx, embCy))
+    drawCircle(color = Color.White, radius = 1.0f, center = Offset(cx - 0.6f, embCy - 0.6f))
 
     // 5. Cinched Neck & Folded Collar Top
     val collarPath = Path().apply {
@@ -536,20 +560,27 @@ private fun DrawScope.drawTabletBack() {
         cornerRadius = cornerRadius
     )
 
-    // Outer border
+    // 3D Chiseled Outer Bevel Highlight & Shadow Border
     drawRoundRect(
         brush = Brush.linearGradient(
-            colors = listOf(Color(0xFFB59334), Color(0xFF5E4915), Color(0xFFB59334))
+            colors = listOf(Color(0xFFFFF2A8), Color(0xFFE5C158), Color(0xFF9E7C20), Color(0xFF5E4915))
         ),
         size = size,
         cornerRadius = cornerRadius,
-        style = Stroke(width = 2.5f)
+        style = Stroke(width = 2.8f)
     )
 
-    // Celtic Knotwork Diamond Backing
     val cx = w / 2f
     val cy = h / 2f
+    val shadowColor = Color.Black.copy(alpha = 0.5f)
+    val goldBrush = Brush.linearGradient(
+        colors = listOf(Color(0xFFFFF2A8), Color(0xFFE5C158), Color(0xFFB8860B)),
+        start = Offset(cx - w * 0.35f, cy - h * 0.35f),
+        end = Offset(cx + w * 0.35f, cy + h * 0.35f)
+    )
+    val highlightColor = Color.White.copy(alpha = 0.65f)
 
+    // Celtic Knotwork Diamond Backing
     val diamondPath = Path().apply {
         moveTo(cx, cy - h * 0.35f)
         lineTo(cx + w * 0.35f, cy)
@@ -557,35 +588,32 @@ private fun DrawScope.drawTabletBack() {
         lineTo(cx - w * 0.35f, cy)
         close()
     }
-    drawPath(
-        diamondPath,
-        color = Color(0x44E5C158),
-        style = Stroke(width = 2f)
-    )
+    // 1. Drop shadow
+    drawPath(diamondPath, color = shadowColor, style = Stroke(width = 3.2f))
+    // 2. Main 5-stop metallic gold path
+    drawPath(diamondPath, brush = goldBrush, style = Stroke(width = 2.2f))
+    // 3. Specular highlight
+    drawPath(diamondPath, color = highlightColor, style = Stroke(width = 0.7f))
 
-    // Center sacred solar ring
-    drawCircle(
-        color = Color(0x66E5C158),
-        radius = w * 0.22f,
-        center = Offset(cx, cy),
-        style = Stroke(width = 1.5f)
-    )
-    drawCircle(
-        color = Color(0xFFFFF2A8),
-        radius = 4f,
-        center = Offset(cx, cy)
-    )
+    // Center sacred solar ring (dual-rail guard ring)
+    drawCircle(color = shadowColor, radius = w * 0.22f, center = Offset(cx + 1.2f, cy + 1.5f), style = Stroke(width = 2.2f))
+    drawCircle(brush = goldBrush, radius = w * 0.22f, center = Offset(cx, cy), style = Stroke(width = 1.6f))
+    drawCircle(color = highlightColor, radius = w * 0.22f, center = Offset(cx - 0.5f, cy - 0.5f), style = Stroke(width = 0.6f))
 
-    // 4 Intersecting arcs
+    drawCircle(color = shadowColor, radius = 4.5f, center = Offset(cx + 1f, cy + 1f))
+    drawCircle(color = Color(0xFFFFF2A8), radius = 4f, center = Offset(cx, cy))
+    drawCircle(color = Color.White, radius = 1.2f, center = Offset(cx - 0.8f, cy - 0.8f))
+
+    // 4 Intersecting arcs (Vesica Piscis Celtic Knotwork)
     for (i in 0 until 4) {
         val angle = i * 90.0 * PI / 180.0
         val ax = cx + (w * 0.15f * cos(angle)).toFloat()
         val ay = cy + (h * 0.15f * sin(angle)).toFloat()
-        drawCircle(
-            color = Color(0x33F3D97A),
-            radius = w * 0.14f,
-            center = Offset(ax, ay),
-            style = Stroke(width = 1.2f)
-        )
+        // Drop shadow
+        drawCircle(color = shadowColor, radius = w * 0.14f, center = Offset(ax + 1.2f, ay + 1.4f), style = Stroke(width = 1.8f))
+        // Metallic strand
+        drawCircle(brush = goldBrush, radius = w * 0.14f, center = Offset(ax, ay), style = Stroke(width = 1.3f))
+        // Specular highlight
+        drawCircle(color = highlightColor, radius = w * 0.14f, center = Offset(ax - 0.5f, ay - 0.5f), style = Stroke(width = 0.5f))
     }
 }
