@@ -51,6 +51,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -459,7 +463,13 @@ private fun DivinationRecordCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .clickable { isExpanded = !isExpanded },
+                    .semantics(mergeDescendants = true) {
+                        role = Role.Button
+                        stateDescription = if (isExpanded) "Развёрнуто" else "Свёрнуто"
+                    }
+                    .clickable(
+                        onClickLabel = if (isExpanded) "Свернуть толкование" else "Развернуть толкование"
+                    ) { isExpanded = !isExpanded },
                 color = Color(0xFF161B26),
                 border = BorderStroke(1.dp, Color(0x22E5C158))
             ) {
