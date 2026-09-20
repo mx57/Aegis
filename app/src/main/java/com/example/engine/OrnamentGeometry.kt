@@ -757,45 +757,169 @@ object OrnamentGeometry {
             }
 
             CenterEmblem.SOLAR_CROSS -> {
-                // Solar Cross / Sun wheel
-                val r = 18f
-                circles.add(CircleGeom(cx, cy, r, isFilled = false, widthFactor = 1.4f))
-                lines.add(LineSegmentGeom(cx - r - 8f, cy, cx + r + 8f, cy, widthFactor = 1.4f))
-                lines.add(LineSegmentGeom(cx, cy - r - 8f, cx, cy + r + 8f, widthFactor = 1.4f))
-                // 4 solar quadrant dots
-                val dotDist = 9f
-                circles.add(CircleGeom(cx - dotDist, cy - dotDist, 1.8f, isFilled = true))
-                circles.add(CircleGeom(cx + dotDist, cy - dotDist, 1.8f, isFilled = true))
-                circles.add(CircleGeom(cx - dotDist, cy + dotDist, 1.8f, isFilled = true))
-                circles.add(CircleGeom(cx + dotDist, cy + dotDist, 1.8f, isFilled = true))
+                // Sacred 3D Volumetric Sun Wheel (Solar Cross):
+                // Multi-layered guard rings, drop shadow underlay, 4 chiseled cardinal axes
+                // with Algiz protective notches, forged node studs, 4 quadrant solar orbs,
+                // and central solar hub with specular catchlight.
+
+                // 1. Ambient Drop Shadow Underlay
+                val shadowOffX = 1.2f
+                val shadowOffY = 1.6f
+                val rOuter = 22f
+                val rInner = 14f
+                val rTip = 30f
+
+                circles.add(CircleGeom(cx + shadowOffX, cy + shadowOffY, rOuter, isFilled = false, widthFactor = 1.4f, alpha = 0.22f))
+                lines.add(LineSegmentGeom(cx - rTip + shadowOffX, cy + shadowOffY, cx + rTip + shadowOffX, cy + shadowOffY, widthFactor = 1.4f, alpha = 0.22f))
+                lines.add(LineSegmentGeom(cx + shadowOffX, cy - rTip + shadowOffY, cx + shadowOffX, cy + rTip + shadowOffY, widthFactor = 1.4f, alpha = 0.22f))
+
+                // 2. Concentric Dual Solar Guard Rings
+                circles.add(CircleGeom(cx, cy, rOuter, isFilled = false, widthFactor = 1.35f))
+                circles.add(CircleGeom(cx, cy, rInner, isFilled = false, widthFactor = 0.85f, alpha = 0.70f))
+
+                // 3. 4 Chiseled Cardinal Axes with Algiz Protective Crossbars & Terminal Node Studs
+                val axes = listOf(
+                    Pair(1f, 0f),   // Right
+                    Pair(-1f, 0f),  // Left
+                    Pair(0f, 1f),   // Bottom
+                    Pair(0f, -1f)   // Top
+                )
+
+                for ((dirX, dirY) in axes) {
+                    val perpX = -dirY
+                    val perpY = dirX
+
+                    // Chiseled Radial Ray
+                    val startX = cx + rInner * dirX
+                    val startY = cy + rInner * dirY
+                    val tipX = cx + rTip * dirX
+                    val tipY = cy + rTip * dirY
+                    lines.add(LineSegmentGeom(startX, startY, tipX, tipY, widthFactor = 1.40f))
+
+                    // Transverse Protective Notch (Algiz notch at r = 26f)
+                    val notchR = 26f
+                    val notchX = cx + notchR * dirX
+                    val notchY = cy + notchR * dirY
+                    val notchSpan = 3.5f
+                    lines.add(
+                        LineSegmentGeom(
+                            notchX - perpX * notchSpan, notchY - perpY * notchSpan,
+                            notchX + perpX * notchSpan, notchY + perpY * notchSpan,
+                            widthFactor = 1.10f
+                        )
+                    )
+
+                    // Forged Terminal Node Stud at Tip
+                    circles.add(CircleGeom(tipX, tipY, 2.2f, isFilled = true))
+                }
+
+                // 4. 4 Quadrant Solar Node Studs with Halo Rings (at 45, 135, 225, 315 deg)
+                val quadrantDist = 11f
+                val diagOffsets = listOf(
+                    Pair(-1f, -1f), Pair(1f, -1f), Pair(-1f, 1f), Pair(1f, 1f)
+                )
+                for ((dx, dy) in diagOffsets) {
+                    val qx = cx + dx * quadrantDist * 0.7071f
+                    val qy = cy + dy * quadrantDist * 0.7071f
+                    circles.add(CircleGeom(qx, qy, 3.8f, isFilled = false, widthFactor = 0.65f, alpha = 0.75f))
+                    circles.add(CircleGeom(qx, qy, 1.8f, isFilled = true))
+                }
+
+                // 5. Central Solar Core Orb & Specular Catchlight
+                circles.add(CircleGeom(cx, cy, 3.5f, isFilled = true))
+                circles.add(CircleGeom(cx - 0.6f, cy - 0.7f, 0.9f, isFilled = true)) // Specular catchlight
             }
 
             CenterEmblem.INGUZ_DIAMOND -> {
-                // Inguz Rhombus + center dot & cross-ticks
-                val hw = 22f
-                val hh = 28f
-                val outerRhombus = listOf(
-                    StrokePoint(cx, cy - hh),
-                    StrokePoint(cx + hw, cy),
-                    StrokePoint(cx, cy + hh),
-                    StrokePoint(cx - hw, cy)
-                )
-                paths.add(PathGeom(outerRhombus, isClosed = true, widthFactor = 1.4f))
+                // Sacred 3D Volumetric Inguz Diamond (Oko Inguz):
+                // Multi-layer 3D faceted rhombus boundaries, drop shadow underlay,
+                // longitudinal facet ridge lines, volumetric shadow cross-hatching,
+                // 4 cardinal Algiz trident crowns, and central sacred eye orb with catchlight.
 
-                val innerRhombus = listOf(
-                    StrokePoint(cx, cy - hh * 0.6f),
-                    StrokePoint(cx + hw * 0.6f, cy),
-                    StrokePoint(cx, cy + hh * 0.6f),
-                    StrokePoint(cx - hw * 0.6f, cy)
-                )
-                paths.add(PathGeom(innerRhombus, isClosed = true, widthFactor = 0.8f))
+                val hwOuter = 24f
+                val hhOuter = 32f
+                val hwInner = 14f
+                val hhInner = 19f
+                val shadowOffX = 1.8f
+                val shadowOffY = 2.4f
 
-                // Cardinal tick accents
-                lines.add(LineSegmentGeom(cx, cy - hh, cx, cy - hh - 8f, widthFactor = 1.2f))
-                lines.add(LineSegmentGeom(cx, cy + hh, cx, cy + hh + 8f, widthFactor = 1.2f))
-                lines.add(LineSegmentGeom(cx - hw, cy, cx - hw - 8f, cy, widthFactor = 1.2f))
-                lines.add(LineSegmentGeom(cx + hw, cy, cx + hw + 8f, cy, widthFactor = 1.2f))
-                circles.add(CircleGeom(cx, cy, 2.5f, isFilled = true))
+                // 1. Ambient Drop Shadow Underlay Polygon
+                val shadowPoly = listOf(
+                    StrokePoint(cx + shadowOffX, cy - hhOuter + shadowOffY),
+                    StrokePoint(cx + hwOuter + shadowOffX, cy + shadowOffY),
+                    StrokePoint(cx + shadowOffX, cy + hhOuter + shadowOffY),
+                    StrokePoint(cx - hwOuter + shadowOffX, cy + shadowOffY)
+                )
+                polygons.add(PolygonGeom(shadowPoly, isFilled = true, alpha = 0.22f))
+
+                // 2. Dual Volumetric Rhombus Outer & Inner Boundary Paths
+                val vOuter = listOf(
+                    StrokePoint(cx, cy - hhOuter),
+                    StrokePoint(cx + hwOuter, cy),
+                    StrokePoint(cx, cy + hhOuter),
+                    StrokePoint(cx - hwOuter, cy)
+                )
+                val vInner = listOf(
+                    StrokePoint(cx, cy - hhInner),
+                    StrokePoint(cx + hwInner, cy),
+                    StrokePoint(cx, cy + hhInner),
+                    StrokePoint(cx - hwInner, cy)
+                )
+
+                paths.add(PathGeom(vOuter, isClosed = true, widthFactor = 1.35f))
+                paths.add(PathGeom(vInner, isClosed = true, widthFactor = 0.85f, alpha = 0.75f))
+
+                // 3. Facet Corner Ridge Join Lines & Volumetric Cross-Hatching
+                for (v in 0 until 4) {
+                    val pOut1 = vOuter[v]
+                    val pOut2 = vOuter[(v + 1) % 4]
+                    val pIn1 = vInner[v]
+                    val pIn2 = vInner[(v + 1) % 4]
+
+                    // Corner vertex join ridge line
+                    lines.add(LineSegmentGeom(pIn1.x, pIn1.y, pOut1.x, pOut1.y, widthFactor = 1.10f))
+
+                    // Volumetric Shadow Cross-Hatching across edge facet
+                    val hatchSteps = 3
+                    for (h in 1..hatchSteps) {
+                        val t = h.toFloat() / (hatchSteps + 1)
+                        val hx1 = pIn1.x + t * (pIn2.x - pIn1.x)
+                        val hy1 = pIn1.y + t * (pIn2.y - pIn1.y)
+                        val hx2 = pOut1.x + t * (pOut2.x - pOut1.x)
+                        val hy2 = pOut1.y + t * (pOut2.y - pOut1.y)
+                        lines.add(LineSegmentGeom(hx1, hy1, hx2, hy2, widthFactor = 0.45f, alpha = 0.65f))
+                    }
+                }
+
+                // 4. 4 Cardinal Algiz Trident Finials / Forged Crown Extension Tips
+                val cardinalFinials = listOf(
+                    Triple(cx, cy - hhOuter, 0f to -10f),  // Top
+                    Triple(cx + hwOuter, cy, 10f to 0f),   // Right
+                    Triple(cx, cy + hhOuter, 0f to 10f),   // Bottom
+                    Triple(cx - hwOuter, cy, -10f to 0f)   // Left
+                )
+
+                for ((baseX, baseY, offset) in cardinalFinials) {
+                    val tipX = baseX + offset.first
+                    val tipY = baseY + offset.second
+                    lines.add(LineSegmentGeom(baseX, baseY, tipX, tipY, widthFactor = 1.25f))
+
+                    // Transverse notch tick on cardinal extension
+                    val midX = (baseX + tipX) / 2f
+                    val midY = (baseY + tipY) / 2f
+                    val isVert = offset.first == 0f
+                    val crossDX = if (isVert) 3.5f else 0f
+                    val crossDY = if (isVert) 0f else 3.5f
+                    lines.add(LineSegmentGeom(midX - crossDX, midY - crossDY, midX + crossDX, midY + crossDY, widthFactor = 1.0f))
+
+                    // Node stud at extension tip
+                    circles.add(CircleGeom(tipX, tipY, 2.2f, isFilled = true))
+                }
+
+                // 5. Central Sacred Eye Orb & Guard Ring
+                circles.add(CircleGeom(cx, cy, 6.0f, isFilled = false, widthFactor = 0.70f, alpha = 0.70f))
+                circles.add(CircleGeom(cx, cy, 3.2f, isFilled = true))
+                circles.add(CircleGeom(cx - 0.5f, cy - 0.6f, 0.8f, isFilled = true)) // Specular catchlight
             }
 
             CenterEmblem.AEGISHJALMUR_CORE -> {
