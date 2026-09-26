@@ -297,4 +297,16 @@ class OrnamentGeometryTest {
         val resultMax = OrnamentGeometry.scaleOrnaments(ornaments, scaleFactor = 3.0f)
         assertEquals(180f, resultMax.circles[0].radius, delta)
     }
+
+    @Test
+    fun generateFrame_solarCircle_generates3DDropShadowUnderlays() {
+        val solarCircle = OrnamentGeometry.generateFrame(com.example.engine.FrameStyle.SOLAR_CIRCLE, 3.0f)
+        val shadowCircles = solarCircle.circles.filter { Math.abs(it.alpha - 0.22f) < 0.01f }
+        assertEquals("Solar Circle should generate 2 ambient drop shadow underlays", 2, shadowCircles.size)
+        assertTrue("Solar Circle should generate main guard circles and solar rays", solarCircle.circles.size >= 5)
+        assertTrue(
+            "Solar Circle should generate solar rays and cardinal pointer arrowheads",
+            solarCircle.lines.isNotEmpty() && solarCircle.polygons.isNotEmpty()
+        )
+    }
 }

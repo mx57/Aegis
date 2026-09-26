@@ -78,6 +78,11 @@ object OrnamentGeometry {
                 val r1 = 232f
                 val r2 = 216f
                 val r3 = 200f
+                // 1. Ambient drop shadow underlays for 3D volumetric depth
+                circles.add(CircleGeom(cx + 2.0f, cy + 2.5f, r1, widthFactor = 1.5f, alpha = 0.22f))
+                circles.add(CircleGeom(cx + 2.0f, cy + 2.5f, r2, widthFactor = 1.1f, alpha = 0.22f))
+
+                // 2. Main Volumetric Concentric Guard Rings
                 circles.add(CircleGeom(cx, cy, r1, widthFactor = 1.2f))
                 circles.add(CircleGeom(cx, cy, r2, widthFactor = 0.8f))
                 circles.add(CircleGeom(cx, cy, r3, widthFactor = 0.6f, alpha = 0.6f))
