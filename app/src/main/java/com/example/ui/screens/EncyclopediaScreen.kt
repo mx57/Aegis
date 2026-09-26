@@ -336,7 +336,8 @@ fun RuneDetailCard(
                         rune = rune,
                         size = 36.dp,
                         color = MaterialTheme.colorScheme.primary,
-                        strokeWidthDp = 3.dp
+                        strokeWidthDp = 3.dp,
+                        useMetallicGradient = true
                     )
                 }
 

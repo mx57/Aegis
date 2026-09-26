@@ -228,6 +228,7 @@
         android:strokeLineCap="round"
         android:pathData="M 53.7,45.6 L 53.7,23.6 M 53.7,31.6 L 43.7,21.6 M 53.7,31.6 L 63.7,21.6 M 48.7,26.6 L 58.7,26.6" />
 
+    <!-- Subpixel specular highlight bevel offset (-0.3, -0.4) relative to main 3D golden axes for perfect 4-way symmetry -->
     <path
         android:fillColor="#00000000"
         android:strokeColor="#D0FFFFFF"
