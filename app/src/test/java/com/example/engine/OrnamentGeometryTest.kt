@@ -223,6 +223,36 @@ class OrnamentGeometryTest {
 
         // Verify presence of directional node shading lines (18 nodes x 3 shading lines = 54 lines)
         assertEquals("Nordic Braid should generate 54 directional node shading lines", 54, nordicBraid.lines.size)
+
+    fun generateCenterEmblem_solarCross_generates3DVolumetricSunWheelAndOrnaments() {
+        val solarCross = OrnamentGeometry.generateCenterEmblem(com.example.engine.CenterEmblem.SOLAR_CROSS, 3.0f)
+
+        // Solar Cross should generate drop shadow underlay, dual concentric guard rings, 4 cardinal rays with Algiz crossbars & terminal studs
+        assertTrue("Solar Cross should generate concentric circles, halo rings and node studs", solarCross.circles.size >= 10)
+        assertTrue("Solar Cross should generate cardinal rays and protective notch ticks", solarCross.lines.size >= 10)
+
+        // Verify presence of ambient drop shadow circle (alpha 0.22f)
+        val shadowCircle = solarCross.circles.find { Math.abs(it.alpha - 0.22f) < 0.01f }
+        assertTrue("Solar Cross should generate ambient drop shadow ring underlay", shadowCircle != null)
+
+        // Verify specular catchlight circle
+        val catchlightCircle = solarCross.circles.find { Math.abs(it.radius - 0.9f) < 0.01f && it.isFilled }
+        assertTrue("Solar Cross should generate central specular catchlight orb", catchlightCircle != null)
+    }
+
+    @Test
+    fun generateCenterEmblem_inguzDiamond_generates3DVolumetricRhombusAndOrnaments() {
+        val inguz = OrnamentGeometry.generateCenterEmblem(com.example.engine.CenterEmblem.INGUZ_DIAMOND, 3.0f)
+
+        // Inguz Diamond should generate drop shadow underlay polygon, dual boundary paths, corner ridge join lines, cross-hatching, and eye orb
+        assertTrue("Inguz Diamond should generate ambient drop shadow underlay polygon", inguz.polygons.isNotEmpty())
+        assertEquals("Inguz Diamond should generate 2 boundary paths (outer and inner rhombus)", 2, inguz.paths.size)
+        assertTrue("Inguz Diamond should generate facet ridge join lines, cross-hatching, and cardinal extensions", inguz.lines.size >= 16)
+        assertTrue("Inguz Diamond should generate central sacred eye orb and guard ring", inguz.circles.size >= 5)
+
+        // Verify ambient drop shadow polygon alpha (0.22f)
+        val shadowPoly = inguz.polygons.find { Math.abs(it.alpha - 0.22f) < 0.01f }
+        assertTrue("Inguz Diamond drop shadow polygon should have alpha = 0.22f", shadowPoly != null)
     }
 
     @Test
