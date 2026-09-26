@@ -223,7 +223,9 @@ class OrnamentGeometryTest {
 
         // Verify presence of directional node shading lines (18 nodes x 3 shading lines = 54 lines)
         assertEquals("Nordic Braid should generate 54 directional node shading lines", 54, nordicBraid.lines.size)
+    }
 
+    @Test
     fun generateCenterEmblem_solarCross_generates3DVolumetricSunWheelAndOrnaments() {
         val solarCross = OrnamentGeometry.generateCenterEmblem(com.example.engine.CenterEmblem.SOLAR_CROSS, 3.0f)
 
