@@ -48,6 +48,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.data.catalog.HistoricalStaveTemplate
@@ -418,7 +420,10 @@ fun HistoricalTemplateCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { isExpanded = !isExpanded }
+                    .semantics { stateDescription = if (isExpanded) "Развёрнуто" else "Свёрнуто" }
+                    .clickable(
+                        onClickLabel = if (isExpanded) "Скрыть подробности о ставе" else "Показать подробности о ставе"
+                    ) { isExpanded = !isExpanded }
                     .padding(vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
@@ -431,7 +436,7 @@ fun HistoricalTemplateCard(
                 )
                 Icon(
                     imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = null,
+                    contentDescription = if (isExpanded) "Свернуть" else "Развернуть",
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
