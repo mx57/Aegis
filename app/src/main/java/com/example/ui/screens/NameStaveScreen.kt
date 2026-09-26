@@ -122,7 +122,8 @@ fun NameStaveScreen(
         userSettings.nameStaveShowBranchNotches,
         userSettings.nameStaveShowFinials,
         userSettings.nameStaveShowCornerAccents,
-        userSettings.nameStaveShowGlow
+        userSettings.nameStaveShowGlow,
+        inputText
     ) {
         val style = try {
             SketchStyle.valueOf(userSettings.defaultStyle)
@@ -143,7 +144,8 @@ fun NameStaveScreen(
             hasSymmetryAccents = userSettings.nameStaveShowCornerAccents,
             hasGlowEffect = userSettings.nameStaveShowGlow,
             hasVolumetricShading = userSettings.nameStaveShowGlow,
-            seed = 1001L
+            seed = 1001L,
+            frameText = inputText
         )
     }
 

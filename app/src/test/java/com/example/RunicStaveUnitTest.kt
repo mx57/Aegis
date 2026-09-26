@@ -310,4 +310,39 @@ class RunicStaveUnitTest {
         assertTrue("SVG should contain circle elements for ink splatter particles", svg.contains("<circle"))
         assertTrue("SVG should end with </svg>", svg.trim().endsWith("</svg>"))
     }
+
+    @Test
+    fun getCircularFrameChars_shortText_repeatsWithSeparators() {
+        val chars = SvgStaveRenderer.getCircularFrameChars("СИЛА")
+        assertTrue("Short text should be expanded to at least 18 characters", chars.size >= 18)
+        assertTrue("Should contain separator dot •", chars.contains("•"))
+        assertTrue("Should contain letters of phrase", chars.contains("С") && chars.contains("И"))
+    }
+
+    @Test
+    fun getCircularFrameChars_longText_usesDirectChars() {
+        val longText = "ᚨᛚᚢ ᚨᚢᛃᚨ ᛚᚨᚢᚲᚨᛞ ᛋᛟᚹᛁᛚᛟ ᛏᛁᚹᚨᛞ"
+        val chars = SvgStaveRenderer.getCircularFrameChars(longText)
+        assertEquals(longText.length, chars.size)
+    }
+
+    @Test
+    fun getCircularFrameChars_blankText_returnsElderFutharkRunes() {
+        val chars = SvgStaveRenderer.getCircularFrameChars("   ")
+        assertEquals(com.example.engine.ELDER_FUTHARK_RUNES, chars)
+    }
+
+    @Test
+    fun svgGeneration_frameText_automaticallyEnablesFrameBelt() {
+        val stave = StaveComposer.compose(testRunes, StaveLayoutType.BINDRUNE, seed = 1001L)
+        val config = SketchConfig(
+            style = SketchStyle.SACRED_GOLD,
+            hasFrameCircle = true,
+            hasRunering = false,
+            frameText = "ЗАЩИТА"
+        )
+        val svg = SvgStaveRenderer.renderSvg(stave, config)
+        assertTrue("SVG should contain rendered frame text characters even if hasRunering was false", svg.contains("З") && svg.contains("А") && svg.contains("Щ"))
+        assertTrue("SVG should contain circle for frame ring belt", svg.contains("""<circle cx="250" cy="250" r="218.0""""))
+    }
 }

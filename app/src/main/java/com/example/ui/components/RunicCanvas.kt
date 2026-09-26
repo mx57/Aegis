@@ -757,7 +757,8 @@ fun RunicCanvas(
 
         // Elder Futhark Rune Ring (concentric sacred boundary with ancient runes)
         val runeringProgress = ((currentProgress - 0.78f) / 0.22f).coerceIn(0f, 1f)
-        if (config.hasRunering && !config.isStencil && runeringProgress > 0f) {
+        val hasRuneringActive = config.hasRunering || (config.hasFrameCircle && config.frameText.isNotBlank())
+        if (hasRuneringActive && !config.isStencil && runeringProgress > 0f) {
             val cx = 250f * scale
             val cy = 250f * scale
             val rInner = 218f * scale
@@ -808,7 +809,7 @@ fun RunicCanvas(
                 )
             }
 
-            val ringChars = if (config.frameText.isNotBlank()) config.frameText.map { it.toString() } else ELDER_FUTHARK_RUNES
+            val ringChars = com.example.engine.SvgStaveRenderer.getCircularFrameChars(config.frameText)
             val totalRunes = ringChars.size
             val visibleRunes = if (currentProgress >= 1f) totalRunes else (runeringProgress * totalRunes).toInt().coerceIn(0, totalRunes)
 

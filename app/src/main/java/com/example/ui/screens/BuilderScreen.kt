@@ -123,12 +123,14 @@ fun BuilderScreen(
         }
     }
 
-    val sketchConfig = remember(defaultSketchStyle) {
+    val sketchConfig = remember(defaultSketchStyle, staveTitle) {
         SketchConfig(
             style = defaultSketchStyle,
             lineWidth = 3.6f,
             hasFrameCircle = true,
-            seed = 2024L
+            hasRunering = staveTitle.isNotBlank(),
+            seed = 2024L,
+            frameText = staveTitle
         )
     }
 
