@@ -76,7 +76,8 @@ enum class CenterEmblem(val titleRu: String) {
     INGUZ_DIAMOND("Око Ингуз"),
     AEGISHJALMUR_CORE("Ядро Агисхьяльма"),
     MJOLNIR("Молот Тора"),
-    RAVEN_ODIN("Ворон Хугин")
+    RAVEN_ODIN("Ворон Хугин"),
+    FENRIR_WOLF("Волк Фенрир")
 }
 
 enum class CornerStyle(val titleRu: String) {
