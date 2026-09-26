@@ -398,7 +398,8 @@ fun SketchScreen(
             onDismiss = { isFullScreenOpen = false },
             onReplayAnimation = { animTriggerKey++ },
             onExportPng = { exportPng(targetResolution) },
-            onExportSvg = { exportSvg() }
+            onExportSvg = { exportSvg() },
+            onExportPdf = { exportPdf(selectedPrintSize.sizeMm, isPdfStencilMode) }
         )
     }
 

@@ -46,7 +46,7 @@ class RuneViewModelTest {
     @After
     fun tearDown() {
         viewModel.viewModelScope.coroutineContext.cancelChildren()
-        testDispatcher.scheduler.advanceTimeBy(6000L)
+        testDispatcher.scheduler.advanceTimeBy(10000L)
         testDispatcher.scheduler.advanceUntilIdle()
         Dispatchers.resetMain()
     }
