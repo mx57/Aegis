@@ -17,7 +17,7 @@
 /
 ├── .github/
 │   └── workflows/
-│       └── build-apk.yml        # CI/CD: авто-сборка Debug APK и тесты при PR и Push в main
+│       └── build-apk.yml        # CI/CD: авто-сборка Debug APK в корне проекта (app-debug.apk) и тесты при PR и Push в main
 ├── app/src/main/
 │   ├── java/com/example/
 │   │   ├── data/
