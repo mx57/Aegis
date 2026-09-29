@@ -70,33 +70,6 @@ android {
   }
 }
 
-abstract class CopyApkToRootTask : DefaultTask() {
-  @get:InputFile
-  abstract val apkFile: RegularFileProperty
-
-  @get:OutputFile
-  abstract val targetApkFile: RegularFileProperty
-
-  @TaskAction
-  fun copyApk() {
-    val src = apkFile.get().asFile
-    if (src.exists()) {
-      src.copyTo(targetApkFile.get().asFile, overwrite = true)
-      logger.lifecycle("Copied APK to ${targetApkFile.get().asFile.absolutePath}")
-    }
-  }
-}
-
-val copyApkTask = tasks.register("copyApkToRoot", CopyApkToRootTask::class.java) {
-  apkFile.set(layout.buildDirectory.file("outputs/apk/debug/app-debug.apk"))
-  targetApkFile.set(rootDir.resolve("app-debug.apk"))
-  dependsOn("packageDebug")
-}
-
-afterEvaluate {
-  tasks.findByName("assembleDebug")?.finalizedBy(copyApkTask)
-}
-
 // Configure the Secrets Gradle Plugin to use .env and .env.example files
 // to match the convention used in Web projects.
 secrets {
